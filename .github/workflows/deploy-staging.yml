@@ -23,11 +23,13 @@ jobs:
       - name: Deploy themes
         run: |
           rsync -avz --delete \
+            --no-owner --no-group \
             wp-content/themes/ \
             ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/themes/
 
-      - name: Deploy custom plugins
+      - name: Deploy custom plugins only
         run: |
           rsync -avz --delete \
-            wp-content/plugins/ \
+            --no-owner --no-group \
+            wp-content/plugins/energdive-*/ \
             ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/
