@@ -1,4 +1,5 @@
 <?php
+
 namespace Energ\Bootstrap;
 
 use Energ\Auth\RequestOtp;
@@ -6,14 +7,18 @@ use Energ\Auth\VerifyOtp;
 
 defined('ABSPATH') || exit;
 
-class Init {
+class Init
+{
 
-    public static function boot() {
+    public static function boot()
+    {
 
         // Load Auth classes
         require_once ENERGDIVE_USER_PLUGIN_PATH . 'app/Auth/RequestOtp.php';
         require_once ENERGDIVE_USER_PLUGIN_PATH . 'app/Auth/VerifyOtp.php';
         require_once ENERGDIVE_USER_PLUGIN_PATH . 'app/Auth/Jwt.php';
+        require_once ENERGDIVE_USER_PLUGIN_PATH . 'app/Services/Mailer.php';
+        \Energ\Services\Mailer::init();
 
         add_action('rest_api_init', function () {
 
@@ -28,7 +33,6 @@ class Init {
                 'callback' => [VerifyOtp::class, 'handle'],
                 'permission_callback' => '__return_true',
             ]);
-
         });
     }
 }
