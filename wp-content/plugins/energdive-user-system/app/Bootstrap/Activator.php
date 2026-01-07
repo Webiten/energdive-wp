@@ -38,5 +38,4 @@ class Activator {
             PRIMARY KEY (id)
         ) $charset;
     ");
-}
-
+}}
