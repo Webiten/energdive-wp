@@ -27,9 +27,13 @@ jobs:
             wp-content/themes/ \
             ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/themes/
 
-      - name: Deploy custom plugins only
+      - name: Deploy custom plugins (if exist)
         run: |
-          rsync -avz --delete \
-            --no-owner --no-group \
-            wp-content/plugins/energdive-*/ \
-            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/
+          if ls wp-content/plugins/energdive-* 1> /dev/null 2>&1; then
+            rsync -avz --delete \
+              --no-owner --no-group \
+              wp-content/plugins/energdive-*/ \
+              ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/
+          else
+            echo "No custom plugins found. Skipping plugin deploy."
+          fi
