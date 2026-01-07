@@ -37,3 +37,10 @@ jobs:
           else
             echo "No custom plugins found. Skipping plugin deploy."
           fi
+
+      - name: Deploy EnergDive plugin
+        run: |
+         rsync -avz --delete \
+           --no-owner --no-group \
+            wp-content/plugins/energdive-user-system/ \
+            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/energdive-user-system/
