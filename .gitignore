@@ -1,0 +1,12 @@
+# Ignore everything in wp-content
+wp-content/*
+
+# But allow themes and plugins
+!wp-content/themes/
+!wp-content/themes/**
+!wp-content/plugins/
+!wp-content/plugins/**
+
+# Still ignore uploads
+wp-content/uploads/
+
