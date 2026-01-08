@@ -6,8 +6,6 @@ use Energ\Middleware\JwtAuth;
 
 add_action('rest_api_init', function () {
 
-    error_log('ENERG REST API INIT');
-
     register_rest_route('energ/v1', '/auth/request-otp', [
         'methods'  => 'POST',
         'callback' => [AuthController::class, 'requestOtp'],
@@ -23,7 +21,8 @@ add_action('rest_api_init', function () {
     register_rest_route('energ/v1', '/me', [
         'methods'  => 'GET',
         'callback' => [AuthController::class, 'me'],
-        'permission_callback' => [JwtAuth::class, 'handle'],
+        // 🔥 THIS MUST MATCH JwtAuth::allow
+        'permission_callback' => [JwtAuth::class, 'allow'],
     ]);
 
 });
