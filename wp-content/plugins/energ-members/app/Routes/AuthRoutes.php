@@ -21,4 +21,11 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true',
     ]);
 
+    register_rest_route('energ/v1', '/auth/refresh', [
+    'methods'  => 'POST',
+    'callback' => [AuthController::class, 'refresh'],
+    'permission_callback' => '__return_true',
+]);
+
+
 });

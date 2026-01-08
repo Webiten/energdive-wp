@@ -1,56 +1,51 @@
 <?php
 namespace Energ\Auth;
 
-use Firebase\JWT\JWT as FirebaseJWT;
-use Firebase\JWT\Key;
-
-global $wpdb;
-
 class Jwt {
 
-    private static $secret = 'CHANGE_THIS_SECRET';
-
-    public static function issue($email) {
-        $now = time();
-
-        $payload = [
-            'iss' => site_url(),
-            'iat' => $now,
-            'exp' => $now + 900,
-            'sub' => $email,
-        ];
-
-        $access = FirebaseJWT::encode($payload, self::$secret, 'HS256');
-
-        $refresh = bin2hex(random_bytes(32));
-        $hash = hash('sha256', $refresh);
-
-        $wpdb->insert("{$wpdb->prefix}energ_sessions", [
-            'refresh_token_hash' => $hash,
-            'expires_at' => date('Y-m-d H:i:s', $now + 86400 * 7),
-        ]);
-
-        return [
-            'access_token'  => $access,
-            'refresh_token' => $refresh,
-        ];
+    private static function secret() {
+        return defined('AUTH_KEY') ? AUTH_KEY : 'change-me';
     }
 
-    public static function refresh($req) {
-        $token = $req['refresh_token'] ?? '';
-        $hash = hash('sha256', $token);
+    public static function generate(array $payload, int $ttlSeconds): string {
+        $header = ['alg' => 'HS256', 'typ' => 'JWT'];
+        $payload['iat'] = time();
+        $payload['exp'] = time() + $ttlSeconds;
 
-        $row = $GLOBALS['wpdb']->get_row(
-            $GLOBALS['wpdb']->prepare(
-                "SELECT * FROM {$GLOBALS['wpdb']->prefix}energ_sessions WHERE refresh_token_hash=%s",
-                $hash
-            )
+        $base64Header  = self::b64(json_encode($header));
+        $base64Payload = self::b64(json_encode($payload));
+
+        $signature = hash_hmac(
+            'sha256',
+            $base64Header . '.' . $base64Payload,
+            self::secret(),
+            true
         );
 
-        if (!$row) {
-            return new \WP_Error('invalid_refresh', 'Invalid refresh token');
-        }
+        return $base64Header . '.' . $base64Payload . '.' . self::b64($signature);
+    }
 
-        return self::issue('refreshed');
+    public static function verify(string $jwt) {
+        [$h, $p, $s] = explode('.', $jwt);
+        $expected = self::b64(hash_hmac(
+            'sha256',
+            "$h.$p",
+            self::secret(),
+            true
+        ));
+
+        if (!hash_equals($expected, $s)) return false;
+
+        $payload = json_decode(self::ub64($p), true);
+        if (($payload['exp'] ?? 0) < time()) return false;
+
+        return $payload;
+    }
+
+    private static function b64($data) {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+    private static function ub64($data) {
+        return base64_decode(strtr($data, '-_', '+/'));
     }
 }
