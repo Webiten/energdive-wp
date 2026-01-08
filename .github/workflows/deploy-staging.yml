@@ -41,6 +41,6 @@ jobs:
       - name: Deploy EnergDive plugin
         run: |
          rsync -avz --delete \
-           --no-owner --no-group \
-            wp-content/plugins/energdive-user-system/ \
-            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/energdive-user-system/
+         wp-content/plugins/energ-members/ \
+         deploy@SERVER:/var/www/staging/wp-content/plugins/energ-members/
+
