@@ -1,42 +1,37 @@
 <?php
-
 namespace Energ\API;
 
-use Energ\Auth\RequestOtp;
-use Energ\Auth\VerifyOtp;
-use Energ\Auth\Jwt;
+use WP_REST_Request;
+use WP_Error;
 
-defined('ABSPATH') || exit;
+class AuthController {
 
-class AuthController
-{
-
-    public static function requestOtp($req)
-    {
-        return (new RequestOtp)->handle($req);
+    public static function requestOtp(WP_REST_Request $request) {
+        return (new \Energ\Auth\RequestOtp())->handle($request);
     }
 
-    public static function verifyOtp($req)
-    {
-        return (new VerifyOtp)->handle($req);
+    public static function verifyOtp(WP_REST_Request $request) {
+        return (new \Energ\Auth\VerifyOtp())->handle($request);
     }
 
-    public static function refreshToken($req)
-    {
-        return Jwt::refresh($req);
-    }
+    // 🔥 THIS WAS THE MISSING / BROKEN PART
+    public static function me(WP_REST_Request $request) {
 
-    public static function refresh($request)
-    {
-        global $wpdb;
-        $token = $request->get_json_params()['refresh_token'] ?? '';
+        $user = $request->get_param('auth_user');
 
-        $row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}energ_refresh_tokens");
-        if (!$row || !password_verify($token, $row->token_hash)) {
-            return new \WP_Error('invalid_refresh', 'Invalid refresh token', ['status' => 401]);
+        if (!$user) {
+            return new WP_Error(
+                'unauthorized',
+                'Invalid or missing token',
+                ['status' => 401]
+            );
         }
 
-        $access = \Energ\Auth\Jwt::generate(['sub' => $row->user_identifier], 15 * 60);
-        return ['access_token' => $access, 'expires_in' => 900];
+        return [
+            'success' => true,
+            'user' => [
+                'email' => $user,
+            ],
+        ];
     }
 }
