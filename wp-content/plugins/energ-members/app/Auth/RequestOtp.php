@@ -1,8 +1,8 @@
 <?php
 namespace Energ\Auth;
 
+use Energ\Services\Mailer;
 use WP_Error;
-use wpdb;
 
 class RequestOtp {
 
@@ -13,34 +13,62 @@ class RequestOtp {
         $email  = sanitize_email($params['email'] ?? '');
 
         if (!$email || !is_email($email)) {
-            return new WP_Error('invalid_email', 'Invalid email', ['status' => 400]);
+            return new WP_Error(
+                'invalid_email',
+                'Invalid email address',
+                ['status' => 400]
+            );
         }
 
         // Generate OTP
-        $otp = random_int(100000, 999999);
-        $hash = password_hash((string)$otp, PASSWORD_DEFAULT);
+        try {
+            $otp = random_int(100000, 999999);
+        } catch (\Exception $e) {
+            return new WP_Error(
+                'otp_generation_failed',
+                'Unable to generate OTP',
+                ['status' => 500]
+            );
+        }
 
-        // Expiry: 5 minutes
-        $expires = gmdate('Y-m-d H:i:s', time() + 300);
+        $hash    = password_hash((string) $otp, PASSWORD_DEFAULT);
+        $expires = gmdate('Y-m-d H:i:s', time() + 300); // 5 minutes
 
         $table = $wpdb->prefix . 'energ_otps';
 
-        // Remove old OTPs for this identifier
+        // Delete previous OTPs for this email
         $wpdb->delete($table, ['identifier' => $email]);
 
         // Insert new OTP
-        $wpdb->insert($table, [
-            'identifier' => $email,
-            'otp_hash'   => $hash,
-            'expires_at'=> $expires,
-            'attempts'  => 0,
-        ]);
+        $inserted = $wpdb->insert(
+            $table,
+            [
+                'identifier' => $email,
+                'otp_hash'   => $hash,
+                'expires_at'=> $expires,
+                'attempts'  => 0,
+            ],
+            ['%s', '%s', '%s', '%d']
+        );
 
-        // TEMP: return OTP for testing (REMOVE later)
+        if ($inserted === false) {
+            return new WP_Error(
+                'db_error',
+                'Could not save OTP',
+                ['status' => 500]
+            );
+        }
+
+        // Send OTP via email (Amazon SES via wp_mail)
+        $mail = Mailer::sendOtp($email, $otp);
+
+        if (is_wp_error($mail)) {
+            return $mail;
+        }
+
         return [
             'success' => true,
-            'message' => 'OTP generated',
-            'debug_otp' => $otp
+            'message' => 'OTP sent to email'
         ];
     }
 }
