@@ -2,6 +2,7 @@
 defined('ABSPATH') || exit;
 
 use Energ\API\AuthController;
+use Energ\Middleware\JwtAuth;
 
 error_log('ENERG ROUTES FILE LOADED');
 
@@ -22,10 +23,19 @@ add_action('rest_api_init', function () {
     ]);
 
     register_rest_route('energ/v1', '/auth/refresh', [
-    'methods'  => 'POST',
-    'callback' => [AuthController::class, 'refresh'],
-    'permission_callback' => '__return_true',
-]);
+        'methods'  => 'POST',
+        'callback' => [AuthController::class, 'refresh'],
+        'permission_callback' => '__return_true',
+    ]);
 
-
+    register_rest_route('energ/v1', '/me', [
+        'methods'  => 'GET',
+        'callback' => function ($request) {
+            return [
+                'success' => true,
+                'user' => $request->get_param('auth_user')
+            ];
+        },
+        'permission_callback' => [JwtAuth::class, 'handle'],
+    ]);
 });
