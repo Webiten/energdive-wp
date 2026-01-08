@@ -23,7 +23,7 @@ jobs:
       # ---------------- THEMES ----------------
       - name: Deploy themes
         run: |
-          rsync -avz \
+          rsync -avz --delete \
             --no-owner --no-group \
             wp-content/themes/ \
             ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/themes/
@@ -32,7 +32,7 @@ jobs:
       - name: Deploy energdive-* plugins (if exist)
         run: |
           if ls wp-content/plugins/energdive-* 1> /dev/null 2>&1; then
-            rsync -avz \
+            rsync -avz --delete \
               --no-owner --no-group \
               wp-content/plugins/energdive-*/ \
               ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/
@@ -43,7 +43,7 @@ jobs:
       # ---------------- ENERG MEMBERS (MAIN) ----------------
       - name: Deploy energ-members plugin
         run: |
-          rsync -avz \
+          rsync -avz --delete \
             --no-owner --no-group \
             wp-content/plugins/energ-members/ \
             ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/energ-members/
