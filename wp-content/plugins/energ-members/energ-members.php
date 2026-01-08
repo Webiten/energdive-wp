@@ -8,26 +8,23 @@ Author: Sankalp
 
 defined('ABSPATH') || exit;
 
-/**
- * PSR-4 Autoloader for Energ\
- */
+/*
+Plugin Name: Energ Members
+Version: 1.0.0
+*/
+
 spl_autoload_register(function ($class) {
     $prefix = 'Energ\\';
     $base_dir = __DIR__ . '/app/';
 
-    if (strncmp($prefix, $class, strlen($prefix)) !== 0) {
-        return;
-    }
+    if (strpos($class, $prefix) !== 0) return;
 
-    $relative = substr($class, strlen($prefix));
-    $file = $base_dir . str_replace('\\', '/', $relative) . '.php';
+    $relative_class = substr($class, strlen($prefix));
+    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
 
     if (file_exists($file)) {
         require_once $file;
     }
 });
 
-/**
- * LOAD ROUTES (THIS WAS MISSING / BROKEN)
- */
 require_once __DIR__ . '/app/Routes/AuthRoutes.php';
