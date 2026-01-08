@@ -125,12 +125,12 @@ register_activation_hook(__FILE__, function(){
         UNIQUE KEY phone (phone)
     ) $charset;";
 
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    // require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 });
 
 
-register_activation_hook(__FILE__, 'energ_create_reads_table');
+// register_activation_hook(__FILE__, 'energ_create_reads_table');
 
 global $wpdb;
 $table = $wpdb->prefix . "energ_reads";
@@ -145,7 +145,7 @@ $sql = "CREATE TABLE IF NOT EXISTS $table (
     PRIMARY KEY(id)
 ) $charset;";
 
-require_once ABSPATH . "wp-admin/includes/upgrade.php";
+// require_once ABSPATH . "wp-admin/includes/upgrade.php";
 dbDelta($sql);
 
 
@@ -163,6 +163,6 @@ register_activation_hook(__FILE__, function() {
         UNIQUE KEY unique_saved (member_id, post_id)
     ) $charset;";
 
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    // require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
 });
