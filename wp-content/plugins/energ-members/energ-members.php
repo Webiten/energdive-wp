@@ -9,3 +9,9 @@ Author: Sankalp
 defined('ABSPATH') || exit;
 
 require_once __DIR__ . '/app/Routes/AuthRoutes.php';
+require_once __DIR__ . '/app/API/AuthController.php';
+require_once __DIR__ . '/app/Auth/RequestOtp.php';
+require_once __DIR__ . '/app/Auth/VerifyOtp.php';
+require_once __DIR__ . '/app/Auth/Jwt.php';
+require_once __DIR__ . '/app/Services/Mailer.php';
+require_once __DIR__ . '/app/Routes/AuthRoutes.php';
