@@ -31,11 +31,22 @@ add_action('rest_api_init', function () {
     register_rest_route('energ/v1', '/me', [
         'methods'  => 'GET',
         'callback' => function ($request) {
+
+            $user = $request->get_param('auth_user');
+
+            if (!$user) {
+                return new \WP_Error(
+                    'unauthorized',
+                    'Invalid or missing token',
+                    ['status' => 401]
+                );
+            }
+
             return [
                 'success' => true,
-                'user' => $request->get_param('auth_user')
+                'user' => $user
             ];
         },
-        'permission_callback' => [JwtAuth::class, 'handle'],
+        'permission_callback' => [JwtAuth::class, 'allow'],
     ]);
 });

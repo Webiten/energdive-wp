@@ -2,34 +2,23 @@
 namespace Energ\Middleware;
 
 use Energ\Auth\Jwt;
-use WP_Error;
 
 class JwtAuth {
 
-    public static function handle($request) {
+    public static function allow($request) {
         $auth = $request->get_header('authorization');
 
         if (!$auth || !preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
-            return new WP_Error(
-                'missing_token',
-                'Authorization token missing',
-                ['status' => 401]
-            );
+            return false;
         }
 
         $payload = Jwt::verify($matches[1]);
-
         if (!$payload) {
-            return new WP_Error(
-                'invalid_token',
-                'Invalid or expired token',
-                ['status' => 401]
-            );
+            return false;
         }
 
-        // Attach user to request (important)
+        // Attach user to request
         $request->set_param('auth_user', $payload['sub']);
-
         return true;
     }
 }
