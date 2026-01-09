@@ -4,6 +4,8 @@ namespace Energ\Auth;
 
 use Energ\Services\Mailer;
 use WP_Error;
+use Energ\Auth\OtpRateLimiter;
+
 
 class RequestOtp
 {
@@ -39,6 +41,11 @@ class RequestOtp
                 'Too many OTP requests. Try again later.',
                 ['status' => 429]
             );
+        }
+
+        $limitCheck = OtpRateLimiter::check($email);
+        if (is_wp_error($limitCheck)) {
+            return $limitCheck;
         }
 
         // Generate OTP

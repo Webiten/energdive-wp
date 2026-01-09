@@ -57,3 +57,11 @@ add_action('energ_cleanup_cron', function () {
          WHERE expires_at < NOW()"
     );
 });
+
+add_action('energ_cleanup_otp_limits', function () {
+    global $wpdb;
+    $wpdb->query(
+        "DELETE FROM {$wpdb->prefix}energ_otp_limits
+         WHERE last_attempt < NOW() - INTERVAL 1 DAY"
+    );
+});
