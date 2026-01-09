@@ -3,6 +3,7 @@
 namespace Energ\Auth;
 
 use WP_Error;
+use Energ\Auth\Jwt;
 
 class VerifyOtp
 {
@@ -10,6 +11,7 @@ class VerifyOtp
     {
         global $wpdb;
 
+        /** 📥 INPUT */
         $params = $request->get_json_params();
         $email  = sanitize_email($params['email'] ?? '');
         $otp    = trim($params['otp'] ?? '');
@@ -22,6 +24,7 @@ class VerifyOtp
             );
         }
 
+        /** 🔎 FETCH OTP */
         $otpTable = $wpdb->prefix . 'energ_otps';
 
         $row = $wpdb->get_row(
@@ -39,7 +42,7 @@ class VerifyOtp
             );
         }
 
-        /** ❌ EXPIRED OTP */
+        /** ⏰ EXPIRED */
         if (strtotime($row->expires_at) < time()) {
             $wpdb->delete($otpTable, ['id' => $row->id]);
 
@@ -50,13 +53,13 @@ class VerifyOtp
             );
         }
 
-        /** 🚫 TOO MANY WRONG ATTEMPTS */
+        /** 🚫 TOO MANY ATTEMPTS */
         if ($row->attempts >= 5) {
             $wpdb->delete($otpTable, ['id' => $row->id]);
 
             return new WP_Error(
                 'otp_blocked',
-                'Too many incorrect attempts. Request a new OTP.',
+                'Too many incorrect attempts. Request new OTP.',
                 ['status' => 403]
             );
         }
@@ -79,6 +82,27 @@ class VerifyOtp
 
         /** ✅ OTP VERIFIED — CLEANUP */
         $wpdb->delete($otpTable, ['id' => $row->id]);
+
+        /** 👤 UPSERT MEMBER */
+        $membersTable = $wpdb->prefix . 'energ_members';
+
+        $member = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id FROM {$membersTable} WHERE email = %s LIMIT 1",
+                $email
+            )
+        );
+
+        if (!$member) {
+            $wpdb->insert(
+                $membersTable,
+                [
+                    'email'       => $email,
+                    'signup_mode' => 'otp',
+                    'created_at'  => current_time('mysql'),
+                ]
+            );
+        }
 
         /** 🔐 ISSUE JWT (15 MIN) */
         $jwt = Jwt::issue(
