@@ -54,8 +54,7 @@ class RefreshToken
 
         $wpdb->insert($table, [
             'identifier' => $row->identifier,
-            'token_hash' => hash('sha256', $newRefresh),
-            'expires_at' => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
+            ['token_hash' => hash('sha256', $newRefresh),]
         ]);
 
         return [
