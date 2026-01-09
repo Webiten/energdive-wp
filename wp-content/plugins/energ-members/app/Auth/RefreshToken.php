@@ -6,41 +6,43 @@ use WP_Error;
 
 class RefreshToken
 {
-
     public function handle($request)
     {
         global $wpdb;
 
         $params = $request->get_json_params();
-        $token  = $params['refresh_token'] ?? '';
+        $refreshToken = $params['refresh_token'] ?? '';
 
-        if (!$token) {
-            return new WP_Error('missing_token', 'Refresh token required', ['status' => 400]);
+        if (!$refreshToken) {
+            return new WP_Error(
+                'missing_token',
+                'Refresh token required',
+                ['status' => 400]
+            );
         }
 
         $table = $wpdb->prefix . 'energ_refresh_tokens';
 
-        // 🔍 Find token
+        // 🔍 Find valid refresh token
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT identifier FROM {$wpdb->prefix}energ_refresh_tokens
-                WHERE token_hash = %s AND expires_at > NOW()",
+                "SELECT id, identifier, expires_at
+                 FROM {$table}
+                 WHERE token_hash = %s
+                 AND expires_at > NOW()",
                 hash('sha256', $refreshToken)
             )
         );
 
         if (!$row) {
-            return new \WP_Error('invalid_token', 'Invalid or expired refresh token', ['status' => 401]);
+            return new WP_Error(
+                'invalid_token',
+                'Invalid or expired refresh token',
+                ['status' => 401]
+            );
         }
 
-        $email = $row->identifier;
-
-
-        if (!$row || strtotime($row->expires_at) < time()) {
-            return new WP_Error('invalid_token', 'Invalid or expired refresh token', ['status' => 401]);
-        }
-
-        // 🔥 ROTATION: delete old token
+        // 🔥 ROTATION: delete old refresh token
         $wpdb->delete($table, ['id' => $row->id]);
 
         // 🔐 Issue NEW JWT
@@ -54,14 +56,15 @@ class RefreshToken
 
         $wpdb->insert($table, [
             'identifier' => $row->identifier,
-            ['token_hash' => hash('sha256', $newRefresh),]
+            'token_hash' => hash('sha256', $newRefresh),
+            'expires_at' => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
         ]);
 
         return [
             'success'        => true,
             'access_token'  => $jwt['token'],
             'refresh_token' => $newRefresh,
-            'expires_in'    => $jwt['expires_in']
+            'expires_in'    => $jwt['expires_in'],
         ];
     }
 }
