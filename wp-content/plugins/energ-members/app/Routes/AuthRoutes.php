@@ -49,7 +49,7 @@ add_action('rest_api_init', function () {
         'permission_callback' => function ($request) {
 
             if (!class_exists(\Energ\Middleware\JwtAuth::class)) {
-                return new WP_Error(
+                return new \WP_Error(
                     'auth_system_error',
                     'Auth system not loaded',
                     ['status' => 500]
