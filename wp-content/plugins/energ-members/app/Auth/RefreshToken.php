@@ -9,7 +9,7 @@ class RefreshToken {
     public function handle($request) {
         global $wpdb;
 
-        $params = $request->get_json_params();
+        $params  = $request->get_json_params();
         $refresh = sanitize_text_field($params['refresh_token'] ?? '');
 
         if (!$refresh) {
@@ -18,26 +18,33 @@ class RefreshToken {
 
         $table = $wpdb->prefix . 'energ_refresh_tokens';
 
-        // Fetch valid token
-        $row = $wpdb->get_row(
+        // Fetch all valid refresh tokens
+        $rows = $wpdb->get_results(
             "SELECT * FROM $table WHERE expires_at > UTC_TIMESTAMP()",
             ARRAY_A
         );
 
-        if (!$row || !password_verify($refresh, $row['token_hash'])) {
-            return new WP_Error('invalid_token', 'Invalid or expired refresh token', ['status' => 401]);
+        if (!$rows) {
+            return new WP_Error('invalid_token', 'Refresh token expired', ['status' => 401]);
         }
 
-        // Issue new access token
-        $jwt = Jwt::issue([
-            'sub'   => $row['identifier'],
-            'scope' => 'user'
-        ]);
+        foreach ($rows as $row) {
+            if (password_verify($refresh, $row['token_hash'])) {
 
-        return [
-            'success'       => true,
-            'access_token'  => $jwt['token'],
-            'expires_in'    => $jwt['expires_in']
-        ];
+                // ✅ Issue new access token
+                $jwt = Jwt::issue([
+                    'sub'   => $row['identifier'],
+                    'scope' => 'user'
+                ]);
+
+                return [
+                    'success'      => true,
+                    'access_token' => $jwt['token'],
+                    'expires_in'   => $jwt['expires_in']
+                ];
+            }
+        }
+
+        return new WP_Error('invalid_token', 'Invalid refresh token', ['status' => 401]);
     }
 }
