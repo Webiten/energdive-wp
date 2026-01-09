@@ -37,8 +37,19 @@ class AuthController
 
         $user = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, email, phone, status, created_at 
-             FROM {$table} WHERE email = %s LIMIT 1",
+                "SELECT 
+                id,
+                email,
+                phone,
+                first_name,
+                last_name,
+                community,
+                sub_community,
+                signup_mode,
+                created_at
+             FROM {$table}
+             WHERE email = %s
+             LIMIT 1",
                 $email
             ),
             ARRAY_A
@@ -57,6 +68,7 @@ class AuthController
             'user'    => $user
         ];
     }
+
 
     public static function refreshToken($request)
     {
