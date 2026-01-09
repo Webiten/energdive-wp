@@ -3,6 +3,8 @@
 namespace Energ\Routes;
 
 use Energ\API\AuthController;
+use Energ\Middleware\JwtAuth;
+use WP_Error;
 
 defined('ABSPATH') || exit;
 
@@ -29,34 +31,33 @@ add_action('rest_api_init', function () {
     // ===============================
     // CURRENT USER (JWT PROTECTED)
     // ===============================
-
     register_rest_route('energ/v1', '/me', [
         'methods'  => 'GET',
         'callback' => [AuthController::class, 'me'],
         'permission_callback' => function ($request) {
 
-            // 🔐 SAFE LOAD (NO FATAL)
-            if (!class_exists(\Energ\Middleware\JwtAuth::class)) {
-                return false;
-            }
-
-            return \Energ\Middleware\JwtAuth::allow($request);
-        },
-    ]);
-    register_rest_route('energ/v1', '/me', [
-        'methods'  => 'GET',
-        'callback' => [\Energ\API\AuthController::class, 'me'],
-        'permission_callback' => function ($request) {
-
-            if (!class_exists(\Energ\Middleware\JwtAuth::class)) {
-                return new \WP_Error(
+            // 🚨 Safety: class must exist
+            if (!class_exists(JwtAuth::class)) {
+                return new WP_Error(
                     'auth_system_error',
-                    'Auth system not loaded',
+                    'JWT middleware not loaded',
                     ['status' => 500]
                 );
             }
 
-            return \Energ\Middleware\JwtAuth::allow($request);
+            // 🔐 Validate JWT
+            $allowed = JwtAuth::allow($request);
+
+            if ($allowed !== true) {
+                return new WP_Error(
+                    'invalid_token',
+                    'Invalid or expired token',
+                    ['status' => 401]
+                );
+            }
+
+            return true;
         },
     ]);
+
 });
