@@ -62,7 +62,7 @@ add_action('rest_api_init', function () {
 
     register_rest_route('energ/v1', '/auth/refresh-token', [
         'methods'  => 'POST',
-        'callback' => [\Energ\API\AuthController::class, 'refreshToken'],
+        'callback' => [AuthController::class, 'refreshToken'],
         'permission_callback' => '__return_true',
     ]);
 });

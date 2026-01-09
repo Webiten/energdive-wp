@@ -2,49 +2,56 @@
 namespace Energ\Auth;
 
 use WP_Error;
-use wpdb;
 
 class RefreshToken {
 
     public function handle($request) {
         global $wpdb;
 
-        $params  = $request->get_json_params();
-        $refresh = sanitize_text_field($params['refresh_token'] ?? '');
+        $params = $request->get_json_params();
+        $token  = $params['refresh_token'] ?? '';
 
-        if (!$refresh) {
-            return new WP_Error('invalid_token', 'Refresh token required', ['status' => 400]);
+        if (!$token) {
+            return new WP_Error('missing_token', 'Refresh token required', ['status' => 400]);
         }
 
         $table = $wpdb->prefix . 'energ_refresh_tokens';
 
-        // Fetch all valid refresh tokens
-        $rows = $wpdb->get_results(
-            "SELECT * FROM $table WHERE expires_at > UTC_TIMESTAMP()",
-            ARRAY_A
+        // 🔍 Find token
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE token_hash = %s",
+                hash('sha256', $token)
+            )
         );
 
-        if (!$rows) {
-            return new WP_Error('invalid_token', 'Refresh token expired', ['status' => 401]);
+        if (!$row || strtotime($row->expires_at) < time()) {
+            return new WP_Error('invalid_token', 'Invalid or expired refresh token', ['status' => 401]);
         }
 
-        foreach ($rows as $row) {
-            if (password_verify($refresh, $row['token_hash'])) {
+        // 🔥 ROTATION: delete old token
+        $wpdb->delete($table, ['id' => $row->id]);
 
-                // ✅ Issue new access token
-                $jwt = Jwt::issue([
-                    'sub'   => $row['identifier'],
-                    'scope' => 'user'
-                ]);
+        // 🔐 Issue NEW JWT
+        $jwt = Jwt::issue([
+            'sub'   => $row->identifier,
+            'scope' => 'user'
+        ]);
 
-                return [
-                    'success'      => true,
-                    'access_token' => $jwt['token'],
-                    'expires_in'   => $jwt['expires_in']
-                ];
-            }
-        }
+        // 🔁 Issue NEW refresh token
+        $newRefresh = bin2hex(random_bytes(32));
 
-        return new WP_Error('invalid_token', 'Invalid refresh token', ['status' => 401]);
+        $wpdb->insert($table, [
+            'identifier' => $row->identifier,
+            'token_hash' => hash('sha256', $newRefresh),
+            'expires_at' => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
+        ]);
+
+        return [
+            'success'        => true,
+            'access_token'  => $jwt['token'],
+            'refresh_token' => $newRefresh,
+            'expires_in'    => $jwt['expires_in']
+        ];
     }
 }
