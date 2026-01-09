@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: Energ Members (Stable)
  * Description: OTP login + JWT auth system
@@ -13,7 +14,7 @@ defined('ABSPATH') || exit;
 // ===============================
 spl_autoload_register(function ($class) {
 
-    $prefix   = 'Energ\\';
+    $prefix = 'Energ\\';
     $base_dir = __DIR__ . '/app/';
 
     if (strpos($class, $prefix) !== 0) {
@@ -21,12 +22,13 @@ spl_autoload_register(function ($class) {
     }
 
     $relative = substr($class, strlen($prefix));
-    $file     = $base_dir . str_replace('\\', '/', $relative) . '.php';
+    $file = $base_dir . str_replace('\\', '/', $relative) . '.php';
 
     if (file_exists($file)) {
         require_once $file;
     }
 });
+
 
 // ===============================
 // BOOT ROUTES (ONLY THIS)
