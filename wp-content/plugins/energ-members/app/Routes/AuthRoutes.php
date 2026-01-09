@@ -65,4 +65,15 @@ add_action('rest_api_init', function () {
         'callback' => [AuthController::class, 'refreshToken'],
         'permission_callback' => '__return_true',
     ]);
+
+    register_rest_route('energ/v1', '/auth/logout', [
+        'methods'  => 'POST',
+        'callback' => [\Energ\API\AuthController::class, 'logout'],
+        'permission_callback' => function ($request) {
+            if (!class_exists(\Energ\Middleware\JwtAuth::class)) {
+                return false;
+            }
+            return \Energ\Middleware\JwtAuth::allow($request);
+        },
+    ]);
 });

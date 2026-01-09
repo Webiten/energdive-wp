@@ -31,4 +31,10 @@ class AuthController
     {
         return (new RefreshToken)->handle($request);
     }
+
+    public static function logout($request)
+{
+    return (new \Energ\Auth\Logout)->handle($request);
+}
+
 }
