@@ -34,3 +34,26 @@ spl_autoload_register(function ($class) {
 // BOOT ROUTES (ONLY THIS)
 // ===============================
 require_once __DIR__ . '/app/Routes/AuthRoutes.php';
+
+
+register_activation_hook(__FILE__, function () {
+    if (!wp_next_scheduled('energ_cleanup_cron')) {
+        wp_schedule_event(time(), 'hourly', 'energ_cleanup_cron');
+    }
+});
+
+add_action('energ_cleanup_cron', function () {
+    global $wpdb;
+
+    // 🧹 Expired OTPs
+    $wpdb->query(
+        "DELETE FROM {$wpdb->prefix}energ_otps
+         WHERE expires_at < NOW()"
+    );
+
+    // 🧹 Expired refresh tokens
+    $wpdb->query(
+        "DELETE FROM {$wpdb->prefix}energ_refresh_tokens
+         WHERE expires_at < NOW()"
+    );
+});

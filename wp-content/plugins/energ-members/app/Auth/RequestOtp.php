@@ -1,12 +1,15 @@
 <?php
+
 namespace Energ\Auth;
 
 use Energ\Services\Mailer;
 use WP_Error;
 
-class RequestOtp {
+class RequestOtp
+{
 
-    public function handle($request) {
+    public function handle($request)
+    {
         global $wpdb;
 
         $params = $request->get_json_params();
@@ -17,6 +20,24 @@ class RequestOtp {
                 'invalid_email',
                 'Invalid email address',
                 ['status' => 400]
+            );
+        }
+
+        // ⏱ RATE LIMIT: max 5 OTP per hour
+        $count = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table}
+         WHERE identifier = %s
+         AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)",
+                $email
+            )
+        );
+
+        if ($count >= 5) {
+            return new \WP_Error(
+                'otp_rate_limited',
+                'Too many OTP requests. Try again later.',
+                ['status' => 429]
             );
         }
 
@@ -45,7 +66,7 @@ class RequestOtp {
             [
                 'identifier' => $email,
                 'otp_hash'   => $hash,
-                'expires_at'=> $expires,
+                'expires_at' => $expires,
                 'attempts'  => 0,
             ],
             ['%s', '%s', '%s', '%d']

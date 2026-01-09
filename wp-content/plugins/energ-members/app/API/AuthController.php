@@ -21,9 +21,40 @@ class AuthController
 
     public static function me($request)
     {
+        global $wpdb;
+
+        $email = $request->get_param('auth_user');
+
+        if (!$email) {
+            return new \WP_Error(
+                'unauthorized',
+                'User not authenticated',
+                ['status' => 401]
+            );
+        }
+
+        $table = $wpdb->prefix . 'energ_members';
+
+        $user = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT id, email, phone, status, created_at 
+             FROM {$table} WHERE email = %s LIMIT 1",
+                $email
+            ),
+            ARRAY_A
+        );
+
+        if (!$user) {
+            return new \WP_Error(
+                'user_not_found',
+                'User not found',
+                ['status' => 404]
+            );
+        }
+
         return [
             'success' => true,
-            'user' => $request->get_param('auth_user'),
+            'user'    => $user
         ];
     }
 
@@ -33,8 +64,7 @@ class AuthController
     }
 
     public static function logout($request)
-{
-    return (new \Energ\Auth\Logout)->handle($request);
-}
-
+    {
+        return (new \Energ\Auth\Logout)->handle($request);
+    }
 }
