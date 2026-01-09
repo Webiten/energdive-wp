@@ -4,26 +4,27 @@ namespace Energ\Auth;
 
 use WP_Error;
 
-class Logout
-{
-    public function handle($request)
-    {
+class Logout {
+
+    public function handle($request) {
         global $wpdb;
 
-        $authUser = $request->get_param('auth_user');
+        $params = $request->get_json_params();
+        $refresh = $params['refresh_token'] ?? '';
 
-        if (!$authUser) {
+        if (!$refresh) {
             return new WP_Error(
-                'unauthorized',
-                'User not authenticated',
-                ['status' => 401]
+                'missing_refresh_token',
+                'Refresh token required',
+                ['status' => 400]
             );
         }
 
-        // 🔥 Delete ALL refresh tokens for this user
-        $wpdb->delete(
-            $wpdb->prefix . 'energ_refresh_tokens',
-            ['identifier' => $authUser]
+        $table = $wpdb->prefix . 'energ_refresh_tokens';
+
+        $deleted = $wpdb->delete(
+            $table,
+            ['token_hash' => hash('sha256', $refresh)]
         );
 
         return [

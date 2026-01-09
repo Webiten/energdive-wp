@@ -70,15 +70,7 @@ add_action('rest_api_init', function () {
         'methods'  => 'POST',
         'callback' => [\Energ\API\AuthController::class, 'logout'],
         'permission_callback' => function ($request) {
-
-            error_log('🔥 LOGOUT permission_callback HIT');
-
-            if (!class_exists(\Energ\Middleware\JwtAuth::class)) {
-                error_log('❌ JwtAuth class NOT FOUND');
-                return new \WP_Error('jwt_missing', 'JWT class missing', ['status' => 500]);
-            }
-
             return \Energ\Middleware\JwtAuth::allow($request);
-        },
+        }
     ]);
 });
