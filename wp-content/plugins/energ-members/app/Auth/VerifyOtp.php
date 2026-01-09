@@ -78,19 +78,15 @@ class VerifyOtp {
 
         /** 🔁 CREATE REFRESH TOKEN (30 DAYS) */
         $refreshToken      = bin2hex(random_bytes(32));
-        $refreshTokenHash  = password_hash($refreshToken, PASSWORD_DEFAULT);
 
         $wpdb->insert(
             $wpdb->prefix . 'energ_refresh_tokens',
             [
                 'user_identifier' => $email,
-                'token_hash'      => $refreshTokenHash,
-                'expires_at'      => gmdate(
-                    'Y-m-d H:i:s',
-                    time() + (30 * DAY_IN_SECONDS)
-                ),
+                'token_hash'      => hash('sha256', $refreshToken),
+                'expires_at'      => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
             ],
-            ['%s', '%s', '%s']
+            // ['%s', '%s', '%s']
         );
 
         return [
