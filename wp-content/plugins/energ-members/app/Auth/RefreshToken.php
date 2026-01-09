@@ -50,17 +50,17 @@ class RefreshToken
         ]);
 
         // 🔁 Issue NEW refresh token
-        $newRefresh = bin2hex(random_bytes(32));
+        $refreshToken = bin2hex(random_bytes(32));
 
         $wpdb->insert($table, [
             'identifier' => $row->identifier,
-            ['token_hash' => hash('sha256', $newRefresh),]
+            ['token_hash' => hash('sha256', $refreshToken),]
         ]);
 
         return [
             'success'        => true,
             'access_token'  => $jwt['token'],
-            'refresh_token' => $newRefresh,
+            'refresh_token' => $refreshToken,
             'expires_in'    => $jwt['expires_in']
         ];
     }
