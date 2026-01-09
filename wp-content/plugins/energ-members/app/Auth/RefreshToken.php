@@ -1,11 +1,14 @@
 <?php
+
 namespace Energ\Auth;
 
 use WP_Error;
 
-class RefreshToken {
+class RefreshToken
+{
 
-    public function handle($request) {
+    public function handle($request)
+    {
         global $wpdb;
 
         $params = $request->get_json_params();
@@ -20,10 +23,17 @@ class RefreshToken {
         // 🔍 Find token
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$table} WHERE token_hash = %s",
-                hash('sha256', $token)
+                "SELECT identifier FROM {$wpdb->prefix}energ_refresh_tokens WHERE token_hash = %s AND expires_at > NOW()",
+                hash('sha256', $refreshToken)
             )
         );
+
+        if (!$row) {
+            return new \WP_Error('invalid_token', 'Invalid or expired refresh token', ['status' => 401]);
+        }
+
+        $email = $row->identifier;
+
 
         if (!$row || strtotime($row->expires_at) < time()) {
             return new WP_Error('invalid_token', 'Invalid or expired refresh token', ['status' => 401]);
@@ -43,7 +53,7 @@ class RefreshToken {
 
         $wpdb->insert($table, [
             'identifier' => $row->identifier,
-            'token_hash' => hash('sha256', $newRefresh),
+            ['token_hash' => hash('sha256', $newRefresh),]
             'expires_at' => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
         ]);
 

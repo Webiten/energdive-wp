@@ -84,7 +84,7 @@ class VerifyOtp {
             [
                 'user_identifier' => $email,
                 'token_hash'      => hash('sha256', $refreshToken),
-                'expires_at'      => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
+                'expires_at'      => gmdate( 'Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
             ],
             // ['%s', '%s', '%s']
         );
