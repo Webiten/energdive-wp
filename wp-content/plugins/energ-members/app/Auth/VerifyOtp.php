@@ -68,7 +68,7 @@ class VerifyOtp {
         $wpdb->delete($otpTable, ['id' => $row->id]);
 
         /** 🔐 ISSUE JWT (15 MIN) */
-        $accessToken = Jwt::issue(
+        $jwt = Jwt::issue(
             [
                 'sub'   => $email,
                 'scope' => 'user'
@@ -96,9 +96,9 @@ class VerifyOtp {
         return [
             'success'       => true,
             'message'       => 'OTP verified',
-            'access_token'  => $accessToken,
+            'access_token'  => $jwt['token'],
             'refresh_token' => $refreshToken,
-            'expires_in'    => 900
+            'expires_in'    => $jwt['expires_in']
         ];
     }
 }
