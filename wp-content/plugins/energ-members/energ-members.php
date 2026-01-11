@@ -9,6 +9,11 @@
 
 defined('ABSPATH') || exit;
 
+add_action('init', function () {
+    error_log('ENERG MEMBERS PLUGIN INIT LOADED');
+});
+
+
 // ===============================
 // PSR-4 AUTOLOADER
 // ===============================
