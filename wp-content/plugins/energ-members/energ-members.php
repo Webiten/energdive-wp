@@ -82,4 +82,7 @@ add_action('wp_enqueue_scripts', function () {
     ]);
 
 });
+add_action('wp_footer', function () {
+    echo '<script>console.log("ENERG PLUGIN FOOTER LOADED")</script>';
+});
 
