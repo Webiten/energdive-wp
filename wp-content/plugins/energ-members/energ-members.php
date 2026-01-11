@@ -68,16 +68,11 @@ add_action('energ_cleanup_otp_limits', function () {
 
 add_action('wp_enqueue_scripts', function () {
 
-    // Load only on login / verify pages (optional but clean)
-    if (!is_page(['login', 'verify-otp'])) {
-        return;
-    }
-
     wp_enqueue_script(
         'energ-auth',
         plugin_dir_url(__FILE__) . 'assets/js/auth.js',
         [],
-        '1.0',
+        time(),
         true
     );
 
@@ -85,9 +80,6 @@ add_action('wp_enqueue_scripts', function () {
         'api' => rest_url('energ/v1'),
         'nonce' => wp_create_nonce('wp_rest')
     ]);
+
 });
 
-
-add_action('wp_footer', function () {
-    echo "<script>console.log('PLUGIN FOOTER LOADED')</script>";
-});
