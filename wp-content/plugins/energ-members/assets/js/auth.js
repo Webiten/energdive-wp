@@ -1,3 +1,9 @@
+if (typeof ENERG === "undefined") {
+  console.error("ENERG not loaded");
+  return;
+}
+
+
 const Auth = {
   async requestOtp(email) {
     const res = await fetch(`${ENERG.api}/auth/request-otp`, {
