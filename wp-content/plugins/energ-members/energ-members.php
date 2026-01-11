@@ -86,3 +86,8 @@ add_action('wp_enqueue_scripts', function () {
         'nonce' => wp_create_nonce('wp_rest')
     ]);
 });
+
+
+add_action('wp_footer', function () {
+    echo "<script>console.log('PLUGIN FOOTER LOADED')</script>";
+});
