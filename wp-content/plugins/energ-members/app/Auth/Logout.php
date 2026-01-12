@@ -1,5 +1,4 @@
 <?php
-
 namespace Energ\Auth;
 
 use WP_Error;
@@ -20,12 +19,25 @@ class Logout {
             );
         }
 
+        $hash = hash('sha256', $refresh);
+
         $table = $wpdb->prefix . 'energ_refresh_tokens';
 
-        $deleted = $wpdb->delete(
+        $updated = $wpdb->update(
             $table,
-            ['token_hash' => hash('sha256', $refresh)]
+            ['revoked' => 1],
+            ['token_hash' => $hash],
+            ['%d'],
+            ['%s']
         );
+
+        if (!$updated) {
+            return new WP_Error(
+                'invalid_token',
+                'Invalid or expired token',
+                ['status' => 401]
+            );
+        }
 
         return [
             'success' => true,
