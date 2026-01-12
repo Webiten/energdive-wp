@@ -12,7 +12,7 @@ class CompleteRegistration
 
         $user = $request->get_param('auth_user'); // from JWT
         if (!$user) {
-            return new WP_Error('unauthorized', 'Unauthorized', ['status' => 401]);
+            return new WP_Error('unauthorized', 'JWT valid but user not resolved', ['status' => 401]);
         }
 
         $params = $request->get_json_params();

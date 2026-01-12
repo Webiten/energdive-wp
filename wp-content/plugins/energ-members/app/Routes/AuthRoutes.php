@@ -55,3 +55,4 @@ register_rest_route('energ/v1', '/auth/complete-registration', [
         return \Energ\Middleware\JwtAuth::allow($request);
     },
 ]);
+
