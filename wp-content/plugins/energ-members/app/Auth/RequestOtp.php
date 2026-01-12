@@ -5,6 +5,7 @@ namespace Energ\Auth;
 use Energ\Services\Mailer;
 use WP_Error;
 use Energ\Auth\OtpRateLimiter;
+use Energ\Services\SmsService;
 
 class RequestOtp
 {
@@ -25,14 +26,17 @@ class RequestOtp
         }
 
         // ⏱ RATE LIMIT: max 5 OTP per hour
+        $table = $wpdb->prefix . 'energ_otp_limits';
+
         $count = $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$table}
          WHERE identifier = %s
-         AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)",
+         AND last_attempt > DATE_SUB(NOW(), INTERVAL 1 HOUR)",
                 $email
             )
         );
+
 
         if ($count >= 5) {
             return new \WP_Error(
