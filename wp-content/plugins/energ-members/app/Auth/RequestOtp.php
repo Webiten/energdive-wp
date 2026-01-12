@@ -13,78 +13,50 @@ class RequestOtp
         global $wpdb;
 
         $params     = $request->get_json_params();
-        $identifier = trim($params['identifier'] ?? '');
+        $identifier = $params['identifier'] ?? '';
 
-        if (!$identifier) {
-            return new WP_Error(
-                'missing_identifier',
-                'Email or phone number is required',
-                ['status' => 400]
-            );
-        }
+        $detected = energ_detect_identifier($identifier);
 
-        // 🔍 Detect type
-        $isEmail = is_email($identifier);
-        $isPhone = preg_match('/^[6-9]\d{9}$/', $identifier);
-
-        if (!$isEmail && !$isPhone) {
+        if (!$detected) {
             return new WP_Error(
                 'invalid_identifier',
-                'Enter a valid email or 10-digit phone number',
+                'Enter valid email or phone number',
                 ['status' => 400]
             );
         }
 
-        // 🚫 RATE LIMIT CHECK (email OR phone)
-        $rateCheck = OtpRateLimiter::check($identifier);
-        if (is_wp_error($rateCheck)) {
-            return $rateCheck;
+        $type  = $detected['type'];
+        $value = $detected['value'];
+
+        // 🔐 Rate limit
+        $limit = OtpRateLimiter::check($value);
+        if (is_wp_error($limit)) {
+            return $limit;
         }
 
-        // 🔐 Generate OTP
-        try {
-            $otp = random_int(100000, 999999);
-        } catch (\Exception $e) {
-            return new WP_Error(
-                'otp_generation_failed',
-                'Unable to generate OTP',
-                ['status' => 500]
-            );
-        }
+        // 🔢 Generate OTP
+        $otp = random_int(100000, 999999);
 
-        $otpHash = password_hash((string) $otp, PASSWORD_DEFAULT);
-        $expires = gmdate('Y-m-d H:i:s', time() + 300); // 5 minutes
-
-        $otpTable = $wpdb->prefix . 'energ_otps';
-
-        // ♻️ Remove previous OTPs
-        $wpdb->delete($otpTable, ['identifier' => $identifier]);
-
-        // 💾 Store OTP
-        $inserted = $wpdb->insert(
-            $otpTable,
-            [
-                'identifier' => $identifier,
-                'otp_hash'   => $otpHash,
-                'expires_at'=> $expires,
-                'attempts'  => 0,
-            ],
-            ['%s', '%s', '%s', '%d']
+        $wpdb->delete(
+            $wpdb->prefix . 'energ_otps',
+            ['identifier' => $value]
         );
 
-        if ($inserted === false) {
-            return new WP_Error(
-                'db_error',
-                'Could not store OTP',
-                ['status' => 500]
-            );
-        }
+        $wpdb->insert(
+            $wpdb->prefix . 'energ_otps',
+            [
+                'identifier' => $value,
+                'otp_hash'   => password_hash((string) $otp, PASSWORD_DEFAULT),
+                'expires_at' => gmdate('Y-m-d H:i:s', time() + 300),
+                'attempts'   => 0,
+            ]
+        );
 
-        // 📤 Send OTP
-        if ($isEmail) {
-            $sent = Mailer::sendOtp($identifier, $otp);
+        // 📤 SEND OTP
+        if ($type === 'email') {
+            $sent = Mailer::sendOtp($value, $otp);
         } else {
-            $sent = SmsService::sendOtp($identifier, $otp); // MSG91
+            $sent = SmsService::sendOtp($value, $otp);
         }
 
         if (is_wp_error($sent)) {
@@ -93,7 +65,8 @@ class RequestOtp
 
         return [
             'success' => true,
-            'message' => 'OTP sent successfully'
+            'message' => 'OTP sent successfully',
+            'type'    => $type, // frontend hint
         ];
     }
 }

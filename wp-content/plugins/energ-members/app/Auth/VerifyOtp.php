@@ -3,7 +3,6 @@
 namespace Energ\Auth;
 
 use WP_Error;
-use Energ\Auth\Jwt;
 
 class VerifyOtp
 {
@@ -11,129 +10,75 @@ class VerifyOtp
     {
         global $wpdb;
 
-        /** 📥 INPUT */
-        $params = $request->get_json_params();
-        $email  = sanitize_email($params['email'] ?? '');
-        $otp    = trim($params['otp'] ?? '');
+        $params     = $request->get_json_params();
+        $identifier = trim($params['identifier'] ?? '');
+        $otp        = trim($params['otp'] ?? '');
 
-        if (!$email || !$otp) {
-            return new WP_Error(
-                'invalid_input',
-                'Email & OTP required',
-                ['status' => 400]
-            );
+        if (!$identifier || !$otp) {
+            return new WP_Error('invalid_input', 'Identifier & OTP required', ['status' => 400]);
         }
-
-        /** 🔎 FETCH OTP */
-        $otpTable = $wpdb->prefix . 'energ_otps';
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$otpTable} WHERE identifier = %s LIMIT 1",
-                $email
+                "SELECT * FROM {$wpdb->prefix}energ_otps WHERE identifier = %s",
+                $identifier
             )
         );
 
-        if (!$row) {
-            return new WP_Error(
-                'otp_not_found',
-                'OTP not found',
-                ['status' => 400]
-            );
+        if (!$row || strtotime($row->expires_at) < time()) {
+            return new WP_Error('otp_invalid', 'OTP expired or invalid', ['status' => 401]);
         }
 
-        /** ⏰ EXPIRED */
-        if (strtotime($row->expires_at) < time()) {
-            $wpdb->delete($otpTable, ['id' => $row->id]);
-
-            return new WP_Error(
-                'otp_expired',
-                'OTP expired',
-                ['status' => 400]
-            );
-        }
-
-        /** 🚫 TOO MANY ATTEMPTS */
-        if ($row->attempts >= 5) {
-            $wpdb->delete($otpTable, ['id' => $row->id]);
-
-            return new WP_Error(
-                'otp_blocked',
-                'Too many incorrect attempts. Request new OTP.',
-                ['status' => 403]
-            );
-        }
-
-        /** ❌ WRONG OTP */
         if (!password_verify($otp, $row->otp_hash)) {
-
-            $wpdb->update(
-                $otpTable,
-                ['attempts' => $row->attempts + 1],
-                ['id' => $row->id]
-            );
-
-            return new WP_Error(
-                'invalid_otp',
-                'Invalid OTP',
-                ['status' => 401]
-            );
+            return new WP_Error('otp_invalid', 'Invalid OTP', ['status' => 401]);
         }
 
-        /** ✅ OTP VERIFIED — CLEANUP */
-        $wpdb->delete($otpTable, ['id' => $row->id]);
+        // 🧹 cleanup
+        $wpdb->delete($wpdb->prefix . 'energ_otps', ['id' => $row->id]);
 
-        /** 👤 UPSERT MEMBER */
-        $membersTable = $wpdb->prefix . 'energ_members';
+        // 👤 Check member
+        $members = $wpdb->prefix . 'energ_members';
 
         $member = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id FROM {$membersTable} WHERE email = %s LIMIT 1",
-                $email
+                "SELECT * FROM {$members} WHERE email = %s OR phone = %s",
+                $identifier,
+                $identifier
             )
         );
 
+        $isNewUser = false;
+
         if (!$member) {
-            $wpdb->insert(
-                $membersTable,
-                [
-                    'email'       => $email,
-                    'signup_mode' => 'otp',
-                    'created_at'  => current_time('mysql'),
-                ]
-            );
+            $wpdb->insert($members, [
+                is_email($identifier) ? 'email' : 'phone' => $identifier,
+                'signup_mode' => 'otp',
+                'created_at'  => current_time('mysql'),
+            ]);
+            $isNewUser = true;
         }
 
-        /** 🔐 ISSUE JWT (15 MIN) */
+        // 🔐 Issue JWT
         $jwt = Jwt::issue(
-            [
-                'sub'   => $email,
-                'scope' => 'user'
-            ],
+            ['sub' => $identifier, 'scope' => 'user'],
             15 * 60
         );
 
-        /** 🔁 CREATE REFRESH TOKEN (30 DAYS) */
-        $refreshToken = bin2hex(random_bytes(32));
+        // 🔁 Refresh token
+        $refresh = bin2hex(random_bytes(32));
 
-        $wpdb->insert(
-            $wpdb->prefix . 'energ_refresh_tokens',
-            [
-                'identifier' => $email,
-                'token_hash' => hash('sha256', $refreshToken),
-                'expires_at' => gmdate(
-                    'Y-m-d H:i:s',
-                    time() + (30 * DAY_IN_SECONDS)
-                ),
-            ]
-        );
+        $wpdb->insert($wpdb->prefix . 'energ_refresh_tokens', [
+            'identifier' => $identifier,
+            'token_hash' => hash('sha256', $refresh),
+            'expires_at' => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
+        ]);
 
         return [
-            'success'       => true,
-            'message'       => 'OTP verified',
+            'success'        => true,
+            'new_user'       => $isNewUser,
             'access_token'  => $jwt['token'],
-            'refresh_token' => $refreshToken,
-            'expires_in'    => $jwt['expires_in']
+            'refresh_token' => $refresh,
+            'expires_in'    => $jwt['expires_in'],
         ];
     }
 }
