@@ -21,7 +21,7 @@ class SmsService
             );
         }
 
-        // ✅ Ensure digits only
+        // ✅ Normalize phone (digits only)
         $phone = preg_replace('/\D/', '', $phone);
 
         if (strlen($phone) !== 10) {
@@ -32,19 +32,29 @@ class SmsService
             );
         }
 
-        // ✅ MSG91 OTP API expects "mobile", not "mobiles"
+        /**
+         * ✅ MSG91 SMS API (for SMS Template, NOT OTP API)
+         * Template text example (DLT):
+         * Dear subscriber, your OTP to login is ##var##. Do not share it.
+         */
+
         $payload = [
-            'template_id' => ENERG_MSG91_TEMPLATE_ID,
-            'mobile'      => '91' . $phone,
-            'authkey'     => ENERG_MSG91_AUTHKEY,
-            'otp'         => (string) $otp,
+            'sender'      => ENERG_MSG91_SENDER,
+            'route'       => '4',
+            'country'     => '91',
+            'sms' => [[
+                'message'     => "Dear subscriber, your OTP to login is {$otp}. Do not share it.",
+                'to'          => [$phone],
+                'template_id'=> ENERG_MSG91_TEMPLATE_ID
+            ]]
         ];
 
         $response = wp_remote_post(
-            'https://api.msg91.com/api/v5/otp',
+            'https://api.msg91.com/api/v2/sendsms',
             [
                 'headers' => [
                     'Content-Type' => 'application/json',
+                    'authkey'      => ENERG_MSG91_AUTHKEY,
                 ],
                 'body'    => wp_json_encode($payload),
                 'timeout' => 15,
