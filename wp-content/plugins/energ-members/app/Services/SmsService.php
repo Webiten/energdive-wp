@@ -8,7 +8,12 @@ class SmsService
 {
     public static function sendOtp($phone, $otp)
     {
-        if (!defined('MSG91_AUTH_KEY')) {
+        // ✅ Config check
+        if (
+            !defined('MSG91_AUTH_KEY') ||
+            !defined('MSG91_SENDER_ID') ||
+            !defined('MSG91_TEMPLATE_ID')
+        ) {
             return new WP_Error(
                 'sms_config_missing',
                 'MSG91 config missing',
@@ -16,38 +21,41 @@ class SmsService
             );
         }
 
-        $url = 'https://api.msg91.com/api/v5/flow/';
-
         $payload = [
-            'flow_id' => 'YOUR_FLOW_ID', // 🔥 MSG91 flow ID
-            'sender'  => MSG91_SENDER_ID,
-            'mobiles' => '91' . $phone,
-            'otp'     => $otp
+            'template_id' => MSG91_TEMPLATE_ID,
+            'sender'      => MSG91_SENDER_ID,
+            'mobiles'     => '91' . $phone,
+            'authkey'     => MSG91_AUTH_KEY,
+            'route'       => defined('MSG91_ROUTE') ? MSG91_ROUTE : '4',
+            'otp'         => $otp
         ];
 
-        $args = [
-            'headers' => [
-                'authkey'      => MSG91_AUTH_KEY,
-                'Content-Type' => 'application/json',
-            ],
-            'body'    => json_encode($payload),
-            'timeout' => 20,
-        ];
-
-        $response = wp_remote_post($url, $args);
+        $response = wp_remote_post(
+            'https://api.msg91.com/api/v5/otp',
+            [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'body'    => wp_json_encode($payload),
+                'timeout' => 15,
+            ]
+        );
 
         if (is_wp_error($response)) {
-            return $response;
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-        $body = wp_remote_retrieve_body($response);
-
-        if ($code !== 200) {
             return new WP_Error(
                 'sms_failed',
-                'SMS sending failed',
-                ['response' => $body]
+                'SMS gateway error',
+                ['status' => 500]
+            );
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+
+        if (empty($body) || ($body['type'] ?? '') !== 'success') {
+            return new WP_Error(
+                'sms_failed',
+                'OTP could not be sent',
+                ['status' => 500, 'response' => $body]
             );
         }
 
