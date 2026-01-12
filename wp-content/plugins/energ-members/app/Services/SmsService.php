@@ -8,7 +8,7 @@ class SmsService
 {
     public static function sendOtp($phone, $otp)
     {
-        // ✅ Config check (ENERG_* constants)
+        // ✅ Config check
         if (
             !defined('ENERG_MSG91_AUTHKEY') ||
             !defined('ENERG_MSG91_SENDER') ||
@@ -21,13 +21,23 @@ class SmsService
             );
         }
 
+        // ✅ Ensure digits only
+        $phone = preg_replace('/\D/', '', $phone);
+
+        if (strlen($phone) !== 10) {
+            return new WP_Error(
+                'invalid_phone',
+                'Invalid phone number',
+                ['status' => 400]
+            );
+        }
+
+        // ✅ MSG91 OTP API expects "mobile", not "mobiles"
         $payload = [
             'template_id' => ENERG_MSG91_TEMPLATE_ID,
-            'sender'      => ENERG_MSG91_SENDER,
-            'mobiles'     => '91' . $phone,
+            'mobile'      => '91' . $phone,
             'authkey'     => ENERG_MSG91_AUTHKEY,
-            'route'       => '4',
-            'otp'         => $otp
+            'otp'         => (string) $otp,
         ];
 
         $response = wp_remote_post(
@@ -51,7 +61,7 @@ class SmsService
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if (empty($body) || ($body['type'] ?? '') !== 'success') {
+        if (!isset($body['type']) || $body['type'] !== 'success') {
             return new WP_Error(
                 'sms_failed',
                 'OTP could not be sent',
