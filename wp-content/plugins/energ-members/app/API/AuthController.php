@@ -23,12 +23,12 @@ class AuthController
     {
         global $wpdb;
 
-        $email = $request->get_param('auth_user');
+        $email = $request->get_param('auth_identifier');
 
         if (!$email) {
             return new \WP_Error(
                 'unauthorized',
-                'User not authenticated',
+                'Invalid or missing token',
                 ['status' => 401]
             );
         }
@@ -37,16 +37,7 @@ class AuthController
 
         $user = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT 
-                id,
-                email,
-                phone,
-                first_name,
-                last_name,
-                community,
-                sub_community,
-                signup_mode,
-                created_at
+                "SELECT id, email, phone, signup_mode, created_at
              FROM {$table}
              WHERE email = %s
              LIMIT 1",
@@ -69,7 +60,7 @@ class AuthController
         ];
     }
 
-
+    
     public static function refreshToken($request)
     {
         return (new RefreshToken)->handle($request);

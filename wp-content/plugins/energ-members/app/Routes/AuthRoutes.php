@@ -37,16 +37,13 @@ add_action('rest_api_init', function () {
         'permission_callback' => function ($request) {
 
             if (!class_exists(\Energ\Middleware\JwtAuth::class)) {
-                return new \WP_Error(
-                    'auth_system_error',
-                    'JWT middleware not loaded',
-                    ['status' => 500]
-                );
+                return false;
             }
 
             return \Energ\Middleware\JwtAuth::allow($request);
         },
     ]);
+
 
     register_rest_route('energ/v1', '/auth/refresh-token', [
         'methods'  => 'POST',
