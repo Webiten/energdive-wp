@@ -8,11 +8,11 @@ class SmsService
 {
     public static function sendOtp($phone, $otp)
     {
-        // ✅ Config check
+        // ✅ Config check (ENERG_* constants)
         if (
-            !defined('MSG91_AUTH_KEY') ||
-            !defined('MSG91_SENDER_ID') ||
-            !defined('MSG91_TEMPLATE_ID')
+            !defined('ENERG_MSG91_AUTHKEY') ||
+            !defined('ENERG_MSG91_SENDER') ||
+            !defined('ENERG_MSG91_TEMPLATE_ID')
         ) {
             return new WP_Error(
                 'sms_config_missing',
@@ -22,11 +22,11 @@ class SmsService
         }
 
         $payload = [
-            'template_id' => MSG91_TEMPLATE_ID,
-            'sender'      => MSG91_SENDER_ID,
+            'template_id' => ENERG_MSG91_TEMPLATE_ID,
+            'sender'      => ENERG_MSG91_SENDER,
             'mobiles'     => '91' . $phone,
-            'authkey'     => MSG91_AUTH_KEY,
-            'route'       => defined('MSG91_ROUTE') ? MSG91_ROUTE : '4',
+            'authkey'     => ENERG_MSG91_AUTHKEY,
+            'route'       => '4',
             'otp'         => $otp
         ];
 
