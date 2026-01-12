@@ -3,6 +3,8 @@
 namespace Energ\Auth;
 
 use WP_Error;
+use Energ\Auth\OtpRateLimiter;
+use Energ\Helpers\Identifier;
 use Energ\Services\Mailer;
 use Energ\Services\SmsService;
 
@@ -13,50 +15,68 @@ class RequestOtp
         global $wpdb;
 
         $params     = $request->get_json_params();
-        $identifier = $params['identifier'] ?? '';
+        $input      = trim($params['identifier'] ?? '');
 
-        $detected = energ_detect_identifier($identifier);
-
-        if (!$detected) {
+        if (!$input) {
             return new WP_Error(
-                'invalid_identifier',
-                'Enter valid email or phone number',
+                'missing_identifier',
+                'Email or phone is required',
                 ['status' => 400]
             );
         }
 
-        $type  = $detected['type'];
-        $value = $detected['value'];
+        /** 🔍 Detect identifier type */
+        $detected = Identifier::detect($input);
 
-        // 🔐 Rate limit
-        $limit = OtpRateLimiter::check($value);
-        if (is_wp_error($limit)) {
-            return $limit;
+        if (!$detected) {
+            return new WP_Error(
+                'invalid_identifier',
+                'Invalid email or phone number',
+                ['status' => 400]
+            );
         }
 
-        // 🔢 Generate OTP
-        $otp = random_int(100000, 999999);
+        $type       = $detected['type'];   // email | phone
+        $identifier = $detected['value'];
 
-        $wpdb->delete(
-            $wpdb->prefix . 'energ_otps',
-            ['identifier' => $value]
-        );
+        /** ⏱ Rate limiting (per identifier + IP) */
+        $limitCheck = OtpRateLimiter::check($identifier);
+        if (is_wp_error($limitCheck)) {
+            return $limitCheck;
+        }
 
+        /** 🔢 Generate OTP */
+        try {
+            $otp = random_int(100000, 999999);
+        } catch (\Exception $e) {
+            return new WP_Error(
+                'otp_generation_failed',
+                'Unable to generate OTP',
+                ['status' => 500]
+            );
+        }
+
+        $otpTable = $wpdb->prefix . 'energ_otps';
+
+        // 🔥 Remove old OTPs
+        $wpdb->delete($otpTable, ['identifier' => $identifier]);
+
+        // 🔐 Store OTP
         $wpdb->insert(
-            $wpdb->prefix . 'energ_otps',
+            $otpTable,
             [
-                'identifier' => $value,
+                'identifier' => $identifier,
                 'otp_hash'   => password_hash((string) $otp, PASSWORD_DEFAULT),
-                'expires_at' => gmdate('Y-m-d H:i:s', time() + 300),
                 'attempts'   => 0,
+                'expires_at' => gmdate('Y-m-d H:i:s', time() + 300), // 5 min
             ]
         );
 
-        // 📤 SEND OTP
+        /** 🚀 Send OTP */
         if ($type === 'email') {
-            $sent = Mailer::sendOtp($value, $otp);
+            $sent = Mailer::sendOtp($identifier, $otp);
         } else {
-            $sent = SmsService::sendOtp($value, $otp);
+            $sent = SmsService::sendOtp($identifier, $otp);
         }
 
         if (is_wp_error($sent)) {
@@ -66,7 +86,7 @@ class RequestOtp
         return [
             'success' => true,
             'message' => 'OTP sent successfully',
-            'type'    => $type, // frontend hint
+            'type'    => $type,
         ];
     }
 }
