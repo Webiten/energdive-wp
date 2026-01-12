@@ -5,7 +5,7 @@ namespace Energ\Auth;
 use Energ\Services\Mailer;
 use WP_Error;
 use Energ\Auth\OtpRateLimiter;
-
+use Energ\Security\OtpRateLimiter;
 
 class RequestOtp
 {
@@ -46,6 +46,13 @@ class RequestOtp
         $limitCheck = OtpRateLimiter::check($email);
         if (is_wp_error($limitCheck)) {
             return $limitCheck;
+        }
+
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+        $rateCheck = OtpRateLimiter::check($email, $ip);
+        if (is_wp_error($rateCheck)) {
+            return $rateCheck;
         }
 
         // Generate OTP
