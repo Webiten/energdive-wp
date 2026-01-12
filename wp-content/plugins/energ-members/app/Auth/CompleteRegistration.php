@@ -3,6 +3,7 @@
 namespace Energ\Auth;
 
 use WP_Error;
+use Energ\Helpers\CommunityValidator;
 
 class CompleteRegistration
 {
@@ -79,5 +80,18 @@ class CompleteRegistration
             'success' => true,
             'message' => 'Registration completed successfully'
         ];
+
+        if (
+            !CommunityValidator::isValid(
+                $params['community'],
+                $params['sub_community']
+            )
+        ) {
+            return new \WP_Error(
+                'invalid_community',
+                'Invalid community or sub-community',
+                ['status' => 400]
+            );
+        }
     }
 }
