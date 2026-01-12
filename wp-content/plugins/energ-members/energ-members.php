@@ -88,6 +88,7 @@ add_action('wp_enqueue_scripts', function () {
 
 });
 add_action('wp_footer', function () {
-    echo '<script>console.log("ENERG PLUGIN FOOTER LOADED")</script>';
+    echo '<script src="' . plugin_dir_url(__FILE__) . 'assets/js/auth.js"></script>';
 });
+
 
