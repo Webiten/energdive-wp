@@ -60,7 +60,7 @@ class AuthController
         ];
     }
 
-    
+
     public static function refreshToken($request)
     {
         return (new RefreshToken)->handle($request);
@@ -69,5 +69,10 @@ class AuthController
     public static function logout($request)
     {
         return (new \Energ\Auth\Logout)->handle($request);
+    }
+
+    public static function completeRegistration($request)
+    {
+        return (new \Energ\Auth\CompleteRegistration)->handle($request);
     }
 }

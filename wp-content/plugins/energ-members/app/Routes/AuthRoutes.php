@@ -47,3 +47,11 @@ register_rest_route('energ/v1', '/auth/logout-all', [
         return \Energ\Middleware\JwtAuth::allow($req);
     },
 ]);
+
+register_rest_route('energ/v1', '/auth/complete-registration', [
+    'methods'  => 'POST',
+    'callback' => [\Energ\API\AuthController::class, 'completeRegistration'],
+    'permission_callback' => function ($request) {
+        return \Energ\Middleware\JwtAuth::allow($request);
+    },
+]);
