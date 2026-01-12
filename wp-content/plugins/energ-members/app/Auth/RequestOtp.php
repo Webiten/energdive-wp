@@ -5,7 +5,6 @@ namespace Energ\Auth;
 use Energ\Services\Mailer;
 use WP_Error;
 use Energ\Auth\OtpRateLimiter;
-use Energ\Security\OtpRateLimiter;
 
 class RequestOtp
 {
