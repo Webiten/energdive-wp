@@ -8,10 +8,8 @@ class SmsService
 {
     public static function sendOtp($phone, $otp)
     {
-        // ✅ Config check
         if (
             !defined('ENERG_MSG91_AUTHKEY') ||
-            !defined('ENERG_MSG91_SENDER') ||
             !defined('ENERG_MSG91_TEMPLATE_ID')
         ) {
             return new WP_Error(
@@ -21,7 +19,7 @@ class SmsService
             );
         }
 
-        // ✅ Normalize phone (digits only)
+        // ✅ Normalize phone
         $phone = preg_replace('/\D/', '', $phone);
 
         if (strlen($phone) !== 10) {
@@ -33,28 +31,22 @@ class SmsService
         }
 
         /**
-         * ✅ MSG91 SMS API (for SMS Template, NOT OTP API)
-         * Template text example (DLT):
-         * Dear subscriber, your OTP to login is ##var##. Do not share it.
+         * MSG91 FLOW API (DLT compliant)
+         * Template contains: ##var##
          */
-
         $payload = [
-            'sender'      => ENERG_MSG91_SENDER,
-            'route'       => '4',
-            'country'     => '91',
-            'sms' => [[
-                'message'     => "Dear subscriber, your OTP to login is {$otp}. Do not share it.",
-                'to'          => [$phone],
-                'template_id'=> ENERG_MSG91_TEMPLATE_ID
-            ]]
+            'flow_id' => ENERG_MSG91_TEMPLATE_ID,
+            'sender'  => 'ENERGD',
+            'mobiles' => '91' . $phone,
+            'var'     => (string) $otp
         ];
 
         $response = wp_remote_post(
-            'https://api.msg91.com/api/v2/sendsms',
+            'https://api.msg91.com/api/v5/flow/',
             [
                 'headers' => [
-                    'Content-Type' => 'application/json',
                     'authkey'      => ENERG_MSG91_AUTHKEY,
+                    'Content-Type' => 'application/json',
                 ],
                 'body'    => wp_json_encode($payload),
                 'timeout' => 15,
@@ -64,7 +56,7 @@ class SmsService
         if (is_wp_error($response)) {
             return new WP_Error(
                 'sms_failed',
-                'SMS gateway error',
+                'MSG91 request failed',
                 ['status' => 500]
             );
         }
