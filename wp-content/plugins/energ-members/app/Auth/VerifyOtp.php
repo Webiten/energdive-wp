@@ -12,9 +12,9 @@ class VerifyOtp
     {
         global $wpdb;
 
-        $params     = $request->get_json_params();
-        $input      = trim($params['identifier'] ?? '');
-        $otp        = trim($params['otp'] ?? '');
+        $params = $request->get_json_params();
+        $input  = trim($params['identifier'] ?? '');
+        $otp    = trim($params['otp'] ?? '');
 
         if (!$input || !$otp) {
             return new WP_Error(
@@ -24,7 +24,7 @@ class VerifyOtp
             );
         }
 
-        /** 🔍 Detect identifier */
+        /** 🔍 Detect identifier (email / phone) */
         $detected = Identifier::detect($input);
         if (!$detected) {
             return new WP_Error(
@@ -35,6 +35,7 @@ class VerifyOtp
         }
 
         $identifier = $detected['value'];
+        $type       = $detected['type']; // email | phone
 
         /** 🔐 OTP lookup */
         $otpTable = $wpdb->prefix . 'energ_otps';
@@ -57,6 +58,7 @@ class VerifyOtp
         /** ⏱ Expired OTP */
         if (strtotime($row->expires_at) < time()) {
             $wpdb->delete($otpTable, ['id' => $row->id]);
+
             return new WP_Error(
                 'otp_expired',
                 'OTP expired',
@@ -84,6 +86,7 @@ class VerifyOtp
 
         /** 👤 Ensure member exists */
         $membersTable = $wpdb->prefix . 'energ_members';
+        $isNewUser    = false;
 
         $member = $wpdb->get_row(
             $wpdb->prepare(
@@ -97,14 +100,16 @@ class VerifyOtp
             $wpdb->insert(
                 $membersTable,
                 [
-                    is_email($identifier) ? 'email' : 'phone' => $identifier,
+                    $type === 'email' ? 'email' : 'phone' => $identifier,
                     'signup_mode' => 'otp',
                     'created_at'  => current_time('mysql'),
                 ]
             );
+
+            $isNewUser = true;
         }
 
-        /** 🔐 Issue JWT */
+        /** 🔐 Issue JWT (15 minutes) */
         $jwt = Jwt::issue(
             [
                 'sub'   => $identifier,
@@ -113,7 +118,7 @@ class VerifyOtp
             15 * 60
         );
 
-        /** 🔁 Refresh token */
+        /** 🔁 Create refresh token (30 days) */
         $refreshToken = bin2hex(random_bytes(32));
 
         $wpdb->insert(
@@ -121,16 +126,20 @@ class VerifyOtp
             [
                 'identifier' => $identifier,
                 'token_hash' => hash('sha256', $refreshToken),
-                'expires_at' => gmdate('Y-m-d H:i:s', time() + (30 * DAY_IN_SECONDS)),
+                'expires_at' => gmdate(
+                    'Y-m-d H:i:s',
+                    time() + (30 * DAY_IN_SECONDS)
+                ),
             ]
         );
 
         return [
-            'success'       => true,
-            'message'       => 'OTP verified',
-            'access_token'  => $jwt['token'],
-            'refresh_token' => $refreshToken,
-            'expires_in'    => $jwt['expires_in'],
+            'success'      => true,
+            'message'      => 'OTP verified',
+            'access_token' => $jwt['token'],
+            'refresh_token'=> $refreshToken,
+            'expires_in'   => $jwt['expires_in'],
+            'is_new_user'  => $isNewUser,
         ];
     }
 }
