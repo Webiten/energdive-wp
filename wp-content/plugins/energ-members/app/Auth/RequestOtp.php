@@ -2,63 +2,46 @@
 
 namespace Energ\Auth;
 
-use Energ\Services\Mailer;
 use WP_Error;
-use Energ\Auth\OtpRateLimiter;
+use Energ\Services\Mailer;
 use Energ\Services\SmsService;
 
 class RequestOtp
 {
-
     public function handle($request)
     {
         global $wpdb;
 
-        $params = $request->get_json_params();
-        $email  = sanitize_email($params['email'] ?? '');
+        $params     = $request->get_json_params();
+        $identifier = trim($params['identifier'] ?? '');
 
-        if (!$email || !is_email($email)) {
+        if (!$identifier) {
             return new WP_Error(
-                'invalid_email',
-                'Invalid email address',
+                'missing_identifier',
+                'Email or phone number is required',
                 ['status' => 400]
             );
         }
 
-        // ⏱ RATE LIMIT: max 5 OTP per hour
-        $table = $wpdb->prefix . 'energ_otp_limits';
+        // 🔍 Detect type
+        $isEmail = is_email($identifier);
+        $isPhone = preg_match('/^[6-9]\d{9}$/', $identifier);
 
-        $count = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$table}
-         WHERE identifier = %s
-         AND last_attempt > DATE_SUB(NOW(), INTERVAL 1 HOUR)",
-                $email
-            )
-        );
-
-
-        if ($count >= 5) {
-            return new \WP_Error(
-                'otp_rate_limited',
-                'Too many OTP requests. Try again later.',
-                ['status' => 429]
+        if (!$isEmail && !$isPhone) {
+            return new WP_Error(
+                'invalid_identifier',
+                'Enter a valid email or 10-digit phone number',
+                ['status' => 400]
             );
         }
 
-        $limitCheck = OtpRateLimiter::check($email);
-        if (is_wp_error($limitCheck)) {
-            return $limitCheck;
-        }
-
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-        $rateCheck = OtpRateLimiter::check($email, $ip);
+        // 🚫 RATE LIMIT CHECK (email OR phone)
+        $rateCheck = OtpRateLimiter::check($identifier);
         if (is_wp_error($rateCheck)) {
             return $rateCheck;
         }
 
-        // Generate OTP
+        // 🔐 Generate OTP
         try {
             $otp = random_int(100000, 999999);
         } catch (\Exception $e) {
@@ -69,21 +52,21 @@ class RequestOtp
             );
         }
 
-        $hash    = password_hash((string) $otp, PASSWORD_DEFAULT);
+        $otpHash = password_hash((string) $otp, PASSWORD_DEFAULT);
         $expires = gmdate('Y-m-d H:i:s', time() + 300); // 5 minutes
 
-        $table = $wpdb->prefix . 'energ_otps';
+        $otpTable = $wpdb->prefix . 'energ_otps';
 
-        // Delete previous OTPs for this email
-        $wpdb->delete($table, ['identifier' => $email]);
+        // ♻️ Remove previous OTPs
+        $wpdb->delete($otpTable, ['identifier' => $identifier]);
 
-        // Insert new OTP
+        // 💾 Store OTP
         $inserted = $wpdb->insert(
-            $table,
+            $otpTable,
             [
-                'identifier' => $email,
-                'otp_hash'   => $hash,
-                'expires_at' => $expires,
+                'identifier' => $identifier,
+                'otp_hash'   => $otpHash,
+                'expires_at'=> $expires,
                 'attempts'  => 0,
             ],
             ['%s', '%s', '%s', '%d']
@@ -92,21 +75,25 @@ class RequestOtp
         if ($inserted === false) {
             return new WP_Error(
                 'db_error',
-                'Could not save OTP',
+                'Could not store OTP',
                 ['status' => 500]
             );
         }
 
-        // Send OTP via email (Amazon SES via wp_mail)
-        $mail = Mailer::sendOtp($email, $otp);
+        // 📤 Send OTP
+        if ($isEmail) {
+            $sent = Mailer::sendOtp($identifier, $otp);
+        } else {
+            $sent = SmsService::sendOtp($identifier, $otp); // MSG91
+        }
 
-        if (is_wp_error($mail)) {
-            return $mail;
+        if (is_wp_error($sent)) {
+            return $sent;
         }
 
         return [
             'success' => true,
-            'message' => 'OTP sent to email'
+            'message' => 'OTP sent successfully'
         ];
     }
 }
