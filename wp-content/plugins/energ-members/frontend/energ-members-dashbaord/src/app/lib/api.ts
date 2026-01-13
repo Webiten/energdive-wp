@@ -1,70 +1,73 @@
 import { http } from "./http";
 
-const BASE = "https://stage.energdive.com/wp-json/energ/v1";
+const BASE = "/wp-json/energ/v1";
 
 export const AuthAPI = {
-  /** ============================
-   * REQUEST OTP (EMAIL / PHONE)
-   * ============================ */
   async requestOtp(identifier: string) {
     const res = await fetch(`${BASE}/auth/request-otp`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier }),
     });
 
-    if (!res.ok) {
-      throw await res.json();
-    }
-
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
   },
 
-  /** ============================
-   * VERIFY OTP
-   * ============================ */
   async verifyOtp(identifier: string, otp: string) {
     const res = await fetch(`${BASE}/auth/verify-otp`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, otp }),
     });
 
-    if (!res.ok) {
-      throw await res.json();
-    }
-
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
   },
 
-  /** ============================
-   * COMPLETE REGISTRATION
-   * ============================ */
-  completeRegistration(payload: any) {
-    return http(`${BASE}/auth/complete-registration`, {
+  async completeRegistration(payload: any) {
+    const token = localStorage.getItem("access_token");
+
+    const res = await fetch(`${BASE}/auth/complete-registration`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(payload),
     });
+
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
   },
 
-  /** ============================
-   * CURRENT USER
-   * ============================ */
-  me() {
-    return http(`${BASE}/me`);
+  async me() {
+    const token = localStorage.getItem("access_token");
+
+    const res = await fetch(`${BASE}/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
   },
 
-  /** ============================
-   * LOGOUT
-   * ============================ */
-  logout(refresh_token: string) {
-    return http(`${BASE}/auth/logout`, {
+  async logout(refresh_token: string) {
+    const res = await fetch(`${BASE}/auth/logout`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token }),
     });
+
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
   },
 };
+
