@@ -12,9 +12,10 @@ class VerifyOtp
     {
         global $wpdb;
 
-        $params = $request->get_json_params();
-        $input  = trim($params['identifier'] ?? '');
-        $otp    = trim($params['otp'] ?? '');
+        $params  = $request->get_json_params();
+        $input   = trim($params['identifier'] ?? '');
+        $otp     = trim($params['otp'] ?? '');
+        $context = $params['context'] ?? 'login'; // login | registration_phone
 
         if (!$input || !$otp) {
             return new WP_Error(
@@ -24,7 +25,7 @@ class VerifyOtp
             );
         }
 
-        /** 🔍 Detect identifier (email / phone) */
+        /** 🔍 Detect identifier */
         $detected = Identifier::detect($input);
         if (!$detected) {
             return new WP_Error(
@@ -37,13 +38,16 @@ class VerifyOtp
         $identifier = $detected['value'];
         $type       = $detected['type']; // email | phone
 
-        /** 🔐 OTP lookup */
+        /** 🔐 OTP lookup (identifier + context) */
         $otpTable = $wpdb->prefix . 'energ_otps';
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$otpTable} WHERE identifier = %s LIMIT 1",
-                $identifier
+                "SELECT * FROM {$otpTable} 
+                 WHERE identifier = %s AND context = %s 
+                 LIMIT 1",
+                $identifier,
+                $context
             )
         );
 
@@ -55,10 +59,9 @@ class VerifyOtp
             );
         }
 
-        /** ⏱ Expired OTP */
+        /** ⏱ Expired */
         if (strtotime($row->expires_at) < time()) {
             $wpdb->delete($otpTable, ['id' => $row->id]);
-
             return new WP_Error(
                 'otp_expired',
                 'OTP expired',
@@ -81,17 +84,57 @@ class VerifyOtp
             );
         }
 
-        /** ✅ OTP VERIFIED — CLEANUP */
+        /** ✅ OTP VERIFIED → cleanup */
         $wpdb->delete($otpTable, ['id' => $row->id]);
 
-        /** 👤 Ensure member exists */
+        /** =====================================
+         * 📱 PHONE VERIFICATION (REGISTRATION)
+         * ===================================== */
+        if ($context === 'registration_phone') {
+
+            if ($type !== 'phone') {
+                return new WP_Error(
+                    'invalid_context',
+                    'Phone verification requires phone number',
+                    ['status' => 400]
+                );
+            }
+
+            $membersTable = $wpdb->prefix . 'energ_members';
+
+            $updated = $wpdb->update(
+                $membersTable,
+                [
+                    'phone' => $identifier,
+                ],
+                ['email' => get_current_user_id() ? null : null] // placeholder safety
+            );
+
+            return [
+                'success' => true,
+                'message' => 'Phone number verified',
+                'type'    => 'phone',
+            ];
+        }
+
+        /** =====================================
+         * 📧 EMAIL LOGIN FLOW
+         * ===================================== */
+        if ($type !== 'email') {
+            return new WP_Error(
+                'login_email_only',
+                'Login allowed via email only',
+                ['status' => 400]
+            );
+        }
+
+        /** 👤 Member check */
         $membersTable = $wpdb->prefix . 'energ_members';
         $isNewUser    = false;
 
         $member = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id FROM {$membersTable} WHERE email = %s OR phone = %s LIMIT 1",
-                $identifier,
+                "SELECT id FROM {$membersTable} WHERE email = %s LIMIT 1",
                 $identifier
             )
         );
@@ -100,16 +143,17 @@ class VerifyOtp
             $wpdb->insert(
                 $membersTable,
                 [
-                    $type === 'email' ? 'email' : 'phone' => $identifier,
+                    'email'       => $identifier,
                     'signup_mode' => 'otp',
                     'created_at'  => current_time('mysql'),
-                ]
+                ],
+                ['%s', '%s', '%s']
             );
 
             $isNewUser = true;
         }
 
-        /** 🔐 Issue JWT (15 minutes) */
+        /** 🔐 JWT */
         $jwt = Jwt::issue(
             [
                 'sub'   => $identifier,
@@ -118,7 +162,7 @@ class VerifyOtp
             15 * 60
         );
 
-        /** 🔁 Create refresh token (30 days) */
+        /** 🔁 Refresh token */
         $refreshToken = bin2hex(random_bytes(32));
 
         $wpdb->insert(
@@ -130,16 +174,17 @@ class VerifyOtp
                     'Y-m-d H:i:s',
                     time() + (30 * DAY_IN_SECONDS)
                 ),
-            ]
+            ],
+            ['%s', '%s', '%s']
         );
 
         return [
-            'success'      => true,
-            'message'      => 'OTP verified',
-            'access_token' => $jwt['token'],
-            'refresh_token'=> $refreshToken,
-            'expires_in'   => $jwt['expires_in'],
-            'is_new_user'  => $isNewUser,
+            'success'       => true,
+            'message'       => 'OTP verified',
+            'access_token'  => $jwt['token'],
+            'refresh_token' => $refreshToken,
+            'expires_in'    => $jwt['expires_in'],
+            'is_new_user'   => $isNewUser,
         ];
     }
 }
