@@ -1,0 +1,33 @@
+# --- WordPress Core ko ignore karo ---
+/wp-admin/
+/wp-includes/
+/index.php
+/license.txt
+/readme.html
+/wp-*.php
+/xmlrpc.php
+
+# --- Config file ignore ---
+wp-config.php
+
+# --- Uploads folder ignore ---
+/wp-content/uploads/
+
+# --- Logs ---
+*.log
+
+# --- .htaccess ignore ---
+/.htaccess
+
+# --- Default themes ignore ---
+/wp-content/themes/twenty*/
+
+# --- Example plugin ignore ---
+/wp-content/plugins/hello.php
+
+# --- Saare plugins ignore ---
+/wp-content/plugins/*
+
+# --- Sirf apna theme allow karo ---
+!/wp-content/themes/ITEN/**
+assets/videos/

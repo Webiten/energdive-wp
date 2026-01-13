@@ -1,0 +1,242 @@
+/*Heading CSS*/
+h1.head-news {
+    font-family: "EB Garamond - Heading Fonts", Serif;
+    margin: 20px 80px 20px 80px;
+    border-top: 1px solid #dfdfdf;
+    border-bottom: 1px solid #dfdfdf;
+    width: 85%;
+    font-size: 25px;
+    line-height: 1.1em;
+    letter-spacing: 1.3px;
+    font-weight: 500;
+    padding: 20px 0px 20px 0px;
+}
+
+/* Filter Container */
+.taxonomy-filters {
+  display: flex;
+  justify-content: center;
+  margin: 40px 60px 20px;
+}
+
+.filter-box {
+  display: flex;
+  flex-wrap: wrap; /* allow wrapping on smaller screens */
+  align-items: flex-end;
+  justify-content: space-between;
+  background: #181818;
+  padding: 20px 35px;
+  border-radius: 16px;
+  width: 100%;
+  /*max-width: 1400px;*/
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #fff;
+  font-size: 14px;
+  flex: 1; /* all take equal space */
+  /*min-width: 180px;*/
+
+}
+
+.filter-group label {
+  font-weight: 500;
+  color: #ccc;
+}
+
+/* Dropdowns and Inputs */
+.filter-group select,
+.filter-group input[type="date"] {
+  background: #5a5f66;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 14px;
+  outline: none;
+  min-width: 145px;
+}
+
+.date-range {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-range label {
+  margin-right: 10px;
+}
+
+/* Clear Button */
+#clear-filters {
+  background: #666;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.3s;
+  height: 38px;
+  align-self: flex-end;
+  flex-shrink: 0;
+}
+
+#clear-filters:hover {
+  background: #888;
+}
+
+.clear-btn-wrap {
+  margin-left: auto; /* pushes it to right end */
+}
+
+/* Keep label on top for all filters */
+.taxonomy-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Special layout for Date Range */
+.taxonomy-filters .filter-group.date-range {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.taxonomy-filters .filter-group.date-range label {
+  margin-bottom: 6px;
+}
+
+/* Put both inputs in one row */
+.taxonomy-filters .filter-group.date-range {
+  display: flex;
+  flex-direction: column;
+}
+
+.taxonomy-filters .filter-group.date-range label + div {
+  display: flex;
+  gap: 10px;
+}
+
+.taxonomy-filters .filter-group.date-range input[type="date"] {
+  width: 80%;
+  flex: 1;
+}
+
+/* Optional: better spacing for all input fields */
+.taxonomy-filters select,
+.taxonomy-filters input[type="date"] {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+/*Filter CSS*/
+/* Disabled dropdown options */
+.taxonomy-filters select option[disabled],
+.taxonomy-filters select option:disabled {
+  color: #777 !important;
+  background: #222 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+/*Post CSS*/
+
+.filtered-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  align-items: stretch;
+  margin: 20px 20px;
+}
+
+article.news-card {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* FIXED: remove space-between (caused vertical centering) */
+  justify-content: flex-start;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.news-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.news-thumb img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.news-thumb img:hover {
+  transform: scale(1.05);
+}
+
+.news-title {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 6px 0 4px;
+  padding: 0 8px;
+  font-family: "Playfair Display", serif;
+  text-align: left;  /* CENTER horizontally */
+}
+
+.news-title a {
+  color: #000;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  display: inline-block;
+}
+
+.news-title a:hover {
+  color: #000;
+}
+
+.news-meta {
+  font-size: 13px;
+  color: #555;
+  padding: 0 10px 12px;
+  margin-top: auto;
+  font-family: "Abhaya Libre", serif;
+  line-height: 1.3;
+  text-align: left; /* keep meta aligned */
+}
+
+.news-meta span {
+  color: #666;
+}
+
+.news-meta span a {
+  color: #555;
+  text-decoration: none;
+}
+
+
+/* Responsive */
+@media (max-width: 900px) {
+  .filter-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .clear-btn-wrap {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+}
