@@ -4,29 +4,36 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Mail, ArrowRight, Loader2 } from "lucide-react";
+import { AuthAPI } from "@/app/lib/api";
 
 interface LoginPageProps {
-  onVerificationSent: (email: string) => void;
+  onVerificationSent: (identifier: string) => void;
 }
 
 export function LoginPage({ onVerificationSent }: LoginPageProps) {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      await AuthAPI.requestOtp(identifier);
+      onVerificationSent(identifier);
+    } catch (err: any) {
+      setError(err?.message || "Failed to send OTP");
+    } finally {
       setIsLoading(false);
-      onVerificationSent(email);
-    }, 1500);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
+
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
@@ -44,39 +51,45 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
           <CardHeader>
             <CardTitle className="text-2xl text-center">Welcome</CardTitle>
             <p className="text-center text-gray-600 text-sm mt-2">
-              Enter your email to continue
+              Enter your email or phone to continue
             </p>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="identifier">Email or Phone</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="your.email@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="identifier"
+                    type="text"
+                    placeholder="email or mobile number"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="pl-10"
                     required
                   />
                 </div>
+
+                {error && (
+                  <p className="text-sm text-red-600">{error}</p>
+                )}
+
                 <p className="text-xs text-gray-500">
-                  We'll send you a verification link to access your account
+                  We'll send you a one-time verification code
                 </p>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-emerald-600 hover:bg-emerald-700"
-                disabled={isLoading || !email}
+                disabled={isLoading || !identifier}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending verification...
+                    Sending OTP...
                   </>
                 ) : (
                   <>
@@ -90,22 +103,14 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 By continuing, you agree to our{" "}
-                <a href="#" className="text-emerald-600 hover:underline">Terms of Service</a>
-                {" "}and{" "}
-                <a href="#" className="text-emerald-600 hover:underline">Privacy Policy</a>
+                <a className="text-emerald-600 hover:underline">Terms</a>{" "}
+                &{" "}
+                <a className="text-emerald-600 hover:underline">Privacy Policy</a>
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Need help?{" "}
-            <a href="#" className="text-emerald-600 hover:underline font-medium">
-              Contact Support
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );

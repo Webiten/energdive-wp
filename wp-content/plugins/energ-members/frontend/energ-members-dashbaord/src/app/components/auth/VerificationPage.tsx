@@ -1,187 +1,186 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Mail, CheckCircle, XCircle, Loader2, RefreshCw } from "lucide-react";
+import { Input } from "../ui/input";
+import {
+  Mail,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  RefreshCw
+} from "lucide-react";
+import { AuthAPI } from "@/app/lib/api";
 
 interface VerificationPageProps {
-  email: string;
+  identifier: string;
   onVerified: (isNewUser: boolean) => void;
   onResend: () => void;
 }
 
-type VerificationState = 'sent' | 'verifying' | 'verified' | 'expired' | 'invalid';
+type VerificationState =
+  | "sent"
+  | "verifying"
+  | "verified"
+  | "expired"
+  | "invalid";
 
-export function VerificationPage({ email, onVerified, onResend }: VerificationPageProps) {
-  const [state, setState] = useState<VerificationState>('sent');
+export function VerificationPage({
+  identifier,
+  onVerified,
+  onResend
+}: VerificationPageProps) {
+  const [state, setState] = useState<VerificationState>("sent");
+  const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /** ⏱ Countdown */
   useEffect(() => {
-    if (countdown > 0 && state === 'sent') {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    if (countdown > 0 && state === "sent") {
+      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      setCanResend(true);
     }
+    if (countdown === 0) setCanResend(true);
   }, [countdown, state]);
 
-  const handleResend = () => {
-    setCountdown(60);
-    setCanResend(false);
-    setState('sent');
-    onResend();
+  /** 🔐 VERIFY OTP */
+  const handleVerify = async () => {
+    if (otp.length !== 6) return;
+
+    setState("verifying");
+    setError(null);
+
+    try {
+      const res = await AuthAPI.verifyOtp(identifier, otp);
+
+      // save tokens
+      localStorage.setItem("access_token", res.access_token);
+      localStorage.setItem("refresh_token", res.refresh_token);
+
+      setState("verified");
+
+      setTimeout(() => {
+        onVerified(res.is_new_user);
+      }, 1200);
+    } catch (err: any) {
+      const code = err?.code;
+
+      if (code === "otp_expired") setState("expired");
+      else setState("invalid");
+
+      setError(err?.message || "Invalid OTP");
+    }
   };
 
-  const simulateVerification = () => {
-    setState('verifying');
-    // Simulate checking verification
-    setTimeout(() => {
-      setState('verified');
-      // Simulate checking if user is new or existing (50/50 for demo)
-      const isNewUser = Math.random() > 0.5;
-      setTimeout(() => {
-        onVerified(isNewUser);
-      }, 1500);
-    }, 2000);
+  /** 🔁 RESEND */
+  const handleResend = async () => {
+    setCountdown(60);
+    setCanResend(false);
+    setState("sent");
+    setOtp("");
+    setError(null);
+
+    await onResend();
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">E</span>
-            </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-bold text-gray-900">ENERGCLUB</h1>
-              <p className="text-sm text-gray-600">Energy Intelligence Platform</p>
-            </div>
-          </div>
-        </div>
 
         <Card className="shadow-xl">
-          <CardHeader>
-            <div className="flex flex-col items-center">
-              {state === 'sent' && (
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                  <Mail className="w-8 h-8 text-emerald-600" />
-                </div>
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              {state === "sent" && (
+                <Mail className="w-10 h-10 text-emerald-600" />
               )}
-              {state === 'verifying' && (
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                </div>
+              {state === "verifying" && (
+                <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
               )}
-              {state === 'verified' && (
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle className="w-8 h-8 text-emerald-600" />
-                </div>
+              {state === "verified" && (
+                <CheckCircle className="w-10 h-10 text-emerald-600" />
               )}
-              {(state === 'expired' || state === 'invalid') && (
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                  <XCircle className="w-8 h-8 text-red-600" />
-                </div>
+              {(state === "expired" || state === "invalid") && (
+                <XCircle className="w-10 h-10 text-red-600" />
               )}
-
-              <CardTitle className="text-2xl text-center">
-                {state === 'sent' && 'Check Your Email'}
-                {state === 'verifying' && 'Verifying...'}
-                {state === 'verified' && 'Email Verified!'}
-                {state === 'expired' && 'Link Expired'}
-                {state === 'invalid' && 'Invalid Link'}
-              </CardTitle>
-              
-              <p className="text-center text-gray-600 text-sm mt-2">
-                {state === 'sent' && (
-                  <>We've sent a verification link to <strong>{email}</strong></>
-                )}
-                {state === 'verifying' && 'Please wait while we verify your email...'}
-                {state === 'verified' && 'Your email has been successfully verified'}
-                {state === 'expired' && 'This verification link has expired'}
-                {state === 'invalid' && 'This verification link is invalid'}
-              </p>
             </div>
+
+            <CardTitle>
+              {state === "sent" && "Enter Verification Code"}
+              {state === "verifying" && "Verifying"}
+              {state === "verified" && "Verified"}
+              {state === "expired" && "OTP Expired"}
+              {state === "invalid" && "Invalid OTP"}
+            </CardTitle>
+
+            <p className="text-sm text-gray-600 mt-2">
+              Sent to <strong>{identifier}</strong>
+            </p>
           </CardHeader>
+
           <CardContent className="space-y-4">
-            {state === 'sent' && (
+
+            {state === "sent" && (
               <>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <p className="text-sm font-medium text-gray-900">Next steps:</p>
-                  <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-                    <li>Open your email inbox</li>
-                    <li>Click the verification link we sent</li>
-                    <li>You'll be automatically redirected</li>
-                  </ol>
-                </div>
+                <Input
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Enter 6-digit OTP"
+                  maxLength={6}
+                />
+
+                {error && (
+                  <p className="text-sm text-red-600">{error}</p>
+                )}
 
                 <Button
-                  onClick={simulateVerification}
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  onClick={handleVerify}
+                  disabled={otp.length !== 6}
                 >
-                  I've Clicked the Link (Simulate)
+                  Verify OTP
                 </Button>
 
-                <div className="text-center pt-4">
-                  <p className="text-sm text-gray-600 mb-3">
-                    Didn't receive the email?
-                  </p>
-                  <Button
-                    onClick={handleResend}
-                    variant="outline"
-                    disabled={!canResend}
-                    className="w-full"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    {canResend ? 'Resend Verification Email' : `Resend in ${countdown}s`}
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleResend}
+                  disabled={!canResend}
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  {canResend ? "Resend OTP" : `Resend in ${countdown}s`}
+                </Button>
               </>
             )}
 
-            {state === 'verifying' && (
-              <div className="text-center py-4">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
-              </div>
+            {state === "verifying" && (
+              <p className="text-center text-sm text-gray-600">
+                Please wait...
+              </p>
             )}
 
-            {state === 'verified' && (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-600">
-                  Redirecting you to your dashboard...
-                </p>
-              </div>
+            {state === "verified" && (
+              <p className="text-center text-sm text-gray-600">
+                Redirecting…
+              </p>
             )}
 
-            {(state === 'expired' || state === 'invalid') && (
+            {(state === "expired" || state === "invalid") && (
               <>
-                <p className="text-sm text-gray-600 text-center">
-                  {state === 'expired' 
-                    ? 'Your verification link has expired. Request a new one to continue.'
-                    : 'The verification link appears to be invalid. Please try again.'
-                  }
+                <p className="text-sm text-center text-gray-600">
+                  {error}
                 </p>
                 <Button
                   onClick={handleResend}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  className="w-full bg-emerald-600"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Request New Link
+                  Request New OTP
                 </Button>
               </>
             )}
+
           </CardContent>
         </Card>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Need help?{" "}
-            <a href="#" className="text-emerald-600 hover:underline font-medium">
-              Contact Support
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );
