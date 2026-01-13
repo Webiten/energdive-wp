@@ -7,14 +7,14 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
 } from "lucide-react";
 import { AuthAPI } from "@/app/lib/api";
 
 interface VerificationPageProps {
   identifier: string;
   onVerified: (isNewUser: boolean) => void;
-  onResend: () => void;
+  onResend: () => Promise<void>;
 }
 
 type VerificationState =
@@ -27,7 +27,7 @@ type VerificationState =
 export function VerificationPage({
   identifier,
   onVerified,
-  onResend
+  onResend,
 }: VerificationPageProps) {
   const [state, setState] = useState<VerificationState>("sent");
   const [otp, setOtp] = useState("");
@@ -37,11 +37,14 @@ export function VerificationPage({
 
   /** ⏱ Countdown */
   useEffect(() => {
-    if (countdown > 0 && state === "sent") {
-      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    if (state !== "sent") return;
+
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
       return () => clearTimeout(timer);
     }
-    if (countdown === 0) setCanResend(true);
+
+    setCanResend(true);
   }, [countdown, state]);
 
   /** 🔐 VERIFY OTP */
@@ -54,40 +57,44 @@ export function VerificationPage({
     try {
       const res = await AuthAPI.verifyOtp(identifier, otp);
 
-      // save tokens
       localStorage.setItem("access_token", res.access_token);
       localStorage.setItem("refresh_token", res.refresh_token);
 
+      setOtp("");
       setState("verified");
 
       setTimeout(() => {
         onVerified(res.is_new_user);
-      }, 1200);
+      }, 1000);
     } catch (err: any) {
-      const code = err?.code;
+      const code = err?.code || err?.data?.code;
+      const message = err?.message || err?.data?.message || "Invalid OTP";
 
       if (code === "otp_expired") setState("expired");
       else setState("invalid");
 
-      setError(err?.message || "Invalid OTP");
+      setError(message);
     }
   };
 
-  /** 🔁 RESEND */
+  /** 🔁 RESEND OTP */
   const handleResend = async () => {
-    setCountdown(60);
-    setCanResend(false);
-    setState("sent");
-    setOtp("");
-    setError(null);
+    try {
+      setCountdown(60);
+      setCanResend(false);
+      setState("sent");
+      setOtp("");
+      setError(null);
 
-    await onResend();
+      await onResend();
+    } catch {
+      setError("Failed to resend OTP. Try again.");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-
         <Card className="shadow-xl">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
@@ -119,12 +126,13 @@ export function VerificationPage({
           </CardHeader>
 
           <CardContent className="space-y-4">
-
             {state === "sent" && (
               <>
                 <Input
                   value={otp}
-                  onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, ""))
+                  }
                   placeholder="Enter 6-digit OTP"
                   maxLength={6}
                 />
@@ -178,7 +186,6 @@ export function VerificationPage({
                 </Button>
               </>
             )}
-
           </CardContent>
         </Card>
       </div>
