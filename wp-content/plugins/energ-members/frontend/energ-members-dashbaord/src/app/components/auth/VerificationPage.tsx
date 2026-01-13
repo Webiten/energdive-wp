@@ -49,8 +49,11 @@ export function VerificationPage({
 
   /** 🔐 VERIFY OTP */
   const handleVerify = async () => {
-    if (otp.length !== 6) return;
-
+    if (!identifier || otp.length !== 6) {
+      setError("Identifier missing. Please request OTP again.");
+      return;
+    }
+    
     setState("verifying");
     setError(null);
 
