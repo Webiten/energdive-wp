@@ -1,12 +1,18 @@
-import { http } from "./http";
-
 const BASE = "/wp-json/energ/v1";
 
+/** 🔐 Helper: get access token safely */
+const getAccessToken = () => {
+  return localStorage.getItem("access_token") || "";
+};
+
 export const AuthAPI = {
+  /** 📧📱 Request OTP (email or phone) */
   async requestOtp(identifier: string) {
     const res = await fetch(`${BASE}/auth/request-otp`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ identifier }),
     });
 
@@ -15,10 +21,13 @@ export const AuthAPI = {
     return data;
   },
 
+  /** 🔐 Verify OTP (email or phone) */
   async verifyOtp(identifier: string, otp: string) {
     const res = await fetch(`${BASE}/auth/verify-otp`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ identifier, otp }),
     });
 
@@ -27,8 +36,9 @@ export const AuthAPI = {
     return data;
   },
 
+  /** 📝 Complete Registration */
   async completeRegistration(payload: any) {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
 
     const res = await fetch(`${BASE}/auth/complete-registration`, {
       method: "POST",
@@ -44,8 +54,9 @@ export const AuthAPI = {
     return data;
   },
 
+  /** 👤 Get logged-in user */
   async me() {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
 
     const res = await fetch(`${BASE}/me`, {
       headers: {
@@ -58,10 +69,13 @@ export const AuthAPI = {
     return data;
   },
 
+  /** 🚪 Logout */
   async logout(refresh_token: string) {
     const res = await fetch(`${BASE}/auth/logout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ refresh_token }),
     });
 
@@ -70,4 +84,3 @@ export const AuthAPI = {
     return data;
   },
 };
-
