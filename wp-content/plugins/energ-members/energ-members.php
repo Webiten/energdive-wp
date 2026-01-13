@@ -89,10 +89,43 @@ add_action('wp_enqueue_scripts', function () {
         'api' => rest_url('energ/v1'),
         'nonce' => wp_create_nonce('wp_rest')
     ]);
-
 });
+
+add_action('wp_enqueue_scripts', function () {
+
+    // Only load on dashboard page
+    if (!is_page('dashboard')) {
+        return;
+    }
+
+    $base = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist';
+
+    // CSS
+    wp_enqueue_style(
+        'energ-dashboard-css',
+        $base . 'assets/index-B-DnV36w.css',
+        [],
+        null
+    );
+
+    // JS
+    wp_enqueue_script(
+        'energ-dashboard-js',
+        $base . 'assets/index-CbZZyaug.js',
+        [],
+        null,
+        true
+    );
+
+    // Pass API + JWT
+    wp_localize_script('energ-dashboard-js', 'ENERG_APP', [
+        'apiBase' => rest_url('energ/v1'),
+        'nonce'   => wp_create_nonce('wp_rest'),
+    ]);
+});
+
+
+
 add_action('wp_footer', function () {
     echo '<script src="' . plugin_dir_url(__FILE__) . 'assets/js/auth.js"></script>';
 });
-
-
