@@ -14,8 +14,10 @@ class RequestOtp
     {
         global $wpdb;
 
-        $params     = $request->get_json_params();
-        $input      = trim($params['identifier'] ?? '');
+        $params  = $request->get_json_params();
+        $input   = trim($params['identifier'] ?? '');
+        $context = $params['context'] ?? 'login'; 
+        // login | registration_phone
 
         if (!$input) {
             return new WP_Error(
@@ -25,7 +27,7 @@ class RequestOtp
             );
         }
 
-        /** 🔍 Detect identifier type */
+        /** 🔍 Detect identifier */
         $detected = Identifier::detect($input);
 
         if (!$detected) {
@@ -39,7 +41,7 @@ class RequestOtp
         $type       = $detected['type'];   // email | phone
         $identifier = $detected['value'];
 
-        /** ⏱ Rate limiting (per identifier + IP) */
+        /** ⏱ Rate limiting (identifier + IP) */
         $limitCheck = OtpRateLimiter::check($identifier);
         if (is_wp_error($limitCheck)) {
             return $limitCheck;
@@ -58,19 +60,35 @@ class RequestOtp
 
         $otpTable = $wpdb->prefix . 'energ_otps';
 
-        // 🔥 Remove old OTPs
-        $wpdb->delete($otpTable, ['identifier' => $identifier]);
-
-        // 🔐 Store OTP
-        $wpdb->insert(
+        /** 🧹 Cleanup old OTPs */
+        $wpdb->delete(
             $otpTable,
             [
                 'identifier' => $identifier,
+                'context'    => $context,
+            ]
+        );
+
+        /** 🔐 Store OTP */
+        $inserted = $wpdb->insert(
+            $otpTable,
+            [
+                'identifier' => $identifier,
+                'context'    => $context,
                 'otp_hash'   => password_hash((string) $otp, PASSWORD_DEFAULT),
                 'attempts'   => 0,
                 'expires_at' => gmdate('Y-m-d H:i:s', time() + 300), // 5 min
-            ]
+            ],
+            ['%s', '%s', '%s', '%d', '%s']
         );
+
+        if (!$inserted) {
+            return new WP_Error(
+                'db_error',
+                'Failed to generate OTP',
+                ['status' => 500]
+            );
+        }
 
         /** 🚀 Send OTP */
         if ($type === 'email') {
@@ -79,7 +97,15 @@ class RequestOtp
             $sent = SmsService::sendOtp($identifier, $otp);
         }
 
+        /** ❌ Rollback OTP if send fails */
         if (is_wp_error($sent)) {
+            $wpdb->delete(
+                $otpTable,
+                [
+                    'identifier' => $identifier,
+                    'context'    => $context,
+                ]
+            );
             return $sent;
         }
 
@@ -87,6 +113,7 @@ class RequestOtp
             'success' => true,
             'message' => 'OTP sent successfully',
             'type'    => $type,
+            'context' => $context,
         ];
     }
 }
