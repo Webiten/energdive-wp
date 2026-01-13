@@ -6,7 +6,7 @@ import { VerificationPage } from "./components/auth/VerificationPage";
 import { RegisterPage } from "./components/auth/RegisterPage";
 import { RegistrationSuccess } from "./components/auth/RegistrationSuccess";
 
-// User Dashboard Components
+// Dashboard Components
 import { TopBar } from "./components/TopBar";
 import { SecondHeader } from "./components/SecondHeader";
 import { DashboardHome } from "./components/DashboardHome";
@@ -17,54 +17,65 @@ import { EventsSection } from "./components/EventsSection";
 import { BookmarksSection } from "./components/BookmarksSection";
 import { AccountSettingsSection } from "./components/AccountSettingsSection";
 
-type AppState = 
-  | 'login' 
-  | 'verification' 
-  | 'register' 
-  | 'registration-success' 
-  | 'dashboard';
+// API
+import { AuthAPI } from "./lib/api";
+
+type AppState =
+  | "login"
+  | "verification"
+  | "register"
+  | "registration-success"
+  | "dashboard";
 
 export default function App() {
-  const [appState, setAppState] = useState<AppState>('login');
+  const [appState, setAppState] = useState<AppState>("login");
   const [activeSection, setActiveSection] = useState("dashboard");
-  const [userEmail, setUserEmail] = useState("");
+
+  // 🔑 SINGLE SOURCE OF TRUTH
+  const [identifier, setIdentifier] = useState<string>("");
+
   const [requiresApproval, setRequiresApproval] = useState(false);
 
-  // Auth Flow Handlers
-  const handleVerificationSent = (email: string) => {
-    setUserEmail(email);
-    setAppState('verification');
+  /* =======================
+     AUTH FLOW HANDLERS
+  ======================= */
+
+  const handleVerificationSent = (value: string) => {
+    setIdentifier(value);           // ✅ email OR phone
+    setAppState("verification");
   };
 
-  const handleEmailVerified = (isNewUser: boolean) => {
+  const handleVerified = (isNewUser: boolean) => {
     if (isNewUser) {
-      setAppState('register');
+      setAppState("register");
     } else {
-      setAppState('dashboard');
+      setAppState("dashboard");
     }
   };
 
+  const handleResendVerification = async () => {
+    if (!identifier) return;
+    await AuthAPI.requestOtp(identifier);
+  };
+
   const handleRegistrationComplete = () => {
-    // Simulate: some users require approval, some don't
     const needsApproval = Math.random() > 0.5;
     setRequiresApproval(needsApproval);
-    setAppState('registration-success');
+    setAppState("registration-success");
   };
 
   const handleContinueToDashboard = () => {
     if (!requiresApproval) {
-      setAppState('dashboard');
+      setAppState("dashboard");
     } else {
-      // Return to login for now (user will be notified via email)
-      setAppState('login');
+      setAppState("login");
     }
   };
 
-  const handleResendVerification = () => {
-    console.log('Resending verification email to:', userEmail);
-  };
+  /* =======================
+     DASHBOARD RENDER
+  ======================= */
 
-  // Dashboard Content Renderer
   const renderDashboardContent = () => {
     switch (activeSection) {
       case "dashboard":
@@ -86,43 +97,45 @@ export default function App() {
     }
   };
 
-  // Render Dashboard
-  if (appState === 'dashboard') {
+  if (appState === "dashboard") {
     return (
       <div className="size-full bg-gray-50">
-        <TopBar onLogout={() => setAppState('login')} />
-        <SecondHeader 
-          activeSection={activeSection} 
-          onSectionChange={setActiveSection} 
+        <TopBar onLogout={() => setAppState("login")} />
+        <SecondHeader
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
         />
         {renderDashboardContent()}
       </div>
     );
   }
 
-  // Render Auth Flow
+  /* =======================
+     AUTH FLOW RENDER
+  ======================= */
+
   return (
     <div className="size-full">
-      {appState === 'login' && (
+      {appState === "login" && (
         <LoginPage onVerificationSent={handleVerificationSent} />
       )}
-      
-      {appState === 'verification' && (
+
+      {appState === "verification" && (
         <VerificationPage
-          email={userEmail}
-          onVerified={handleEmailVerified}
+          identifier={identifier}        // ✅ FIXED
+          onVerified={handleVerified}
           onResend={handleResendVerification}
         />
       )}
-      
-      {appState === 'register' && (
+
+      {appState === "register" && (
         <RegisterPage
-          email={userEmail}
+          identifier={identifier}        // (if needed later)
           onRegistrationComplete={handleRegistrationComplete}
         />
       )}
-      
-      {appState === 'registration-success' && (
+
+      {appState === "registration-success" && (
         <RegistrationSuccess
           requiresApproval={requiresApproval}
           onContinue={handleContinueToDashboard}
