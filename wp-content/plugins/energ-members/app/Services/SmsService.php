@@ -6,6 +6,10 @@ use WP_Error;
 
 class SmsService
 {
+    /**
+     * MSG91 expects "mobiles" in format: <countrycode><number> (no +)
+     * Example India: 919058500798
+     */
     public static function sendOtp($phone, $otp)
     {
         if (
@@ -19,10 +23,17 @@ class SmsService
             );
         }
 
-        // ✅ Normalize phone
-        $phone = preg_replace('/\D/', '', $phone);
+        // ✅ Normalize phone to digits only
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+        $len    = strlen($digits);
 
-        if (strlen($phone) !== 10) {
+        if ($len === 10) {
+            // India local number → prefix country code
+            $mobiles = '91' . $digits;
+        } elseif ($len >= 11 && $len <= 15) {
+            // Already includes country code (e.g., 91XXXXXXXXXX)
+            $mobiles = $digits;
+        } else {
             return new WP_Error(
                 'invalid_phone',
                 'Invalid phone number',
@@ -37,7 +48,7 @@ class SmsService
         $payload = [
             'flow_id' => ENERG_MSG91_TEMPLATE_ID,
             'sender'  => 'ENERGD',
-            'mobiles' => '91' . $phone,
+            'mobiles' => $mobiles,
             'var'     => (string) $otp
         ];
 
@@ -63,6 +74,7 @@ class SmsService
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
+        // Optional: include response for debugging if MSG91 returns errors
         if (!isset($body['type']) || $body['type'] !== 'success') {
             return new WP_Error(
                 'sms_failed',
