@@ -14,9 +14,14 @@ class RequestOtp
     {
         global $wpdb;
 
-        $params     = $request->get_json_params();
-        $input      = trim($params['identifier'] ?? '');
-        $context    = $params['context'] ?? 'login'; // login | register_phone
+        $params  = $request->get_json_params();
+        $input   = trim($params['identifier'] ?? '');
+        $context = isset($params['context']) ? trim((string) $params['context']) : 'login'; // login | register_phone
+
+        // Normalize context to known values
+        if (!in_array($context, ['login', 'register_phone'], true)) {
+            $context = 'login';
+        }
 
         if (!$input) {
             return new WP_Error(
@@ -37,7 +42,7 @@ class RequestOtp
         }
 
         $type       = $detected['type'];   // email | phone
-        $identifier = $detected['value'];
+        $identifier = $detected['value'];  // normalized value (email or digits-only phone)
 
         /** 🚫 Context safety */
         if ($context === 'register_phone' && $type !== 'phone') {
@@ -60,24 +65,41 @@ class RequestOtp
         /** 🔐 Store OTP */
         $otpTable = $wpdb->prefix . 'energ_otps';
 
+        // Ensure only one active OTP per identifier
         $wpdb->delete($otpTable, ['identifier' => $identifier]);
 
-        $wpdb->insert($otpTable, [
+        $inserted = $wpdb->insert($otpTable, [
             'identifier' => $identifier,
             'context'    => $context,
-            'otp_hash'   => password_hash((string)$otp, PASSWORD_DEFAULT),
+            'otp_hash'   => password_hash((string) $otp, PASSWORD_DEFAULT),
             'attempts'   => 0,
-            'expires_at'=> gmdate('Y-m-d H:i:s', time() + 300),
+            'expires_at' => gmdate('Y-m-d H:i:s', time() + 300), // 5 minutes
         ]);
+
+        if ($inserted === false) {
+            return new WP_Error(
+                'db_error',
+                'Could not create OTP',
+                ['status' => 500]
+            );
+        }
 
         /** 📤 Send OTP */
         if ($type === 'email') {
             $sent = Mailer::sendOtp($identifier, $otp);
         } else {
-            $sent = SmsService::sendOtp($identifier, $otp);
+            // Most SMS providers require E.164 format: +<countrycode><number>
+            $sendTo = $identifier;
+            if ($sendTo !== '' && $sendTo[0] !== '+') {
+                $sendTo = '+' . $sendTo;
+            }
+
+            $sent = SmsService::sendOtp($sendTo, $otp);
         }
 
+        // If sending failed, cleanup stored OTP to avoid stale records
         if (is_wp_error($sent)) {
+            $wpdb->delete($otpTable, ['identifier' => $identifier]);
             return $sent;
         }
 
@@ -85,7 +107,7 @@ class RequestOtp
             'success' => true,
             'message' => 'OTP sent successfully',
             'type'    => $type,
-            'context' => $context
+            'context' => $context,
         ];
     }
 }
