@@ -22,7 +22,7 @@ class Identifier
             ];
         }
 
-        // 📱 Phone: digits only, allow 8–15 digits (E.164 max 15)
+        // 📱 Phone: digits only, allow 8–15 digits (supports country code)
         $phone = preg_replace('/\D+/', '', $input);
         $len   = strlen($phone);
 
