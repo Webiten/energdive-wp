@@ -59,9 +59,8 @@ export default function App() {
   };
 
   const handleRegistrationComplete = () => {
-    const needsApproval = Math.random() > 0.5;
-    setRequiresApproval(needsApproval);
-    setAppState("registration-success");
+    setRequiresApproval(false);      // safety
+    setAppState("dashboard");        // ✅ Direct to dashboard
   };
 
   const handleContinueToDashboard = () => {
