@@ -18,20 +18,18 @@ class CompleteRegistration
 
         $params = $request->get_json_params();
 
+        // Required fields (match your UI: state/sub_community/sub_industry are optional)
         $required = [
             'first_name',
             'last_name',
             'country',
-            'state',
             'community',
-            'sub_community',
             'industry',
-            'sub_industry',
             'privacy_accepted'
         ];
 
         foreach ($required as $field) {
-            if (empty($params[$field])) {
+            if (!isset($params[$field]) || $params[$field] === '' || $params[$field] === null) {
                 return new WP_Error(
                     'missing_field',
                     "Missing field: {$field}",
@@ -48,6 +46,20 @@ class CompleteRegistration
             );
         }
 
+        // Optional fields (safe defaults)
+        $state        = isset($params['state']) ? sanitize_text_field($params['state']) : '';
+        $subCommunity = isset($params['sub_community']) ? sanitize_text_field($params['sub_community']) : '';
+        $subIndustry  = isset($params['sub_industry']) ? sanitize_text_field($params['sub_industry']) : '';
+
+        // Validate community/sub-community only if sub_community is provided
+        if ($subCommunity !== '' && !CommunityValidator::isValid($params['community'], $subCommunity)) {
+            return new WP_Error(
+                'invalid_community',
+                'Invalid community or sub-community',
+                ['status' => 400]
+            );
+        }
+
         $table = $wpdb->prefix . 'energ_members';
 
         $updated = $wpdb->update(
@@ -56,11 +68,11 @@ class CompleteRegistration
                 'first_name'    => sanitize_text_field($params['first_name']),
                 'last_name'     => sanitize_text_field($params['last_name']),
                 'country'       => sanitize_text_field($params['country']),
-                'state'         => sanitize_text_field($params['state']),
+                'state'         => $state,
                 'community'     => sanitize_text_field($params['community']),
-                'sub_community' => sanitize_text_field($params['sub_community']),
+                'sub_community' => $subCommunity,
                 'industry'      => sanitize_text_field($params['industry']),
-                'sub_industry'  => sanitize_text_field($params['sub_industry']),
+                'sub_industry'  => $subIndustry,
                 'status'        => 'active',
             ],
             [
@@ -76,22 +88,19 @@ class CompleteRegistration
             );
         }
 
+        // If no row matched, update returns 0 (not false). That likely means user row doesn't exist.
+        // In that case, return a clean error.
+        if ($updated === 0) {
+            return new WP_Error(
+                'member_not_found',
+                'Member record not found for this user',
+                ['status' => 404]
+            );
+        }
+
         return [
             'success' => true,
             'message' => 'Registration completed successfully'
         ];
-
-        if (
-            !CommunityValidator::isValid(
-                $params['community'],
-                $params['sub_community']
-            )
-        ) {
-            return new \WP_Error(
-                'invalid_community',
-                'Invalid community or sub-community',
-                ['status' => 400]
-            );
-        }
     }
 }

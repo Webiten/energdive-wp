@@ -24,7 +24,7 @@ class VerifyOtp
             );
         }
 
-        /** 🔍 Detect identifier */
+        /** 🔍 Detect identifier (email | phone) */
         $detected = Identifier::detect($input);
         if (!$detected) {
             return new WP_Error(
@@ -69,7 +69,7 @@ class VerifyOtp
         if (!password_verify($otp, $row->otp_hash)) {
             $wpdb->update(
                 $otpTable,
-                ['attempts' => $row->attempts + 1],
+                ['attempts' => (int)$row->attempts + 1],
                 ['id' => $row->id]
             );
 
@@ -86,25 +86,32 @@ class VerifyOtp
         /** 👤 Member table */
         $membersTable = $wpdb->prefix . 'energ_members';
 
-        $member = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT * FROM {$membersTable} WHERE email = %s OR phone = %s LIMIT 1",
-                $identifier,
-                $identifier
-            )
-        );
+        /**
+         * IMPORTANT:
+         * - Email flow should match by email only
+         * - Phone flow should match by phone only
+         * This avoids accidentally matching email to phone column, etc.
+         */
+        if ($type === 'email') {
+            $member = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$membersTable} WHERE email = %s LIMIT 1",
+                    $identifier
+                )
+            );
+        } else {
+            $member = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$membersTable} WHERE phone = %s LIMIT 1",
+                    $identifier
+                )
+            );
+        }
 
         /** 📱 PHONE VERIFICATION (REGISTER FLOW) */
         if ($row->context === 'register_phone') {
-
-            if ($member) {
-                $wpdb->update(
-                    $membersTable,
-                    ['phone_verified_at' => current_time('mysql')],
-                    ['id' => $member->id]
-                );
-            }
-
+            // Your current wp_energ_members schema does NOT contain phone_verified_at.
+            // So we only confirm OTP verification here (and keep response stable).
             return [
                 'success' => true,
                 'message' => 'Phone number verified successfully'
@@ -114,15 +121,35 @@ class VerifyOtp
         /** 📧 EMAIL LOGIN FLOW */
         $isNewUser = false;
 
+        // If no member record, create it as pending onboarding
         if (!$member) {
             $wpdb->insert(
                 $membersTable,
                 [
                     $type === 'email' ? 'email' : 'phone' => $identifier,
                     'signup_mode' => 'otp',
+                    'status'      => 'pending',
                     'created_at'  => current_time('mysql'),
                 ]
             );
+
+            $isNewUser = true;
+            $member = $wpdb->get_row(
+                $wpdb->prepare(
+                    $type === 'email'
+                        ? "SELECT * FROM {$membersTable} WHERE email = %s LIMIT 1"
+                        : "SELECT * FROM {$membersTable} WHERE phone = %s LIMIT 1",
+                    $identifier
+                )
+            );
+        }
+
+        /**
+         * CRITICAL FIX:
+         * Even if member exists, if profile is NOT active, user must go to RegisterPage.
+         * So treat pending/blocked as "new user" for routing purposes.
+         */
+        if ($member && isset($member->status) && $member->status !== 'active') {
             $isNewUser = true;
         }
 

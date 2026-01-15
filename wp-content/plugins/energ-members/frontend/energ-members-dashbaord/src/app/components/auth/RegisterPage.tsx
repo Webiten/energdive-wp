@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw } from "lucide-react";
+import { AuthAPI } from "@/app/lib/api";
 
 interface RegisterPageProps {
   email: string;
@@ -31,66 +32,320 @@ const countryCodes = [
   { value: "+65", label: "+65 (Singapore)", flag: "🇸🇬" },
 ];
 
-// Mock data for dropdowns
+// ===== REAL Communities/Sub-Communities =====
 const communities = [
-  { value: "energy-producers", label: "Energy Producers" },
-  { value: "utilities", label: "Utilities & Grid Operators" },
-  { value: "industrial", label: "Industrial & Commercial" },
-  { value: "consultancy", label: "Consultancy & Advisory" },
-  { value: "policy", label: "Policy & Government" },
-  { value: "research", label: "Research & Academia" },
-  { value: "finance", label: "Finance & Investment" },
+  { value: "oil-gas", label: "Oil & Gas" },
+  { value: "power-generation", label: "Power Generation" },
+  { value: "renewables", label: "Renewables" },
+  { value: "transmission", label: "Transmission" },
+  { value: "distribution", label: "Distribution" },
+  { value: "electricity-markets", label: "Electricity Markets" },
+  { value: "new-energies", label: "New Energies" },
+  { value: "energy-storage-systems", label: "Energy Storage Systems" },
+  { value: "sustainability", label: "Sustainability" },
 ];
 
 const subCommunityMap: Record<string, Array<{ value: string; label: string }>> = {
-  "energy-producers": [
-    { value: "renewable", label: "Renewable Energy Developers" },
-    { value: "oil-gas", label: "Oil & Gas Operators" },
-    { value: "nuclear", label: "Nuclear Power Operators" },
+  "oil-gas": [
+    { value: "upstream", label: "Upstream" },
+    { value: "pipelines", label: "Pipelines" },
+    { value: "refining", label: "Refining" },
+    { value: "petrochemicals", label: "Petrochemicals" },
+    { value: "cgd", label: "CGD" },
+    { value: "lpg", label: "LPG" },
+    { value: "retail", label: "Retail" },
+    { value: "oil-markets", label: "Oil Markets" },
   ],
-  "utilities": [
-    { value: "distribution", label: "Distribution Companies" },
-    { value: "transmission", label: "Transmission Operators" },
-    { value: "retail", label: "Retail Energy Providers" },
+  "power-generation": [
+    { value: "thermal", label: "Thermal" },
+    { value: "nuclear", label: "Nuclear" },
   ],
-  "consultancy": [
-    { value: "strategy", label: "Strategy Consulting" },
-    { value: "engineering", label: "Engineering Services" },
-    { value: "sustainability", label: "Sustainability Advisors" },
+  renewables: [
+    { value: "solar", label: "Solar" },
+    { value: "wind", label: "Wind" },
+    { value: "hydro", label: "Hydro" },
+    { value: "biopower", label: "Biopower" },
+    { value: "cogeneration", label: "Cogeneration" },
+    { value: "waste-to-energy", label: "Waste-to-Energy" },
+  ],
+  transmission: [{ value: "smart-grid", label: "Smart Grid" }],
+  distribution: [
+    { value: "smart-meters-ami", label: "Smart Meters & AMI" },
+    { value: "ev-charging", label: "EV Charging" },
+    { value: "data-centres", label: "Data Centres" },
+    { value: "smart-cities", label: "Smart Cities" },
+    { value: "railways-metros", label: "Railways & Metros" },
+  ],
+  "electricity-markets": [
+    { value: "power-markets", label: "Power Markets" },
+    { value: "carbon-markets", label: "Carbon Markets" },
+    { value: "rco", label: "RCO" },
+  ],
+  "new-energies": [
+    { value: "green-hydrogen", label: "Green Hydrogen" },
+    { value: "e-fuels", label: "E-Fuels" },
+  ],
+  "energy-storage-systems": [
+    { value: "bess", label: "BESS" },
+    { value: "pumped-hydro", label: "Pumped Hydro" },
+    { value: "caes", label: "CAES" },
+    { value: "thermal", label: "Thermal" },
+    { value: "flywheel", label: "Flywheel" },
+  ],
+  sustainability: [
+    { value: "energy-efficiency", label: "Energy Efficiency" },
+    { value: "occupational-health", label: "Occupational Health" },
+    { value: "industrial-process-safety", label: "Industrial & Process Safety" },
+    { value: "environment", label: "Environment" },
   ],
 };
 
+// ===== REAL Industries =====
 const industries = [
-  { value: "power-generation", label: "Power Generation" },
+  { value: "agriculture", label: "Agriculture" },
+  { value: "automobile", label: "Automobile" },
+  { value: "aviation", label: "Aviation" },
+  { value: "battery-storage", label: "Battery & Storage" },
+  { value: "beauty-wellness", label: "Beauty & Wellness" },
+  { value: "bfsi", label: "BFSI" },
+  { value: "chemical", label: "Chemical" },
+  { value: "construction-material", label: "Construction Material" },
+  { value: "consulting", label: "Consulting" },
+  { value: "consumer-durables", label: "Consumer Durables" },
+  { value: "distribution", label: "Distribution" },
+  { value: "e-commerce", label: "E-Commerce" },
+  { value: "electrical", label: "Electrical" },
+  { value: "electricity-markets", label: "Electricity Markets" },
+  { value: "energy-efficiency-management", label: "Energy Efficiency Management" },
+  { value: "engineering", label: "Engineering" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "environment", label: "Environment" },
+  { value: "ev-charging", label: "EV Charging" },
+  { value: "exporters-importers", label: "Exporters-Importers" },
+  { value: "facility-management", label: "Facility Management" },
+  { value: "fmcg", label: "FMCG" },
+  { value: "gems", label: "Gems" },
+  { value: "government", label: "Government" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "hotels", label: "Hotels" },
+  { value: "it", label: "Information Technology (IT)" },
+  { value: "infrastructure", label: "Infrastructure" },
+  { value: "institutes-educational", label: "Institutes - Educational" },
+  { value: "iron-steel", label: "Iron & Steel" },
+  { value: "ites", label: "ITES" },
+  { value: "leather", label: "Leather" },
+  { value: "lighting", label: "Lighting" },
+  { value: "logistics", label: "Logistics" },
+  { value: "media", label: "Media" },
+  { value: "mining", label: "Mining" },
+  { value: "ngos", label: "NGOs" },
+  { value: "office-automation", label: "Office Automation" },
   { value: "oil-gas", label: "Oil & Gas" },
-  { value: "renewable", label: "Renewable Energy" },
-  { value: "utilities", label: "Utilities" },
-  { value: "energy-services", label: "Energy Services" },
+  { value: "pharmaceuticals", label: "Pharmaceuticals" },
+  { value: "power", label: "Power" },
+  { value: "publishing", label: "Publishing" },
+  { value: "railways", label: "Railways" },
+  { value: "renewable", label: "Renewable" },
+  { value: "retail", label: "Retail" },
+  { value: "shipping", label: "Shipping" },
+  { value: "sports", label: "Sports" },
+  { value: "telecommunication", label: "Telecommunication" },
+  { value: "textile", label: "Textile" },
+  { value: "tourism", label: "Tourism" },
+  { value: "transmission", label: "Transmission" },
+  { value: "water-utility", label: "Water Utility" },
+  { value: "wood", label: "Wood" },
 ];
 
+// Sub-Industry mapping (expand when you provide a full breakdown)
 const subIndustryMap: Record<string, Array<{ value: string; label: string }>> = {
+  "oil-gas": [
+    { value: "upstream", label: "Upstream" },
+    { value: "midstream", label: "Midstream" },
+    { value: "downstream", label: "Downstream" },
+    { value: "refining", label: "Refining" },
+    { value: "petrochemicals", label: "Petrochemicals" },
+    { value: "pipelines", label: "Pipelines" },
+    { value: "cgd", label: "CGD" },
+  ],
+  power: [
+    { value: "generation", label: "Generation" },
+    { value: "transmission", label: "Transmission" },
+    { value: "distribution", label: "Distribution" },
+    { value: "trading", label: "Trading" },
+  ],
+  renewable: [
+    { value: "solar", label: "Solar" },
+    { value: "wind", label: "Wind" },
+    { value: "hydro", label: "Hydro" },
+    { value: "biopower", label: "Biopower" },
+  ],
+  "battery-storage": [
+    { value: "bess", label: "BESS" },
+    { value: "pumped-hydro", label: "Pumped Hydro" },
+    { value: "thermal-storage", label: "Thermal Storage" },
+  ],
+  "electricity-markets": [
+    { value: "power-markets", label: "Power Markets" },
+    { value: "carbon-markets", label: "Carbon Markets" },
+    { value: "rco", label: "RCO" },
+  ],
+  transmission: [{ value: "smart-grid", label: "Smart Grid" }],
+  "ev-charging": [
+    { value: "ac-charging", label: "AC Charging" },
+    { value: "dc-fast-charging", label: "DC Fast Charging" },
+    { value: "charging-infra", label: "Charging Infrastructure" },
+  ],
+  environment: [
+    { value: "compliance", label: "Compliance" },
+    { value: "monitoring", label: "Monitoring" },
+    { value: "esg", label: "ESG" },
+  ],
+};
+
+// Community -> allowed industries mapping (filters Industry based on selected Community)
+const communityIndustryMap: Record<string, string[]> = {
+  "oil-gas": [
+    "oil-gas",
+    "chemical",
+    "engineering",
+    "logistics",
+    "mining",
+    "infrastructure",
+    "government",
+    "consulting",
+    "distribution",
+    "shipping",
+    "railways",
+    "telecommunication",
+    "it",
+    "environment",
+    "construction-material",
+    "exporters-importers",
+  ],
   "power-generation": [
-    { value: "thermal", label: "Thermal Power" },
-    { value: "nuclear", label: "Nuclear Power" },
-    { value: "hydro", label: "Hydroelectric" },
+    "power",
+    "electrical",
+    "engineering",
+    "construction-material",
+    "infrastructure",
+    "government",
+    "consulting",
+    "environment",
+    "it",
+    "logistics",
+    "iron-steel",
+    "mining",
+    "consumer-durables",
   ],
-  "renewable": [
-    { value: "solar", label: "Solar Energy" },
-    { value: "wind", label: "Wind Energy" },
-    { value: "hydrogen", label: "Hydrogen" },
+  renewables: [
+    "renewable",
+    "battery-storage",
+    "electrical",
+    "engineering",
+    "construction-material",
+    "infrastructure",
+    "government",
+    "consulting",
+    "environment",
+    "it",
+    "logistics",
+    "mining",
+    "chemical",
+    "ev-charging",
+  ],
+  transmission: [
+    "transmission",
+    "electrical",
+    "engineering",
+    "infrastructure",
+    "government",
+    "consulting",
+    "environment",
+    "it",
+    "telecommunication",
+    "construction-material",
+    "iron-steel",
+    "logistics",
+  ],
+  distribution: [
+    "distribution",
+    "electrical",
+    "engineering",
+    "it",
+    "telecommunication",
+    "infrastructure",
+    "government",
+    "consulting",
+    "environment",
+    "consumer-durables",
+    "office-automation",
+    "retail",
+    "ev-charging",
+    "logistics",
+  ],
+  "electricity-markets": [
+    "electricity-markets",
+    "bfsi",
+    "consulting",
+    "government",
+    "it",
+    "telecommunication",
+    "publishing",
+    "media",
+    "power",
+    "renewable",
+  ],
+  "new-energies": [
+    "battery-storage",
+    "renewable",
+    "chemical",
+    "engineering",
+    "electrical",
+    "oil-gas",
+    "power",
+    "consulting",
+    "government",
+    "it",
+    "environment",
+    "infrastructure",
+    "logistics",
+  ],
+  "energy-storage-systems": [
+    "battery-storage",
+    "power",
+    "renewable",
+    "electrical",
+    "engineering",
+    "chemical",
+    "consulting",
+    "government",
+    "it",
+    "environment",
+    "infrastructure",
+    "logistics",
+  ],
+  sustainability: [
+    "environment",
+    "energy-efficiency-management",
+    "consulting",
+    "government",
+    "it",
+    "facility-management",
+    "engineering",
+    "construction-material",
+    "power",
+    "renewable",
+    "chemical",
+    "fmcg",
+    "healthcare",
+    "mining",
+    "iron-steel",
+    "textile",
   ],
 };
 
-const areaOfIndustryMap: Record<string, Array<{ value: string; label: string }>> = {
-  "renewable": [
-    { value: "project-development", label: "Project Development" },
-    { value: "operations", label: "Operations & Maintenance" },
-    { value: "policy-regulation", label: "Policy & Regulation" },
-    { value: "market-analysis", label: "Market Analysis" },
-    { value: "technology", label: "Technology & Innovation" },
-  ],
-};
-
+// Countries dropdown (keep as-is unless you share full list)
 const countries = [
   { value: "usa", label: "United States" },
   { value: "uk", label: "United Kingdom" },
@@ -98,6 +353,13 @@ const countries = [
   { value: "germany", label: "Germany" },
   { value: "france", label: "France" },
 ];
+
+function normalizePhone(countryCode: string, mobile: string) {
+  const cleaned = (mobile || "").replace(/[^\d]/g, "");
+  const cc = (countryCode || "").replace(/[^\d+]/g, "");
+  const ccDigits = cc.startsWith("+") ? cc : `+${cc}`;
+  return `${ccDigits}${cleaned}`;
+}
 
 export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -116,11 +378,18 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   });
 
   // OTP verification state
-  const [otpState, setOtpState] = useState<'idle' | 'sent' | 'verifying' | 'verified' | 'error'>('idle');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [otpError, setOtpError] = useState('');
+  const [otpState, setOtpState] = useState<"idle" | "sent" | "verifying" | "verified" | "error">("idle");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [mobileChanged, setMobileChanged] = useState(false);
+
+  // Filter industries based on selected Community
+  const filteredIndustries = (() => {
+    const allowed = communityIndustryMap[formData.community];
+    if (!formData.community || !allowed?.length) return industries;
+    return industries.filter((i) => allowed.includes(i.value));
+  })();
 
   // Timer effect for resend countdown
   useEffect(() => {
@@ -132,85 +401,103 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
   const handleMobileChange = (value: string) => {
     handleInputChange("mobile", value);
-    if (otpState === 'verified') {
-      setOtpState('idle');
-      setOtp(['', '', '', '', '', '']);
+    if (otpState === "verified") {
+      setOtpState("idle");
+      setOtp(["", "", "", "", "", ""]);
       setMobileChanged(true);
     }
   };
 
-  const handleSendOTP = () => {
-    if (!formData.mobile || formData.mobile.length < 10) {
-      setOtpError('Please enter a valid mobile number');
+  const handleSendOTP = async () => {
+    if (!formData.mobile || formData.mobile.replace(/[^\d]/g, "").length < 8) {
+      setOtpError("Please enter a valid mobile number");
       return;
     }
-    
-    setOtpState('sent');
+
+    setOtpState("sent");
     setResendTimer(60);
-    setOtpError('');
+    setOtpError("");
     setMobileChanged(false);
-    
-    // Simulate sending OTP
-    console.log(`Sending OTP to ${formData.countryCode} ${formData.mobile}`);
+
+    try {
+      const phoneIdentifier = normalizePhone(formData.countryCode, formData.mobile);
+      await AuthAPI.requestOtp(phoneIdentifier, "register_phone");
+    } catch (err: any) {
+      setOtpState("error");
+      setOtpError(err?.message || err?.data?.message || "Failed to send OTP. Please try again.");
+      setResendTimer(0);
+    }
   };
 
-  const handleResendOTP = () => {
+  const handleResendOTP = async () => {
     if (resendTimer > 0) return;
-    handleSendOTP();
+    await handleSendOTP();
   };
 
   const handleOTPChange = (index: number, value: string) => {
-    if (value.length > 1) return; // Only allow single digit
-    
+    if (value.length > 1) return;
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    setOtpError('');
-    
-    // Auto-focus next input
+    setOtpError("");
+
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
     }
-    
-    // Auto-verify when all 6 digits are entered
-    if (newOtp.every(digit => digit !== '') && index === 5) {
-      verifyOTP(newOtp.join(''));
+
+    if (newOtp.every((digit) => digit !== "") && index === 5) {
+      void verifyOTP(newOtp.join(""));
     }
   };
 
   const handleOTPKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       const prevInput = document.getElementById(`otp-${index - 1}`);
       prevInput?.focus();
     }
   };
 
-  const verifyOTP = (otpValue: string) => {
-    setOtpState('verifying');
-    
-    // Simulate OTP verification (in real app, this would be an API call)
-    setTimeout(() => {
-      // For demo purposes, accept any 6-digit code
-      if (otpValue.length === 6) {
-        setOtpState('verified');
-        setOtpError('');
-      } else {
-        setOtpState('error');
-        setOtpError('Invalid OTP. Please try again.');
-        setTimeout(() => setOtpState('sent'), 2000);
+  const verifyOTP = async (otpValue: string) => {
+    setOtpState("verifying");
+
+    try {
+      const phoneIdentifier = normalizePhone(formData.countryCode, formData.mobile);
+      const res = await AuthAPI.verifyOtp(phoneIdentifier, otpValue);
+
+      // Do not override existing (email) session tokens here
+      if (res?.success === false) {
+        throw new Error(res?.message || "Invalid OTP. Please try again.");
       }
-    }, 1500);
+
+      setOtpState("verified");
+      setOtpError("");
+    } catch (err: any) {
+      const code = err?.code || err?.data?.code;
+      const message = err?.message || err?.data?.message || "Invalid OTP. Please try again.";
+
+      setOtpState("error");
+      setOtpError(message);
+
+      if (code === "otp_expired") {
+        setTimeout(() => setOtpState("sent"), 500);
+      } else {
+        setTimeout(() => setOtpState("sent"), 2000);
+      }
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      
+
       // Reset dependent fields
       if (field === "community") {
         updated.subCommunity = "";
         updated.areaOfIndustry = "";
+        updated.industry = "";
+        updated.subIndustry = "";
       }
       if (field === "industry") {
         updated.subIndustry = "";
@@ -218,31 +505,58 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
       if (field === "subCommunity") {
         updated.areaOfIndustry = "";
       }
-      
+
       return updated;
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if OTP is verified
-    if (otpState !== 'verified') {
-      setOtpError('Please verify your mobile number before submitting');
+
+    if (otpState !== "verified") {
+      setOtpError("Please verify your mobile number before submitting");
       return;
     }
-    
+
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    setOtpError("");
+
+    try {
+      const phoneIdentifier = normalizePhone(formData.countryCode, formData.mobile);
+
+      await AuthAPI.completeRegistration({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: email,
+        phone: phoneIdentifier,
+        country: formData.country,
+        state: formData.state,
+        community: formData.community,
+        sub_community: formData.subCommunity,
+        industry: formData.industry,
+        sub_industry: formData.subIndustry,
+        area_of_industry: formData.areaOfIndustry,
+        privacy_accepted: true,
+      });
+
+      localStorage.removeItem("onboarding_required");
+
       setIsLoading(false);
       onRegistrationComplete();
-    }, 2000);
+    } catch (err: any) {
+      setIsLoading(false);
+      setOtpError(err?.message || err?.data?.message || "Registration failed. Please try again.");
+    }
   };
 
-  const isFormValid = formData.firstName && formData.lastName && formData.mobile && 
-                       formData.country && formData.community && formData.industry && otpState === 'verified';
+  const isFormValid =
+    formData.firstName &&
+    formData.lastName &&
+    formData.mobile &&
+    formData.country &&
+    formData.community &&
+    formData.industry &&
+    otpState === "verified";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-gray-50 py-12 px-6">
@@ -274,7 +588,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
                   Personal Information
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name *</Label>
@@ -286,7 +600,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name *</Label>
                     <Input
@@ -301,32 +615,26 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    disabled
-                    className="bg-gray-50"
-                  />
+                  <Input id="email" type="email" value={email} disabled className="bg-gray-50" />
                   <p className="text-xs text-gray-500">This email has been verified and cannot be changed</p>
                 </div>
 
                 {/* Mobile Number with OTP Verification */}
                 <div className="space-y-3">
                   <Label htmlFor="mobile">Mobile Number *</Label>
-                  
+
                   <div className="flex gap-2">
                     {/* Country Code Selector */}
-                    <Select 
-                      value={formData.countryCode} 
+                    <Select
+                      value={formData.countryCode}
                       onValueChange={(value) => handleInputChange("countryCode", value)}
-                      disabled={otpState === 'verified'}
+                      disabled={otpState === "verified"}
                     >
                       <SelectTrigger className="w-[140px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {countryCodes.map(code => (
+                        {countryCodes.map((code) => (
                           <SelectItem key={code.value} value={code.value}>
                             <span className="flex items-center gap-2">
                               <span>{code.flag}</span>
@@ -345,22 +653,22 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         value={formData.mobile}
                         onChange={(e) => handleMobileChange(e.target.value)}
                         placeholder="555 123 4567"
-                        disabled={otpState === 'verified'}
-                        className={otpState === 'verified' ? 'bg-gray-50' : ''}
+                        disabled={otpState === "verified"}
+                        className={otpState === "verified" ? "bg-gray-50" : ""}
                         required
                       />
-                      
+
                       {/* Send/Resend OTP Button */}
-                      {otpState === 'idle' || otpState === 'error' ? (
+                      {otpState === "idle" || otpState === "error" ? (
                         <Button
                           type="button"
-                          onClick={handleSendOTP}
+                          onClick={() => void handleSendOTP()}
                           className="bg-emerald-600 hover:bg-emerald-700 whitespace-nowrap"
                         >
                           <Phone className="w-4 h-4 mr-2" />
                           Send OTP
                         </Button>
-                      ) : otpState === 'verified' ? (
+                      ) : otpState === "verified" ? (
                         <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-md">
                           <CheckCircle className="w-4 h-4 text-green-600" />
                           <span className="text-sm text-green-700 font-medium">Verified</span>
@@ -370,15 +678,15 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   </div>
 
                   <p className="text-xs text-gray-500">
-                    {otpState === 'idle' 
-                      ? 'We\'ll send you a 6-digit code to verify your number and ensure community trust'
-                      : otpState === 'verified'
-                      ? '✓ Mobile number verified successfully'
-                      : ''}
+                    {otpState === "idle"
+                      ? "We'll send you a 6-digit code to verify your number and ensure community trust"
+                      : otpState === "verified"
+                      ? "✓ Mobile number verified successfully"
+                      : ""}
                   </p>
 
                   {/* OTP Input Section */}
-                  {(otpState === 'sent' || otpState === 'verifying' || otpState === 'error') && (
+                  {(otpState === "sent" || otpState === "verifying" || otpState === "error") && (
                     <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
@@ -387,9 +695,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                             We sent a 6-digit code to {formData.countryCode} {formData.mobile}
                           </p>
                         </div>
-                        {otpState === 'verifying' && (
-                          <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
-                        )}
+                        {otpState === "verifying" && <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />}
                       </div>
 
                       {/* OTP Input Fields */}
@@ -402,12 +708,12 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                             inputMode="numeric"
                             maxLength={1}
                             value={digit}
-                            onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ''))}
+                            onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ""))}
                             onKeyDown={(e) => handleOTPKeyDown(index, e)}
                             className={`w-12 h-12 text-center text-lg font-semibold ${
-                              otpState === 'error' ? 'border-red-500' : ''
+                              otpState === "error" ? "border-red-500" : ""
                             }`}
-                            disabled={otpState === 'verifying'}
+                            disabled={otpState === "verifying"}
                           />
                         ))}
                       </div>
@@ -431,7 +737,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={handleResendOTP}
+                            onClick={() => void handleResendOTP()}
                             className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                           >
                             <RefreshCw className="w-4 h-4 mr-2" />
@@ -451,7 +757,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
-                        {countries.map(country => (
+                        {countries.map((country) => (
                           <SelectItem key={country.value} value={country.value}>
                             {country.label}
                           </SelectItem>
@@ -486,7 +792,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         <SelectValue placeholder="Select community" />
                       </SelectTrigger>
                       <SelectContent>
-                        {communities.map(comm => (
+                        {communities.map((comm) => (
                           <SelectItem key={comm.value} value={comm.value}>
                             {comm.label}
                           </SelectItem>
@@ -497,8 +803,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
                   <div className="space-y-2">
                     <Label htmlFor="subCommunity">Sub-Community</Label>
-                    <Select 
-                      value={formData.subCommunity} 
+                    <Select
+                      value={formData.subCommunity}
                       onValueChange={(value) => handleInputChange("subCommunity", value)}
                       disabled={!formData.community}
                     >
@@ -506,11 +812,12 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         <SelectValue placeholder={formData.community ? "Select sub-community" : "Select community first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {formData.community && subCommunityMap[formData.community]?.map(sub => (
-                          <SelectItem key={sub.value} value={sub.value}>
-                            {sub.label}
-                          </SelectItem>
-                        ))}
+                        {formData.community &&
+                          subCommunityMap[formData.community]?.map((sub) => (
+                            <SelectItem key={sub.value} value={sub.value}>
+                              {sub.label}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -519,12 +826,16 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="industry">Industry *</Label>
-                    <Select value={formData.industry} onValueChange={(value) => handleInputChange("industry", value)}>
+                    <Select
+                      value={formData.industry}
+                      onValueChange={(value) => handleInputChange("industry", value)}
+                      disabled={!formData.community}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select industry" />
+                        <SelectValue placeholder={formData.community ? "Select industry" : "Select community first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {industries.map(ind => (
+                        {filteredIndustries.map((ind) => (
                           <SelectItem key={ind.value} value={ind.value}>
                             {ind.label}
                           </SelectItem>
@@ -535,20 +846,29 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
                   <div className="space-y-2">
                     <Label htmlFor="subIndustry">Sub-Industry</Label>
-                    <Select 
-                      value={formData.subIndustry} 
+                    <Select
+                      value={formData.subIndustry}
                       onValueChange={(value) => handleInputChange("subIndustry", value)}
-                      disabled={!formData.industry}
+                      disabled={!formData.industry || !(subIndustryMap[formData.industry]?.length)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={formData.industry ? "Select sub-industry" : "Select industry first"} />
+                        <SelectValue
+                          placeholder={
+                            !formData.industry
+                              ? "Select industry first"
+                              : subIndustryMap[formData.industry]?.length
+                              ? "Select sub-industry"
+                              : "No sub-industries available"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {formData.industry && subIndustryMap[formData.industry]?.map(sub => (
-                          <SelectItem key={sub.value} value={sub.value}>
-                            {sub.label}
-                          </SelectItem>
-                        ))}
+                        {formData.industry &&
+                          subIndustryMap[formData.industry]?.map((sub) => (
+                            <SelectItem key={sub.value} value={sub.value}>
+                              {sub.label}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -556,21 +876,15 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
                 <div className="space-y-2">
                   <Label htmlFor="areaOfIndustry">Area of Industry</Label>
-                  <Select 
-                    value={formData.areaOfIndustry} 
+                  <Select
+                    value={formData.areaOfIndustry}
                     onValueChange={(value) => handleInputChange("areaOfIndustry", value)}
                     disabled={!formData.subCommunity}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={formData.subCommunity ? "Select area" : "Select sub-community first"} />
                     </SelectTrigger>
-                    <SelectContent>
-                      {formData.subCommunity && areaOfIndustryMap[formData.subCommunity]?.map(area => (
-                        <SelectItem key={area.value} value={area.value}>
-                          {area.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectContent>{/* Keep UI intact; mapping can be added later */}</SelectContent>
                   </Select>
                   <p className="text-xs text-gray-500">
                     This will personalize your dashboard intelligence modules
@@ -585,7 +899,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
               </div>
 
               {/* Registration Requirement Notice */}
-              {otpState !== 'verified' && formData.mobile && (
+              {otpState !== "verified" && formData.mobile && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -599,8 +913,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 </div>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-emerald-600 hover:bg-emerald-700"
                 disabled={isLoading || !isFormValid}
               >
