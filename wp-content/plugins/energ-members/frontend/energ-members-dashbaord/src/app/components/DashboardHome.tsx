@@ -1,7 +1,24 @@
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { TrendingUp, Users, FileText, MessageSquare, Award } from "lucide-react";
+import { TrendingUp, Users, FileText, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+
+type MeResponse = {
+  id?: number | string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+const ME_GET_URL = "/wp-json/wp/v2/users/me?context=edit";
+
+function getDisplayName(firstName?: string, lastName?: string, email?: string) {
+  const name = `${firstName ?? ""} ${lastName ?? ""}`.trim();
+  if (name) return name;
+  if (email) return email.split("@")[0];
+  return "there";
+}
 
 const mockArticles = [
   {
@@ -11,7 +28,8 @@ const mockArticles = [
     author: "Dr. Sarah Mitchell",
     date: "Jan 8, 2026",
     readTime: "8 min read",
-    excerpt: "An in-depth analysis of the latest regulatory changes affecting renewable energy adoption across global markets."
+    excerpt:
+      "An in-depth analysis of the latest regulatory changes affecting renewable energy adoption across global markets.",
   },
   {
     id: 2,
@@ -20,7 +38,8 @@ const mockArticles = [
     author: "James Chen",
     date: "Jan 7, 2026",
     readTime: "12 min read",
-    excerpt: "Comprehensive market overview of emerging battery storage solutions and their impact on grid infrastructure."
+    excerpt:
+      "Comprehensive market overview of emerging battery storage solutions and their impact on grid infrastructure.",
   },
   {
     id: 3,
@@ -29,8 +48,9 @@ const mockArticles = [
     author: "Maria Rodriguez",
     date: "Jan 6, 2026",
     readTime: "10 min read",
-    excerpt: "Expert insights on carbon credit markets and projected pricing trends through 2027."
-  }
+    excerpt:
+      "Expert insights on carbon credit markets and projected pricing trends through 2027.",
+  },
 ];
 
 const mockTrending = [
@@ -47,7 +67,7 @@ const mockCommunity = [
     contribution: "Shared insights on offshore wind farm regulations",
     timestamp: "2 hours ago",
     discussionTitle: "Grid flexibility: How are different markets solving intermittency?",
-    replies: 12
+    replies: 12,
   },
   {
     contributor: "Michael Zhang",
@@ -55,7 +75,7 @@ const mockCommunity = [
     contribution: "Published analysis on hydrogen infrastructure development",
     timestamp: "5 hours ago",
     discussionTitle: "Green hydrogen adoption timeline in heavy industry",
-    replies: 8
+    replies: 8,
   },
   {
     contributor: "Lisa Anderson",
@@ -63,8 +83,8 @@ const mockCommunity = [
     contribution: "Comment on nuclear energy investment trends",
     timestamp: "1 day ago",
     discussionTitle: "Nuclear vs Renewables: Can we have both?",
-    replies: 15
-  }
+    replies: 15,
+  },
 ];
 
 const activeDiscussions = [
@@ -73,38 +93,88 @@ const activeDiscussions = [
     category: "Technology",
     replies: 128,
     participants: 45,
-    trending: true
+    trending: true,
   },
   {
     title: "Carbon offset verification: Current challenges",
     category: "Policy",
     replies: 91,
     participants: 32,
-    trending: false
+    trending: false,
   },
   {
     title: "Grid modernization best practices",
     category: "Infrastructure",
     replies: 145,
     participants: 56,
-    trending: true
+    trending: true,
   },
   {
     title: "EV charging infrastructure business models",
     category: "Market",
     replies: 112,
     participants: 38,
-    trending: false
-  }
+    trending: false,
+  },
 ];
 
 export function DashboardHome() {
+  const [loadingMe, setLoadingMe] = useState(true);
+  const [me, setMe] = useState<MeResponse | null>(null);
+
+  async function fetchMe() {
+    setLoadingMe(true);
+    try {
+      const res = await fetch(ME_GET_URL, {
+        method: "GET",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        setMe(null);
+        return;
+      }
+
+      if (!res.ok) {
+        setMe(null);
+        return;
+      }
+
+      const raw = await res.json();
+
+      const normalized: MeResponse = {
+        id: raw?.id ?? raw?.ID,
+        email: raw?.email ?? raw?.user_email ?? raw?.data?.email,
+        firstName: raw?.firstName ?? raw?.first_name ?? raw?.meta?.first_name ?? raw?.acf?.first_name,
+        lastName: raw?.lastName ?? raw?.last_name ?? raw?.meta?.last_name ?? raw?.acf?.last_name,
+      };
+
+      setMe(normalized);
+    } catch {
+      setMe(null);
+    } finally {
+      setLoadingMe(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchMe();
+  }, []);
+
+  const welcomeName = useMemo(
+    () => getDisplayName(me?.firstName, me?.lastName, me?.email),
+    [me]
+  );
+
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
         {/* Welcome Section */}
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">Welcome back, John</h1>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-2">
+            Welcome back, {loadingMe ? "…" : welcomeName}
+          </h1>
           <p className="text-gray-600">Your intelligence hub for energy industry insights</p>
         </div>
 
@@ -179,7 +249,9 @@ export function DashboardHome() {
                 {mockArticles.map((article) => (
                   <div key={article.id} className="pb-6 border-b last:border-b-0 last:pb-0">
                     <div className="flex items-start gap-3 mb-3">
-                      <Badge variant="secondary" className="text-xs">{article.category}</Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {article.category}
+                      </Badge>
                       <span className="text-xs text-gray-500">{article.readTime}</span>
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-emerald-600 cursor-pointer">
@@ -200,7 +272,9 @@ export function DashboardHome() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Community Highlights</span>
-                  <Badge variant="outline" className="text-xs">Live Activity</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Live Activity
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -208,13 +282,15 @@ export function DashboardHome() {
                   <div key={index} className="flex gap-4 pb-4 border-b last:border-b-0 last:pb-0">
                     <Avatar className="w-10 h-10 flex-shrink-0">
                       <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white">
-                        {item.contributor.split(' ').map(n => n[0]).join('')}
+                        {item.contributor.split(" ").map((n) => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-gray-900">{item.contributor}</span>
-                        <Badge variant="outline" className="text-xs">{item.role}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {item.role}
+                        </Badge>
                       </div>
                       <p className="text-sm text-gray-600 mb-1">{item.contribution}</p>
                       <p className="text-xs text-gray-900 font-medium mb-1 hover:text-emerald-600 cursor-pointer">
@@ -254,7 +330,9 @@ export function DashboardHome() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <Badge variant="outline" className="text-xs">{discussion.category}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {discussion.category}
+                      </Badge>
                       <span>{discussion.replies} replies</span>
                       <span>•</span>
                       <span>{discussion.participants} participants</span>
@@ -281,7 +359,9 @@ export function DashboardHome() {
                       {item.title}
                     </h4>
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {item.category}
+                      </Badge>
                       <span>{item.views} views</span>
                     </div>
                   </div>
