@@ -157,7 +157,6 @@ const industries = [
   { value: "wood", label: "Wood" },
 ];
 
-// Sub-Industry mapping (expand when you provide a full breakdown)
 const subIndustryMap: Record<string, Array<{ value: string; label: string }>> = {
   "oil-gas": [
     { value: "upstream", label: "Upstream" },
@@ -203,149 +202,44 @@ const subIndustryMap: Record<string, Array<{ value: string; label: string }>> = 
   ],
 };
 
-// Community -> allowed industries mapping (filters Industry based on selected Community)
 const communityIndustryMap: Record<string, string[]> = {
   "oil-gas": [
-    "oil-gas",
-    "chemical",
-    "engineering",
-    "logistics",
-    "mining",
-    "infrastructure",
-    "government",
-    "consulting",
-    "distribution",
-    "shipping",
-    "railways",
-    "telecommunication",
-    "it",
-    "environment",
-    "construction-material",
-    "exporters-importers",
+    "oil-gas","chemical","engineering","logistics","mining","infrastructure","government","consulting","distribution",
+    "shipping","railways","telecommunication","it","environment","construction-material","exporters-importers",
   ],
   "power-generation": [
-    "power",
-    "electrical",
-    "engineering",
-    "construction-material",
-    "infrastructure",
-    "government",
-    "consulting",
-    "environment",
-    "it",
-    "logistics",
-    "iron-steel",
-    "mining",
-    "consumer-durables",
+    "power","electrical","engineering","construction-material","infrastructure","government","consulting","environment",
+    "it","logistics","iron-steel","mining","consumer-durables",
   ],
   renewables: [
-    "renewable",
-    "battery-storage",
-    "electrical",
-    "engineering",
-    "construction-material",
-    "infrastructure",
-    "government",
-    "consulting",
-    "environment",
-    "it",
-    "logistics",
-    "mining",
-    "chemical",
-    "ev-charging",
+    "renewable","battery-storage","electrical","engineering","construction-material","infrastructure","government",
+    "consulting","environment","it","logistics","mining","chemical","ev-charging",
   ],
   transmission: [
-    "transmission",
-    "electrical",
-    "engineering",
-    "infrastructure",
-    "government",
-    "consulting",
-    "environment",
-    "it",
-    "telecommunication",
-    "construction-material",
-    "iron-steel",
-    "logistics",
+    "transmission","electrical","engineering","infrastructure","government","consulting","environment","it",
+    "telecommunication","construction-material","iron-steel","logistics",
   ],
   distribution: [
-    "distribution",
-    "electrical",
-    "engineering",
-    "it",
-    "telecommunication",
-    "infrastructure",
-    "government",
-    "consulting",
-    "environment",
-    "consumer-durables",
-    "office-automation",
-    "retail",
-    "ev-charging",
-    "logistics",
+    "distribution","electrical","engineering","it","telecommunication","infrastructure","government","consulting",
+    "environment","consumer-durables","office-automation","retail","ev-charging","logistics",
   ],
   "electricity-markets": [
-    "electricity-markets",
-    "bfsi",
-    "consulting",
-    "government",
-    "it",
-    "telecommunication",
-    "publishing",
-    "media",
-    "power",
-    "renewable",
+    "electricity-markets","bfsi","consulting","government","it","telecommunication","publishing","media","power","renewable",
   ],
   "new-energies": [
-    "battery-storage",
-    "renewable",
-    "chemical",
-    "engineering",
-    "electrical",
-    "oil-gas",
-    "power",
-    "consulting",
-    "government",
-    "it",
-    "environment",
-    "infrastructure",
-    "logistics",
+    "battery-storage","renewable","chemical","engineering","electrical","oil-gas","power","consulting","government","it",
+    "environment","infrastructure","logistics",
   ],
   "energy-storage-systems": [
-    "battery-storage",
-    "power",
-    "renewable",
-    "electrical",
-    "engineering",
-    "chemical",
-    "consulting",
-    "government",
-    "it",
-    "environment",
-    "infrastructure",
-    "logistics",
+    "battery-storage","power","renewable","electrical","engineering","chemical","consulting","government","it","environment",
+    "infrastructure","logistics",
   ],
   sustainability: [
-    "environment",
-    "energy-efficiency-management",
-    "consulting",
-    "government",
-    "it",
-    "facility-management",
-    "engineering",
-    "construction-material",
-    "power",
-    "renewable",
-    "chemical",
-    "fmcg",
-    "healthcare",
-    "mining",
-    "iron-steel",
-    "textile",
+    "environment","energy-efficiency-management","consulting","government","it","facility-management","engineering",
+    "construction-material","power","renewable","chemical","fmcg","healthcare","mining","iron-steel","textile",
   ],
 };
 
-// Countries dropdown (keep as-is unless you share full list)
 const countries = [
   { value: "usa", label: "United States" },
   { value: "uk", label: "United Kingdom" },
@@ -354,11 +248,41 @@ const countries = [
   { value: "france", label: "France" },
 ];
 
-function normalizePhone(countryCode: string, mobile: string) {
-  const cleaned = (mobile || "").replace(/[^\d]/g, "");
-  const cc = (countryCode || "").replace(/[^\d+]/g, "");
-  const ccDigits = cc.startsWith("+") ? cc : `+${cc}`;
-  return `${ccDigits}${cleaned}`;
+/**
+ * IMPORTANT:
+ * Backend Identifier::detect() expects phone digits only (it strips non-digits),
+ * and MSG91 mobiles format is digits only. We will standardize on digits-only:
+ * e.g. +91 + 9058500798 => 919058500798
+ */
+function phoneIdentifierDigits(countryCode: string, mobile: string) {
+  const cleanedMobile = (mobile || "").replace(/[^\d]/g, "");
+  const ccDigits = (countryCode || "").replace(/[^\d]/g, ""); // remove '+'
+  return `${ccDigits}${cleanedMobile}`.replace(/[^\d]/g, "");
+}
+
+/**
+ * Backward compatible helper:
+ * - If your AuthAPI.requestOtp currently accepts only (identifier),
+ *   we call it with identifier only and then fallback to direct fetch with context.
+ */
+async function requestOtpWithContext(identifier: string, context: "login" | "register_phone") {
+  // If AuthAPI.requestOtp was upgraded to accept (identifier, context), it will work.
+  try {
+    // @ts-ignore – allow both signatures
+    return await AuthAPI.requestOtp(identifier, context);
+  } catch (e: any) {
+    // If backend error is "missing_identifier" or other, rethrow. Otherwise fallback.
+    // But safer: do explicit fetch with context always if second arg is ignored.
+    const BASE = "/wp-json/energ/v1";
+    const res = await fetch(`${BASE}/auth/request-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, context }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw data;
+    return data;
+  }
 }
 
 export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProps) {
@@ -377,27 +301,45 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     areaOfIndustry: "",
   });
 
-  // OTP verification state
   const [otpState, setOtpState] = useState<"idle" | "sent" | "verifying" | "verified" | "error">("idle");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [mobileChanged, setMobileChanged] = useState(false);
 
-  // Filter industries based on selected Community
   const filteredIndustries = (() => {
     const allowed = communityIndustryMap[formData.community];
     if (!formData.community || !allowed?.length) return industries;
     return industries.filter((i) => allowed.includes(i.value));
   })();
 
-  // Timer effect for resend countdown
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
       return () => clearTimeout(timer);
     }
   }, [resendTimer]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      if (field === "community") {
+        updated.subCommunity = "";
+        updated.areaOfIndustry = "";
+        updated.industry = "";
+        updated.subIndustry = "";
+      }
+      if (field === "industry") {
+        updated.subIndustry = "";
+      }
+      if (field === "subCommunity") {
+        updated.areaOfIndustry = "";
+      }
+
+      return updated;
+    });
+  };
 
   const handleMobileChange = (value: string) => {
     handleInputChange("mobile", value);
@@ -409,7 +351,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   };
 
   const handleSendOTP = async () => {
-    if (!formData.mobile || formData.mobile.replace(/[^\d]/g, "").length < 8) {
+    const digitsMobile = (formData.mobile || "").replace(/[^\d]/g, "");
+    if (!digitsMobile || digitsMobile.length < 8) {
       setOtpError("Please enter a valid mobile number");
       return;
     }
@@ -420,8 +363,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     setMobileChanged(false);
 
     try {
-      const phoneIdentifier = normalizePhone(formData.countryCode, formData.mobile);
-      await AuthAPI.requestOtp(phoneIdentifier, "register_phone");
+      const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
+      await requestOtpWithContext(identifier, "register_phone");
     } catch (err: any) {
       setOtpState("error");
       setOtpError(err?.message || err?.data?.message || "Failed to send OTP. Please try again.");
@@ -463,11 +406,11 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     setOtpState("verifying");
 
     try {
-      const phoneIdentifier = normalizePhone(formData.countryCode, formData.mobile);
-      const res = await AuthAPI.verifyOtp(phoneIdentifier, otpValue);
+      const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
+      const res = await AuthAPI.verifyOtp(identifier, otpValue);
 
-      // Do not override existing (email) session tokens here
-      if (res?.success === false) {
+      // For phone verification flow, backend returns success + message (no tokens)
+      if (res?.success !== true) {
         throw new Error(res?.message || "Invalid OTP. Please try again.");
       }
 
@@ -488,28 +431,6 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => {
-      const updated = { ...prev, [field]: value };
-
-      // Reset dependent fields
-      if (field === "community") {
-        updated.subCommunity = "";
-        updated.areaOfIndustry = "";
-        updated.industry = "";
-        updated.subIndustry = "";
-      }
-      if (field === "industry") {
-        updated.subIndustry = "";
-      }
-      if (field === "subCommunity") {
-        updated.areaOfIndustry = "";
-      }
-
-      return updated;
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -522,13 +443,13 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     setOtpError("");
 
     try {
-      const phoneIdentifier = normalizePhone(formData.countryCode, formData.mobile);
+      const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
 
       await AuthAPI.completeRegistration({
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: email,
-        phone: phoneIdentifier,
+        phone: identifier, // store digits-only (matches backend)
         country: formData.country,
         state: formData.state,
         community: formData.community,
@@ -718,7 +639,6 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         ))}
                       </div>
 
-                      {/* Error Message */}
                       {otpError && (
                         <div className="flex items-center gap-2 text-red-600 text-sm">
                           <AlertCircle className="w-4 h-4" />
@@ -726,7 +646,6 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         </div>
                       )}
 
-                      {/* Resend Timer/Button */}
                       <div className="text-center">
                         {resendTimer > 0 ? (
                           <p className="text-sm text-gray-600">
@@ -898,7 +817,6 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 </p>
               </div>
 
-              {/* Registration Requirement Notice */}
               {otpState !== "verified" && formData.mobile && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
