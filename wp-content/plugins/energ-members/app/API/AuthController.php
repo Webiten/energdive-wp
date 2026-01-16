@@ -54,11 +54,29 @@ class AuthController
             );
         }
 
+        // Return a shape that matches your frontend expectations
         return [
-            'success' => true,
-            'user'    => $user
+            'id'           => $user['id'] ?? null,
+            'email'        => $user['email'] ?? null,
+
+            // These will remain null unless you store them in your table/meta
+            'firstName'    => $user['first_name'] ?? null,
+            'lastName'     => $user['last_name'] ?? null,
+            'jobTitle'     => $user['job_title'] ?? null,
+            'organization' => $user['organization'] ?? null,
+            'interests'    => isset($user['interests']) ? $user['interests'] : [],
+
+            'roleLabel'    => 'Member',
+            'membership'   => [
+                'tier'   => 'Free',
+                'status' => 'Active',
+            ],
+
+            // keep original object too if you want (optional)
+            'raw' => $user,
         ];
     }
+
 
 
     public static function refreshToken($request)

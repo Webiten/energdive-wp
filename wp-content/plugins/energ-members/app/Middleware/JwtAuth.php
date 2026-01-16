@@ -21,7 +21,11 @@ class JwtAuth
             return new WP_Error('invalid_token', 'Invalid or expired token', ['status' => 401]);
         }
 
-        // ✅ THIS WAS THE MISSING PIECE
+        // ✅ Standardize param name for controllers
+        // Your AuthController::me() expects "auth_identifier"
+        $request->set_param('auth_identifier', $payload['sub']);
+
+        // Keep backward-compat in case other handlers use it
         $request->set_param('auth_user', $payload['sub']);
 
         return true;

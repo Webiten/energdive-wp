@@ -1,24 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { TrendingUp, Users, FileText, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-
-type MeResponse = {
-  id?: number | string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-};
-
-const ME_GET_URL = "/wp-json/wp/v2/users/me?context=edit";
-
-function getDisplayName(firstName?: string, lastName?: string, email?: string) {
-  const name = `${firstName ?? ""} ${lastName ?? ""}`.trim();
-  if (name) return name;
-  if (email) return email.split("@")[0];
-  return "there";
-}
+import { useMe, getMeDisplayName } from "../hooks/useMe";
 
 const mockArticles = [
   {
@@ -119,53 +104,11 @@ const activeDiscussions = [
 ];
 
 export function DashboardHome() {
-  const [loadingMe, setLoadingMe] = useState(true);
-  const [me, setMe] = useState<MeResponse | null>(null);
+  const { me, loading } = useMe();
 
-  async function fetchMe() {
-    setLoadingMe(true);
-    try {
-      const res = await fetch(ME_GET_URL, {
-        method: "GET",
-        credentials: "include",
-        headers: { Accept: "application/json" },
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        setMe(null);
-        return;
-      }
-
-      if (!res.ok) {
-        setMe(null);
-        return;
-      }
-
-      const raw = await res.json();
-
-      const normalized: MeResponse = {
-        id: raw?.id ?? raw?.ID,
-        email: raw?.email ?? raw?.user_email ?? raw?.data?.email,
-        firstName: raw?.firstName ?? raw?.first_name ?? raw?.meta?.first_name ?? raw?.acf?.first_name,
-        lastName: raw?.lastName ?? raw?.last_name ?? raw?.meta?.last_name ?? raw?.acf?.last_name,
-      };
-
-      setMe(normalized);
-    } catch {
-      setMe(null);
-    } finally {
-      setLoadingMe(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchMe();
-  }, []);
-
-  const welcomeName = useMemo(
-    () => getDisplayName(me?.firstName, me?.lastName, me?.email),
-    [me]
-  );
+  const welcomeName = useMemo(() => {
+    return loading ? "…" : getMeDisplayName(me);
+  }, [loading, me]);
 
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
@@ -173,7 +116,7 @@ export function DashboardHome() {
         {/* Welcome Section */}
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-            Welcome back, {loadingMe ? "…" : welcomeName}
+            Welcome back, {welcomeName}
           </h1>
           <p className="text-gray-600">Your intelligence hub for energy industry insights</p>
         </div>

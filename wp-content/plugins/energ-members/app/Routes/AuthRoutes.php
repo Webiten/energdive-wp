@@ -30,6 +30,18 @@ register_rest_route('energ/v1', '/auth/refresh-token', [
     'permission_callback' => '__return_true',
 ]);
 
+/**
+ * ✅ ADD THIS: Me endpoint (JWT protected)
+ * Frontend should call: GET /wp-json/energ/v1/me with Authorization: Bearer <access_token>
+ */
+register_rest_route('energ/v1', '/me', [
+    'methods'  => 'GET',
+    'callback' => [AuthController::class, 'me'],
+    'permission_callback' => function ($req) {
+        return \Energ\Middleware\JwtAuth::allow($req);
+    },
+]);
+
 register_rest_route('energ/v1', '/auth/logout', [
     'methods'  => 'POST',
     'callback' => function ($req) {
@@ -55,4 +67,3 @@ register_rest_route('energ/v1', '/auth/complete-registration', [
         return \Energ\Middleware\JwtAuth::allow($request);
     },
 ]);
-

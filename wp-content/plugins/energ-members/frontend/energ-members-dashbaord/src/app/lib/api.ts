@@ -1,104 +1,114 @@
 const BASE = "/wp-json/energ/v1";
 
-/** 🔐 Helper: get access token safely */
-const getAccessToken = () => {
-    return localStorage.getItem("access_token") || "";
+/** 🔐 Helper: get tokens safely */
+const getAccessToken = () => localStorage.getItem("access_token") || "";
+const getRefreshToken = () => localStorage.getItem("refresh_token") || "";
+
+/** ✅ Store tokens centrally */
+export const setTokens = (accessToken?: string, refreshToken?: string) => {
+  if (accessToken) localStorage.setItem("access_token", accessToken);
+  if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
 };
 
-/** ✅ Normalize identifier for backend compatibility
- * - email: lowercased + trimmed
- * - phone: digits only (removes +, spaces, dashes)
- */
+export const clearTokens = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+};
+
+/** ✅ Normalize identifier for backend compatibility */
 const normalizeIdentifier = (identifier: string) => {
-    const v = (identifier || "").trim();
-    if (v.includes("@")) return v.toLowerCase();
-    return v.replace(/[^\d]/g, ""); // digits only
+  const v = (identifier || "").trim();
+  if (v.includes("@")) return v.toLowerCase();
+  return v.replace(/[^\d]/g, "");
 };
 
 /** 🔁 Standard error formatting */
 const throwIfNotOk = async (res: Response) => {
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-        // Ensure message exists for UI
-        const message =
-            data?.message ||
-            data?.data?.message ||
-            data?.error ||
-            "Request failed";
-        throw { ...data, message };
-    }
-    return data;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = data?.message || data?.data?.message || data?.error || "Request failed";
+    throw { ...data, message };
+  }
+  return data;
 };
 
 export const AuthAPI = {
-    /** 📧📱 Request OTP (email or phone) */
-    async requestOtp(identifier: string, context: "login" | "register_phone" = "login") {
-        const normalized = normalizeIdentifier(identifier);
+  /** 📧📱 Request OTP (email or phone) */
+  async requestOtp(identifier: string, context: "login" | "register_phone" = "login") {
+    const normalized = normalizeIdentifier(identifier);
 
-        const res = await fetch(`${BASE}/auth/request-otp`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identifier: normalized, context }),
-        });
+    const res = await fetch(`${BASE}/auth/request-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: normalized, context }),
+    });
 
-        return throwIfNotOk(res);
-    },
+    return throwIfNotOk(res);
+  },
 
+  /** 🔐 Verify OTP (email or phone) */
+  async verifyOtp(identifier: string, otp: string) {
+    const normalized = normalizeIdentifier(identifier);
 
-    /** 🔐 Verify OTP (email or phone) */
-    async verifyOtp(identifier: string, otp: string) {
-        const normalized = normalizeIdentifier(identifier);
+    const res = await fetch(`${BASE}/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier: normalized, otp }),
+    });
 
-        const res = await fetch(`${BASE}/auth/verify-otp`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ identifier: normalized, otp }),
-        });
+    return throwIfNotOk(res);
+  },
 
-        return throwIfNotOk(res);
-    },
+  /** 📝 Complete Registration */
+  async completeRegistration(payload: any) {
+    const token = getAccessToken();
 
-    /** 📝 Complete Registration */
-    async completeRegistration(payload: any) {
-        const token = getAccessToken();
+    const res = await fetch(`${BASE}/auth/complete-registration`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+      body: JSON.stringify(payload),
+    });
 
-        const res = await fetch(`${BASE}/auth/complete-registration`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        });
+    return throwIfNotOk(res);
+  },
 
-        return throwIfNotOk(res);
-    },
+  /** 👤 Get logged-in user (JWT) */
+  async me() {
+    const token = getAccessToken();
 
-    /** 👤 Get logged-in user */
-    async me() {
-        const token = getAccessToken();
+    const res = await fetch(`${BASE}/me`, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
 
-        const res = await fetch(`${BASE}/me`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+    return throwIfNotOk(res);
+  },
 
-        return throwIfNotOk(res);
-    },
+  /** 🚪 Logout (revokes refresh token + clears local tokens) */
+  async logout() {
+    const access = getAccessToken();
+    const refresh = getRefreshToken(); // fallback until cookie-based refresh is deployed
 
-    /** 🚪 Logout */
-    async logout(refresh_token: string) {
-        const res = await fetch(`${BASE}/auth/logout`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ refresh_token }),
-        });
+    const res = await fetch(`${BASE}/auth/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(access ? { Authorization: `Bearer ${access}` } : {}),
+      },
+      // If backend has been updated to read refresh from cookie, this can be empty.
+      body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
+      credentials: "include",
+    });
 
-        return throwIfNotOk(res);
-    },
+    const data = await throwIfNotOk(res);
+
+    // Clear tokens client-side
+    clearTokens();
+
+    return data;
+  },
 };

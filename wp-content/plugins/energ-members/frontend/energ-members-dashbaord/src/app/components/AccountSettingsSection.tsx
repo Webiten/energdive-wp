@@ -7,37 +7,7 @@ import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { User, Bell, CreditCard, Shield } from "lucide-react";
-
-type MeResponse = {
-  id?: number | string;
-  email?: string;
-
-  // Common patterns you may have depending on WP / custom API
-  firstName?: string;
-  lastName?: string;
-  jobTitle?: string;
-  organization?: string;
-
-  // Interests from registration (array of strings)
-  interests?: string[];
-
-  // Notification prefs (optional)
-  notifications?: {
-    emailNotifications?: boolean;
-    weeklyDigest?: boolean;
-    eventReminders?: boolean;
-    communityActivity?: boolean;
-  };
-
-  // Membership info (optional)
-  membership?: {
-    planName?: string;
-    status?: "Active" | "Inactive" | "Pending" | string;
-    price?: string; // e.g. "$49"
-    period?: string; // e.g. "per month"
-    description?: string;
-  };
-};
+import { useMe } from "../hooks/useMe";
 
 const ALL_SECTORS = [
   "Renewable Energy",
@@ -56,23 +26,12 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-/**
- * Defaults:
- * - GET:  /wp-json/wp/v2/users/me?context=edit  (requires auth)
- * - POST: /wp-json/energy-portal/v1/me         (custom route recommended for updating meta safely)
- *
- * If you already have your own endpoint (e.g. /api/me), replace below.
- */
-const ME_GET_URL = "/wp-json/wp/v2/users/me?context=edit";
-const ME_UPDATE_URL = "/wp-json/energy-portal/v1/me";
-
 export function AccountSettingsSection() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const { me, loading, error, updateMe } = useMe();
 
-  const [me, setMe] = useState<MeResponse | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // Form state (mirrors registration fields)
   const [firstName, setFirstName] = useState("");
@@ -88,6 +47,26 @@ export function AccountSettingsSection() {
   const [eventReminders, setEventReminders] = useState(true);
   const [communityActivity, setCommunityActivity] = useState(false);
 
+  // Hydrate form from /me (single source of truth)
+  useEffect(() => {
+    if (!me) return;
+
+    setFirstName(me.firstName ?? "");
+    setLastName(me.lastName ?? "");
+    setEmail(me.email ?? "");
+    setJobTitle(me.jobTitle ?? "");
+    setOrganization(me.organization ?? "");
+    setInterests(Array.isArray(me.interests) ? me.interests : []);
+
+    const n = me.notifications;
+    if (n) {
+      setEmailNotifications(!!n.emailNotifications);
+      setWeeklyDigest(!!n.weeklyDigest);
+      setEventReminders(!!n.eventReminders);
+      setCommunityActivity(!!n.communityActivity);
+    }
+  }, [me]);
+
   const membership = useMemo(() => {
     return (
       me?.membership ?? {
@@ -100,78 +79,6 @@ export function AccountSettingsSection() {
     );
   }, [me]);
 
-  async function fetchMe() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(ME_GET_URL, {
-        method: "GET",
-        credentials: "include", // important for WP cookies
-        headers: { "Accept": "application/json" },
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        throw new Error("Unauthorized. Please log in again.");
-      }
-      if (!res.ok) {
-        throw new Error(`Failed to load profile (${res.status}).`);
-      }
-
-      // WP's /users/me response shape differs; you may map it here if needed.
-      const raw = await res.json();
-
-      // Best-effort normalization:
-      // - Some APIs return { firstName }, others return { first_name }, etc.
-      const normalized: MeResponse = {
-        id: raw?.id ?? raw?.ID,
-        email: raw?.email ?? raw?.user_email ?? raw?.data?.email,
-
-        firstName: raw?.firstName ?? raw?.first_name ?? raw?.meta?.first_name ?? raw?.acf?.first_name,
-        lastName: raw?.lastName ?? raw?.last_name ?? raw?.meta?.last_name ?? raw?.acf?.last_name,
-        jobTitle: raw?.jobTitle ?? raw?.job_title ?? raw?.meta?.job_title ?? raw?.acf?.job_title,
-        organization: raw?.organization ?? raw?.company ?? raw?.meta?.organization ?? raw?.acf?.organization,
-
-        interests:
-          raw?.interests ??
-          raw?.meta?.interests ??
-          raw?.acf?.interests ??
-          [],
-
-        notifications: raw?.notifications ?? raw?.meta?.notifications ?? raw?.acf?.notifications,
-        membership: raw?.membership ?? raw?.meta?.membership ?? raw?.acf?.membership,
-      };
-
-      setMe(normalized);
-
-      // Populate form
-      setFirstName(normalized.firstName ?? "");
-      setLastName(normalized.lastName ?? "");
-      setEmail(normalized.email ?? "");
-      setJobTitle(normalized.jobTitle ?? "");
-      setOrganization(normalized.organization ?? "");
-      setInterests(Array.isArray(normalized.interests) ? normalized.interests : []);
-
-      // Notifications (if present)
-      const n = normalized.notifications;
-      if (n) {
-        setEmailNotifications(!!n.emailNotifications);
-        setWeeklyDigest(!!n.weeklyDigest);
-        setEventReminders(!!n.eventReminders);
-        setCommunityActivity(!!n.communityActivity);
-      }
-    } catch (e: any) {
-      setError(e?.message ?? "Something went wrong while loading your account.");
-      setMe(null);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   function toggleInterest(sector: string) {
     setInterests((prev) => {
       if (prev.includes(sector)) return prev.filter((s) => s !== sector);
@@ -182,10 +89,10 @@ export function AccountSettingsSection() {
   async function onSaveProfile() {
     setSaving(true);
     setSaveMsg(null);
-    setError(null);
+    setLocalError(null);
 
     try {
-      const payload: MeResponse = {
+      await updateMe({
         firstName,
         lastName,
         email,
@@ -198,37 +105,18 @@ export function AccountSettingsSection() {
           eventReminders,
           communityActivity,
         },
-      };
-
-      const res = await fetch(ME_UPDATE_URL, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify(payload),
       });
 
-      if (res.status === 401 || res.status === 403) {
-        throw new Error("Unauthorized. Please log in again.");
-      }
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Failed to save (${res.status}). ${text ? "Server: " + text : ""}`);
-      }
-
       setSaveMsg("Changes saved successfully.");
-      // Refresh /me so UI stays the single source of truth
-      await fetchMe();
+      setTimeout(() => setSaveMsg(null), 2500);
     } catch (e: any) {
-      setError(e?.message ?? "Something went wrong while saving.");
+      setLocalError(e?.message ?? "Something went wrong while saving.");
     } finally {
       setSaving(false);
-      // auto-clear message after a bit
-      setTimeout(() => setSaveMsg(null), 2500);
     }
   }
+
+  const mergedError = localError ?? error;
 
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
@@ -237,13 +125,17 @@ export function AccountSettingsSection() {
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">Account Settings</h1>
           <p className="text-gray-600">Manage your profile, preferences, and subscription</p>
 
-          {loading && (
-            <p className="mt-3 text-sm text-gray-500">Loading your account details…</p>
+          {loading && <p className="mt-3 text-sm text-gray-500">Loading your account details…</p>}
+
+          {!loading && !me && (
+            <div className="mt-4 p-3 rounded-lg bg-yellow-50 text-yellow-800 text-sm">
+              You are not authenticated with WordPress REST. Please log in again.
+            </div>
           )}
 
-          {!loading && error && (
+          {!loading && mergedError && (
             <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
-              {error}
+              {mergedError}
             </div>
           )}
 
@@ -270,7 +162,7 @@ export function AccountSettingsSection() {
                   id="firstName"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  disabled={loading || saving}
+                  disabled={loading || saving || !me}
                 />
               </div>
               <div className="space-y-2">
@@ -279,7 +171,7 @@ export function AccountSettingsSection() {
                   id="lastName"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  disabled={loading || saving}
+                  disabled={loading || saving || !me}
                 />
               </div>
             </div>
@@ -291,7 +183,7 @@ export function AccountSettingsSection() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
 
@@ -301,7 +193,7 @@ export function AccountSettingsSection() {
                 id="jobTitle"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
 
@@ -311,14 +203,14 @@ export function AccountSettingsSection() {
                 id="organization"
                 value={organization}
                 onChange={(e) => setOrganization(e.target.value)}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
 
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={onSaveProfile}
-              disabled={loading || saving}
+              disabled={loading || saving || !me}
             >
               {saving ? "Saving…" : "Save Changes"}
             </Button>
@@ -342,9 +234,10 @@ export function AccountSettingsSection() {
                   <Badge
                     key={sector}
                     variant="secondary"
-                    onClick={() => toggleInterest(sector)}
+                    onClick={() => (me ? toggleInterest(sector) : null)}
                     className={cn(
-                      "cursor-pointer px-3 py-2 select-none transition",
+                      "px-3 py-2 select-none transition",
+                      me ? "cursor-pointer" : "opacity-60 cursor-not-allowed",
                       selected
                         ? "bg-emerald-600 text-white hover:bg-emerald-700"
                         : "hover:bg-emerald-100 hover:text-emerald-700"
@@ -359,7 +252,7 @@ export function AccountSettingsSection() {
             <Button
               variant="outline"
               onClick={onSaveProfile}
-              disabled={loading || saving}
+              disabled={loading || saving || !me}
               className="border-emerald-200"
             >
               {saving ? "Saving…" : "Save Interests"}
@@ -379,63 +272,58 @@ export function AccountSettingsSection() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Email Notifications</Label>
-                <p className="text-sm text-gray-500">
-                  Receive updates about new articles and insights
-                </p>
+                <p className="text-sm text-gray-500">Receive updates about new articles and insights</p>
               </div>
               <Switch
                 checked={emailNotifications}
                 onCheckedChange={setEmailNotifications}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
             <Separator />
+
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Weekly Digest</Label>
-                <p className="text-sm text-gray-500">
-                  Get a weekly summary of top content
-                </p>
+                <p className="text-sm text-gray-500">Get a weekly summary of top content</p>
               </div>
               <Switch
                 checked={weeklyDigest}
                 onCheckedChange={setWeeklyDigest}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
             <Separator />
+
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Event Reminders</Label>
-                <p className="text-sm text-gray-500">
-                  Notifications for upcoming webinars and events
-                </p>
+                <p className="text-sm text-gray-500">Notifications for upcoming webinars and events</p>
               </div>
               <Switch
                 checked={eventReminders}
                 onCheckedChange={setEventReminders}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
             <Separator />
+
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Community Activity</Label>
-                <p className="text-sm text-gray-500">
-                  Updates on discussions you're following
-                </p>
+                <p className="text-sm text-gray-500">Updates on discussions you're following</p>
               </div>
               <Switch
                 checked={communityActivity}
                 onCheckedChange={setCommunityActivity}
-                disabled={loading || saving}
+                disabled={loading || saving || !me}
               />
             </div>
 
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
               onClick={onSaveProfile}
-              disabled={loading || saving}
+              disabled={loading || saving || !me}
             >
               {saving ? "Saving…" : "Save Preferences"}
             </Button>
@@ -454,27 +342,19 @@ export function AccountSettingsSection() {
             <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-lg">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {membership.planName ?? "Plan"}
-                  </h3>
-                  <Badge className="bg-emerald-600">
-                    {membership.status ?? "Active"}
-                  </Badge>
+                  <h3 className="font-semibold text-gray-900">{membership.planName ?? "Plan"}</h3>
+                  <Badge className="bg-emerald-600">{membership.status ?? "Active"}</Badge>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {membership.description ??
-                    "Access to intelligence, events, and community features"}
+                  {membership.description ?? "Access to intelligence, events, and community features"}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-semibold text-gray-900">
-                  {membership.price ?? "$0"}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {membership.period ?? ""}
-                </p>
+                <p className="text-2xl font-semibold text-gray-900">{membership.price ?? "$0"}</p>
+                <p className="text-sm text-gray-500">{membership.period ?? ""}</p>
               </div>
             </div>
+
             <div className="flex gap-3">
               <Button variant="outline">Change Plan</Button>
               <Button variant="outline" className="text-red-600 hover:text-red-700">
