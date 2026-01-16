@@ -8,7 +8,7 @@ use Energ\Auth\LogoutAll;
 defined('ABSPATH') || exit;
 
 /**
- * Loaded INSIDE rest_api_init
+ * This file is loaded INSIDE rest_api_init
  * Do NOT wrap with add_action again
  */
 
@@ -28,6 +28,19 @@ register_rest_route('energ/v1', '/auth/refresh-token', [
     'methods'  => 'POST',
     'callback' => [AuthController::class, 'refreshToken'],
     'permission_callback' => '__return_true',
+]);
+
+/**
+ * ✅ NEW: JWT-protected /me route
+ * Frontend calls: GET /wp-json/energ/v1/me
+ * Requires header: Authorization: Bearer <access_token>
+ */
+register_rest_route('energ/v1', '/me', [
+    'methods'  => 'GET',
+    'callback' => [AuthController::class, 'me'],
+    'permission_callback' => function ($request) {
+        return \Energ\Middleware\JwtAuth::allow($request);
+    },
 ]);
 
 register_rest_route('energ/v1', '/auth/logout', [
@@ -51,18 +64,6 @@ register_rest_route('energ/v1', '/auth/logout-all', [
 register_rest_route('energ/v1', '/auth/complete-registration', [
     'methods'  => 'POST',
     'callback' => [\Energ\API\AuthController::class, 'completeRegistration'],
-    'permission_callback' => function ($request) {
-        return \Energ\Middleware\JwtAuth::allow($request);
-    },
-]);
-
-/**
- * GET current member profile using Bearer JWT
- * Frontend calls: /wp-json/energ/v1/me
- */
-register_rest_route('energ/v1', '/me', [
-    'methods'  => 'GET',
-    'callback' => [AuthController::class, 'me'],
     'permission_callback' => function ($request) {
         return \Energ\Middleware\JwtAuth::allow($request);
     },

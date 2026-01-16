@@ -27,7 +27,7 @@ const throwIfNotOk = async (res: Response) => {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const message = data?.message || data?.data?.message || data?.error || "Request failed";
-    throw { ...data, message };
+    throw { ...data, message, status: res.status };
   }
   return data;
 };
@@ -46,7 +46,7 @@ export const AuthAPI = {
     return throwIfNotOk(res);
   },
 
-  /** 🔐 Verify OTP (email or phone) */
+  /** 🔐 Verify OTP (email or phone) + ✅ auto-store tokens */
   async verifyOtp(identifier: string, otp: string) {
     const normalized = normalizeIdentifier(identifier);
 
@@ -56,7 +56,14 @@ export const AuthAPI = {
       body: JSON.stringify({ identifier: normalized, otp }),
     });
 
-    return throwIfNotOk(res);
+    const data = await throwIfNotOk(res);
+
+    // ✅ Ensure tokens are stored for both phone/email flows (when returned)
+    if (data?.access_token || data?.refresh_token) {
+      setTokens(data?.access_token, data?.refresh_token);
+    }
+
+    return data;
   },
 
   /** 📝 Complete Registration */
@@ -67,7 +74,7 @@ export const AuthAPI = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : "",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
     });
@@ -80,8 +87,10 @@ export const AuthAPI = {
     const token = getAccessToken();
 
     const res = await fetch(`${BASE}/me`, {
+      method: "GET",
       headers: {
-        Authorization: token ? `Bearer ${token}` : "",
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 
@@ -90,25 +99,24 @@ export const AuthAPI = {
 
   /** 🚪 Logout (revokes refresh token + clears local tokens) */
   async logout() {
-    const access = getAccessToken();
-    const refresh = getRefreshToken(); // fallback until cookie-based refresh is deployed
+    const refresh_token = getRefreshToken();
 
     const res = await fetch(`${BASE}/auth/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(access ? { Authorization: `Bearer ${access}` } : {}),
+        Accept: "application/json",
       },
-      // If backend has been updated to read refresh from cookie, this can be empty.
-      body: JSON.stringify(refresh ? { refresh_token: refresh } : {}),
-      credentials: "include",
+      body: JSON.stringify({ refresh_token }),
     });
 
-    const data = await throwIfNotOk(res);
+    // Always clear tokens on client, even if backend returns invalid_token
+    try {
+      await throwIfNotOk(res);
+    } finally {
+      clearTokens();
+    }
 
-    // Clear tokens client-side
-    clearTokens();
-
-    return data;
+    return { success: true };
   },
 };

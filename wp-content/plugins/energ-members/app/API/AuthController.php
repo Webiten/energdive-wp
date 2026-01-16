@@ -5,10 +5,10 @@ namespace Energ\API;
 use Energ\Auth\RequestOtp;
 use Energ\Auth\VerifyOtp;
 use Energ\Auth\RefreshToken;
+use WP_Error;
 
 class AuthController
 {
-
     public static function requestOtp($request)
     {
         return (new RequestOtp)->handle($request);
@@ -23,16 +23,16 @@ class AuthController
     {
         global $wpdb;
 
-        // ✅ JwtAuth sets this
+        // ✅ Set by JwtAuth middleware
         $identifier = $request->get_param('auth_user');
 
-        // Backward compatibility (if you used auth_identifier earlier)
+        // Backward compatibility if older middleware used a different param
         if (!$identifier) {
             $identifier = $request->get_param('auth_identifier');
         }
 
         if (!$identifier) {
-            return new \WP_Error(
+            return new WP_Error(
                 'unauthorized',
                 'Invalid or missing token',
                 ['status' => 401]
@@ -41,13 +41,26 @@ class AuthController
 
         $table = $wpdb->prefix . 'energ_members';
 
-        // identifier can be email or phone depending on your OTP logic
         $user = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT id, email, phone, signup_mode, created_at
-             FROM {$table}
-             WHERE email = %s OR phone = %s
-             LIMIT 1",
+                "SELECT
+                    id,
+                    email,
+                    phone,
+                    first_name,
+                    last_name,
+                    country,
+                    state,
+                    community,
+                    sub_community,
+                    industry,
+                    sub_industry,
+                    status,
+                    signup_mode,
+                    created_at
+                 FROM {$table}
+                 WHERE email = %s OR phone = %s
+                 LIMIT 1",
                 $identifier,
                 $identifier
             ),
@@ -55,7 +68,7 @@ class AuthController
         );
 
         if (!$user) {
-            return new \WP_Error(
+            return new WP_Error(
                 'user_not_found',
                 'User not found',
                 ['status' => 404]
@@ -64,7 +77,7 @@ class AuthController
 
         return [
             'success' => true,
-            'user'    => $user
+            'user'    => $user,
         ];
     }
 

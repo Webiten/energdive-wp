@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { Bell, Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import {
@@ -17,6 +18,7 @@ interface TopBarProps {
 
 export function TopBar({ onLogout }: TopBarProps) {
   const { me, loading } = useMe();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const displayName = getMeDisplayName(me);
   const initials = getMeInitials(me);
@@ -28,15 +30,18 @@ export function TopBar({ onLogout }: TopBarProps) {
     (me?.membership?.planName && /pro/i.test(me.membership.planName) ? "Pro" : "Free");
 
   async function handleLogout() {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
     try {
-      // ✅ Uses /wp-json/energ/v1/auth/logout with refresh token (from localStorage fallback)
+      // ✅ Revokes refresh token on server + clears local tokens inside AuthAPI.logout()
       await AuthAPI.logout();
     } catch {
-      // Even if server logout fails, clear UI state to avoid "stuck" user display.
-      // (Common case: refresh token already expired/revoked)
+      // Even if server logout fails (expired/already revoked), clear UI state so user isn't "stuck"
     } finally {
       clearMeCache();
       onLogout?.();
+      setLoggingOut(false);
     }
   }
 
@@ -81,7 +86,9 @@ export function TopBar({ onLogout }: TopBarProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="text-left hidden md:block">
-                <p className="text-sm font-medium text-gray-900">{loading ? "Loading…" : displayName}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {loading ? "Loading…" : displayName}
+                </p>
                 <p className="text-xs text-gray-500">{loading ? "" : roleLabel}</p>
               </div>
             </div>
@@ -112,8 +119,12 @@ export function TopBar({ onLogout }: TopBarProps) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem className="text-red-600" onClick={handleLogout}>
-              <span>Logout</span>
+            <DropdownMenuItem
+              className="text-red-600"
+              onClick={handleLogout}
+              disabled={loggingOut}
+            >
+              <span>{loggingOut ? "Logging out…" : "Logout"}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
