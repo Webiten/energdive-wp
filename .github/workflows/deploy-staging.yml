@@ -1,4 +1,4 @@
-name: Deploy to Staging
+name: Deploy energ-members to Staging
 
 on:
   push:
@@ -20,30 +20,11 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
 
-      # ---------------- THEMES ----------------
-      - name: Deploy themes
-        run: |
-          rsync -avz --delete \
-            --no-owner --no-group \
-            wp-content/themes/ \
-            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/themes/
-
-      # ---------------- OLD ENERGDIVE PLUGINS ----------------
-      - name: Deploy energdive-* plugins (if exist)
-        run: |
-          if ls wp-content/plugins/energdive-* 1> /dev/null 2>&1; then
-            rsync -avz --delete \
-              --no-owner --no-group \
-              wp-content/plugins/energdive-*/ \
-              ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/
-          else
-            echo "No energdive-* plugins found. Skipping."
-          fi
-
-      # ---------------- ENERG MEMBERS (MAIN) ----------------
       - name: Deploy energ-members plugin
         run: |
-          rsync -avz --delete \
+          rsync -avz \
             --no-owner --no-group \
+            --exclude=".DS_Store" \
+            --exclude="**/.DS_Store" \
             wp-content/plugins/energ-members/ \
             ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ secrets.STAGING_PATH }}/wp-content/plugins/energ-members/
