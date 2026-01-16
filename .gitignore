@@ -10,3 +10,5 @@ wp-content/*
 # Still ignore uploads
 wp-content/uploads/
 
+.DS_Store
+**/.DS_Store
