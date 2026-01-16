@@ -23,9 +23,15 @@ class AuthController
     {
         global $wpdb;
 
-        $email = $request->get_param('auth_identifier');
+        // ✅ JwtAuth sets this
+        $identifier = $request->get_param('auth_user');
 
-        if (!$email) {
+        // Backward compatibility (if you used auth_identifier earlier)
+        if (!$identifier) {
+            $identifier = $request->get_param('auth_identifier');
+        }
+
+        if (!$identifier) {
             return new \WP_Error(
                 'unauthorized',
                 'Invalid or missing token',
@@ -35,13 +41,15 @@ class AuthController
 
         $table = $wpdb->prefix . 'energ_members';
 
+        // identifier can be email or phone depending on your OTP logic
         $user = $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT id, email, phone, signup_mode, created_at
              FROM {$table}
-             WHERE email = %s
+             WHERE email = %s OR phone = %s
              LIMIT 1",
-                $email
+                $identifier,
+                $identifier
             ),
             ARRAY_A
         );
@@ -54,30 +62,11 @@ class AuthController
             );
         }
 
-        // Return a shape that matches your frontend expectations
         return [
-            'id'           => $user['id'] ?? null,
-            'email'        => $user['email'] ?? null,
-
-            // These will remain null unless you store them in your table/meta
-            'firstName'    => $user['first_name'] ?? null,
-            'lastName'     => $user['last_name'] ?? null,
-            'jobTitle'     => $user['job_title'] ?? null,
-            'organization' => $user['organization'] ?? null,
-            'interests'    => isset($user['interests']) ? $user['interests'] : [],
-
-            'roleLabel'    => 'Member',
-            'membership'   => [
-                'tier'   => 'Free',
-                'status' => 'Active',
-            ],
-
-            // keep original object too if you want (optional)
-            'raw' => $user,
+            'success' => true,
+            'user'    => $user
         ];
     }
-
-
 
     public static function refreshToken($request)
     {
