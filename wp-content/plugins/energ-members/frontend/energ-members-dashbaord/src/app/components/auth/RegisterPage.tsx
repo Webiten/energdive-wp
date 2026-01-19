@@ -1,16 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Checkbox } from "../ui/checkbox";
 import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw } from "lucide-react";
 import { AuthAPI } from "@/app/lib/api";
-
-/** ✅ add this import if you already have it in your UI lib
- * If not, replace with normal <input type="checkbox" ... />
- */
-import { Checkbox } from "../ui/checkbox";
 
 interface RegisterPageProps {
   email: string;
@@ -156,46 +152,44 @@ const industries = [
   { value: "wood", label: "Wood" },
 ];
 
-// NOTE: you kept subIndustryMap huge — keep it same in your file.
-// I’m not repeating it here for brevity; keep your existing subIndustryMap.
-declare const subIndustryMap: Record<string, Array<{ value: string; label: string }>>;
+/**
+ * ✅ Sub-Industry map:
+ * - If you already have your huge map, paste it here.
+ * - Even if you keep this empty, we will show fallback options (so NEVER blank).
+ */
+const subIndustryMap: Record<string, Array<{ value: string; label: string }>> = {
+  // Example (optional):
+  // logistics: [
+  //   { value: "road", label: "Road Logistics" },
+  //   { value: "rail", label: "Rail Logistics" },
+  //   { value: "marine", label: "Marine Logistics" },
+  // ],
+};
+
+// ✅ fallback options (always available)
+const COMMON_SUB_INDUSTRIES: Array<{ value: string; label: string }> = [
+  { value: "operations", label: "Operations" },
+  { value: "engineering", label: "Engineering" },
+  { value: "projects", label: "Projects / EPC" },
+  { value: "procurement", label: "Procurement" },
+  { value: "supply-chain", label: "Supply Chain" },
+  { value: "sales", label: "Sales / BD" },
+  { value: "finance", label: "Finance" },
+  { value: "legal", label: "Legal / Compliance" },
+  { value: "digital", label: "Digital / IT" },
+  { value: "hse", label: "HSE / Safety" },
+];
 
 const communityIndustryMap: Record<string, string[]> = {
-  "oil-gas": [
-    "oil-gas", "chemical", "engineering", "logistics", "mining", "infrastructure", "government", "consulting", "distribution",
-    "shipping", "railways", "telecommunication", "it", "environment", "construction-material", "exporters-importers",
-  ],
-  "power-generation": [
-    "power", "electrical", "engineering", "construction-material", "infrastructure", "government", "consulting", "environment",
-    "it", "logistics", "iron-steel", "mining", "consumer-durables",
-  ],
-  renewables: [
-    "renewable", "battery-storage", "electrical", "engineering", "construction-material", "infrastructure", "government",
-    "consulting", "environment", "it", "logistics", "mining", "chemical", "ev-charging",
-  ],
-  transmission: [
-    "transmission", "electrical", "engineering", "infrastructure", "government", "consulting", "environment", "it",
-    "telecommunication", "construction-material", "iron-steel", "logistics",
-  ],
-  distribution: [
-    "distribution", "electrical", "engineering", "it", "telecommunication", "infrastructure", "government", "consulting",
-    "environment", "consumer-durables", "office-automation", "retail", "ev-charging", "logistics",
-  ],
-  "electricity-markets": [
-    "electricity-markets", "bfsi", "consulting", "government", "it", "telecommunication", "publishing", "media", "power", "renewable",
-  ],
-  "new-energies": [
-    "battery-storage", "renewable", "chemical", "engineering", "electrical", "oil-gas", "power", "consulting", "government", "it",
-    "environment", "infrastructure", "logistics",
-  ],
-  "energy-storage-systems": [
-    "battery-storage", "power", "renewable", "electrical", "engineering", "chemical", "consulting", "government", "it", "environment",
-    "infrastructure", "logistics",
-  ],
-  sustainability: [
-    "environment", "energy-efficiency-management", "consulting", "government", "it", "facility-management", "engineering",
-    "construction-material", "power", "renewable", "chemical", "fmcg", "healthcare", "mining", "iron-steel", "textile",
-  ],
+  "oil-gas": ["oil-gas", "chemical", "engineering", "logistics", "mining", "infrastructure", "government", "consulting", "distribution", "shipping", "railways", "telecommunication", "it", "environment", "construction-material", "exporters-importers"],
+  "power-generation": ["power", "electrical", "engineering", "construction-material", "infrastructure", "government", "consulting", "environment", "it", "logistics", "iron-steel", "mining", "consumer-durables"],
+  renewables: ["renewable", "battery-storage", "electrical", "engineering", "construction-material", "infrastructure", "government", "consulting", "environment", "it", "logistics", "mining", "chemical", "ev-charging"],
+  transmission: ["transmission", "electrical", "engineering", "infrastructure", "government", "consulting", "environment", "it", "telecommunication", "construction-material", "iron-steel", "logistics"],
+  distribution: ["distribution", "electrical", "engineering", "it", "telecommunication", "infrastructure", "government", "consulting", "environment", "consumer-durables", "office-automation", "retail", "ev-charging", "logistics"],
+  "electricity-markets": ["electricity-markets", "bfsi", "consulting", "government", "it", "telecommunication", "publishing", "media", "power", "renewable"],
+  "new-energies": ["battery-storage", "renewable", "chemical", "engineering", "electrical", "oil-gas", "power", "consulting", "government", "it", "environment", "infrastructure", "logistics"],
+  "energy-storage-systems": ["battery-storage", "power", "renewable", "electrical", "engineering", "chemical", "consulting", "government", "it", "environment", "infrastructure", "logistics"],
+  sustainability: ["environment", "energy-efficiency-management", "consulting", "government", "it", "facility-management", "engineering", "construction-material", "power", "renewable", "chemical", "fmcg", "healthcare", "mining", "iron-steel", "textile"],
 };
 
 const countries = [
@@ -244,11 +238,9 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     country: "",
     state: "",
 
-    // ✅ multi-select
     communities: [] as string[],
     subCommunities: [] as string[],
 
-    // keep industry single (as you already built)
     industry: "",
     subIndustry: "",
     areaOfIndustry: "",
@@ -259,7 +251,10 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   const [otpError, setOtpError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
-  // ✅ Compute allowed sub-communities based on selected communities
+  // ✅ stable map
+  const safeSubIndustryMap = useMemo(() => subIndustryMap || {}, []);
+
+  // ✅ sub-communities based on selected communities (union)
   const availableSubCommunities = useMemo(() => {
     const set = new Map<string, { value: string; label: string }>();
     for (const c of formData.communities) {
@@ -268,17 +263,22 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     return Array.from(set.values());
   }, [formData.communities]);
 
-  // ✅ Industry filtering: if multiple communities selected, union of allowed industries
+  // ✅ industry based on selected communities (union)
   const filteredIndustries = useMemo(() => {
     if (!formData.communities.length) return industries;
 
     const allowed = new Set<string>();
-    formData.communities.forEach((c) => {
-      (communityIndustryMap[c] || []).forEach((x) => allowed.add(x));
-    });
-
+    formData.communities.forEach((c) => (communityIndustryMap[c] || []).forEach((x) => allowed.add(x)));
     return industries.filter((i) => allowed.has(i.value));
   }, [formData.communities]);
+
+  // ✅ sub-industry options never blank
+  const subIndustryOptions = useMemo(() => {
+    const custom = safeSubIndustryMap[formData.industry];
+    if (custom && custom.length) return custom;
+    // fallback options always
+    return COMMON_SUB_INDUSTRIES;
+  }, [formData.industry, safeSubIndustryMap]);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -290,27 +290,52 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => {
       const updated: any = { ...prev, [field]: value };
-
-      if (field === "industry") updated.subIndustry = "";
+      if (field === "industry") {
+        // reset sub-industry safely
+        updated.subIndustry = "";
+      }
       return updated;
     });
+  };
+
+  // ✅ when mobile changes after verified => reset OTP state (important)
+  const handleMobileChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, mobile: value }));
+    if (otpState === "verified") {
+      setOtpState("idle");
+      setOtp(["", "", "", "", "", ""]);
+      setOtpError("");
+      setResendTimer(0);
+    }
   };
 
   const handleToggleCommunity = (value: string) => {
     setFormData((prev) => {
       const nextCommunities = toggleInArray(prev.communities, value);
 
-      // ✅ remove subCommunities that are no longer valid
+      // if none selected -> hard reset dependent fields
+      if (!nextCommunities.length) {
+        return {
+          ...prev,
+          communities: [],
+          subCommunities: [],
+          industry: "",
+          subIndustry: "",
+          areaOfIndustry: "",
+        };
+      }
+
+      // remove invalid sub-communities
       const validSubs = new Set<string>();
       nextCommunities.forEach((c) => (subCommunityMap[c] || []).forEach((s) => validSubs.add(s.value)));
-
       const nextSubCommunities = prev.subCommunities.filter((s) => validSubs.has(s));
 
-      // ✅ if industry no longer allowed, clear it
+      // allowed industries union
       const nextAllowedIndustries = new Set<string>();
       nextCommunities.forEach((c) => (communityIndustryMap[c] || []).forEach((x) => nextAllowedIndustries.add(x)));
 
-      const nextIndustry = nextAllowedIndustries.size && !nextAllowedIndustries.has(prev.industry) ? "" : prev.industry;
+      // if current industry not allowed -> clear
+      const nextIndustry = prev.industry && nextAllowedIndustries.has(prev.industry) ? prev.industry : "";
       const nextSubIndustry = nextIndustry ? prev.subIndustry : "";
 
       return {
@@ -319,7 +344,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
         subCommunities: nextSubCommunities,
         industry: nextIndustry,
         subIndustry: nextSubIndustry,
-        areaOfIndustry: "", // keep your existing reset behaviour
+        areaOfIndustry: "",
       };
     });
   };
@@ -360,7 +385,6 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
   const handleOTPChange = (index: number, value: string) => {
     if (value.length > 1) return;
-
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
@@ -404,6 +428,10 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     try {
       const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
 
+      // backward compatible
+      const primaryCommunity = formData.communities[0] || "";
+      const primarySubCommunity = formData.subCommunities[0] || "";
+
       await AuthAPI.completeRegistration({
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -412,7 +440,11 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
         country: formData.country,
         state: formData.state,
 
-        // ✅ send arrays (backend must be updated to store these)
+        // ✅ old fields (so your existing backend validation/DB works)
+        community: primaryCommunity,
+        sub_community: primarySubCommunity,
+
+        // ✅ new fields (backend upgrade later)
         communities: formData.communities,
         sub_communities: formData.subCommunities,
 
@@ -465,7 +497,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Information (unchanged) */}
+              {/* Personal Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Personal Information</h3>
 
@@ -499,7 +531,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   <p className="text-xs text-gray-500">This email has been verified and cannot be changed</p>
                 </div>
 
-                {/* Mobile OTP (unchanged) */}
+                {/* Mobile OTP */}
                 <div className="space-y-3">
                   <Label htmlFor="mobile">Mobile Number *</Label>
 
@@ -529,7 +561,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         id="mobile"
                         type="tel"
                         value={formData.mobile}
-                        onChange={(e) => handleInputChange("mobile", e.target.value)}
+                        onChange={(e) => handleMobileChange(e.target.value)}
                         placeholder="555 123 4567"
                         disabled={otpState === "verified"}
                         className={otpState === "verified" ? "bg-gray-50" : ""}
@@ -577,8 +609,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                             value={digit}
                             onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ""))}
                             onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                            className={`w-12 h-12 text-center text-lg font-semibold ${otpState === "error" ? "border-red-500" : ""
-                              }`}
+                            className={`w-12 h-12 text-center text-lg font-semibold ${otpState === "error" ? "border-red-500" : ""}`}
                             disabled={otpState === "verifying"}
                           />
                         ))}
@@ -646,7 +677,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Professional Classification</h3>
 
-                {/* ✅ Community Multi-Select */}
+                {/* Community Multi-Select */}
                 <div className="space-y-2">
                   <Label>Communities *</Label>
 
@@ -658,7 +689,13 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                           key={comm.value}
                           className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-gray-50 cursor-pointer"
                         >
-                          <Checkbox checked={checked} onCheckedChange={() => handleToggleCommunity(comm.value)} />
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              if (v === "indeterminate") return;
+                              if (v !== checked) handleToggleCommunity(comm.value);
+                            }}
+                          />
                           <span className="text-sm">{comm.label}</span>
                         </label>
                       );
@@ -666,17 +703,19 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   </div>
 
                   {formData.communities.length > 0 && (
-                    <p className="text-xs text-gray-500">
-                      Selected: {formData.communities.join(", ")}
-                    </p>
+                    <p className="text-xs text-gray-500">Selected: {formData.communities.join(", ")}</p>
                   )}
                 </div>
 
-                {/* ✅ Sub-Community Multi-Select */}
+                {/* Sub-Community Multi-Select */}
                 <div className="space-y-2">
                   <Label>Sub-Communities</Label>
 
-                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border p-3 ${!formData.communities.length ? "opacity-50 pointer-events-none" : ""}`}>
+                  <div
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border p-3 ${
+                      !formData.communities.length ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
                     {availableSubCommunities.length ? (
                       availableSubCommunities.map((sub) => {
                         const checked = formData.subCommunities.includes(sub.value);
@@ -685,7 +724,13 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                             key={sub.value}
                             className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-gray-50 cursor-pointer"
                           >
-                            <Checkbox checked={checked} onCheckedChange={() => handleToggleSubCommunity(sub.value)} />
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                if (v === "indeterminate") return;
+                                if (v !== checked) handleToggleSubCommunity(sub.value);
+                              }}
+                            />
                             <span className="text-sm">{sub.label}</span>
                           </label>
                         );
@@ -696,7 +741,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   </div>
                 </div>
 
-                {/* Industry (still single-select) */}
+                {/* Industry (single-select) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="industry">Industry *</Label>
@@ -718,33 +763,30 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                     </Select>
                   </div>
 
+                  {/* ✅ Sub-Industry (never blank now) */}
                   <div className="space-y-2">
                     <Label htmlFor="subIndustry">Sub-Industry</Label>
                     <Select
                       value={formData.subIndustry}
                       onValueChange={(value) => handleInputChange("subIndustry", value)}
-                      disabled={!formData.industry || !(subIndustryMap?.[formData.industry]?.length)}
+                      disabled={!formData.industry}
                     >
                       <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            !formData.industry
-                              ? "Select industry first"
-                              : subIndustryMap?.[formData.industry]?.length
-                                ? "Select sub-industry"
-                                : "No sub-industries available"
-                          }
-                        />
+                        <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {formData.industry &&
-                          subIndustryMap?.[formData.industry]?.map((sub) => (
-                            <SelectItem key={sub.value} value={sub.value}>
-                              {sub.label}
-                            </SelectItem>
-                          ))}
+                        {subIndustryOptions.map((sub) => (
+                          <SelectItem key={sub.value} value={sub.value}>
+                            {sub.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+                    {!safeSubIndustryMap[formData.industry]?.length && formData.industry ? (
+                      <p className="text-xs text-gray-500">
+                        Showing common sub-industry options (you can later paste full mapping for {formData.industry})
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -764,11 +806,19 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-900">
-                  <strong>Note:</strong> Your selections will be used to personalize your dashboard with relevant intelligence, reports, and analytics tailored to your professional interests.
-                </p>
-              </div>
+              {otpState !== "verified" && formData.mobile && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">Mobile Verification Required</p>
+                      <p className="text-sm text-amber-800 mt-1">
+                        Please verify your mobile number to complete registration.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -787,6 +837,13 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   </>
                 )}
               </Button>
+
+              {otpError && (
+                <div className="flex items-center gap-2 text-red-600 text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{otpError}</span>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

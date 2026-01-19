@@ -4,6 +4,72 @@ namespace Energ\Helpers;
 
 class CommunityValidator
 {
+    /**
+     * Canonical SLUG list (must match frontend values exactly)
+     */
+    public static function slugList()
+    {
+        return [
+            'oil-gas' => [
+                'upstream',
+                'pipelines',
+                'refining',
+                'petrochemicals',
+                'cgd',
+                'lpg',
+                'retail',
+                'oil-markets',
+            ],
+            'power-generation' => [
+                'thermal',
+                'nuclear',
+            ],
+            'renewables' => [
+                'solar',
+                'wind',
+                'hydro',
+                'biopower',
+                'cogeneration',
+                'waste-to-energy',
+            ],
+            'transmission' => [
+                'smart-grid',
+            ],
+            'distribution' => [
+                'smart-meters-ami',
+                'ev-charging',
+                'data-centres',
+                'smart-cities',
+                'railways-metros',
+            ],
+            'electricity-markets' => [
+                'power-markets',
+                'carbon-markets',
+                'rco',
+            ],
+            'new-energies' => [
+                'green-hydrogen',
+                'e-fuels',
+            ],
+            'energy-storage-systems' => [
+                'bess',
+                'pumped-hydro',
+                'caes',
+                'thermal',
+                'flywheel',
+            ],
+            'sustainability' => [
+                'energy-efficiency',
+                'occupational-health',
+                'industrial-process-safety',
+                'environment',
+            ],
+        ];
+    }
+
+    /**
+     * Backward compatible LABEL list (optional; keep if used elsewhere)
+     */
     public static function list()
     {
         return [
@@ -64,9 +130,56 @@ class CommunityValidator
         ];
     }
 
+    private static function slugify($s)
+    {
+        $s = strtolower(trim((string)$s));
+
+        // normalize '&' and punctuation
+        $s = str_replace('&', '', $s);
+
+        // spaces -> hyphen
+        $s = preg_replace('/\s+/', '-', $s);
+
+        // remove invalid chars
+        $s = preg_replace('/[^a-z0-9\-]/', '', $s);
+
+        // collapse hyphens
+        $s = preg_replace('/-+/', '-', $s);
+
+        return trim($s, '-');
+    }
+
+    /**
+     * ✅ MAIN VALIDATOR:
+     * 1) First try SLUG validation (exact match with frontend)
+     * 2) If not found, fallback to label validation (older payloads)
+     */
     public static function isValid($community, $sub)
     {
+        $community = (string)$community;
+        $sub = (string)$sub;
+
+        // 1) slug-first
+        $slugs = self::slugList();
+        if (isset($slugs[$community])) {
+            return in_array($sub, $slugs[$community], true);
+        }
+
+        // 2) fallback: label-based (older clients)
         $list = self::list();
-        return isset($list[$community]) && in_array($sub, $list[$community], true);
+
+        // match label by slugify
+        $cNeedle = self::slugify($community);
+        foreach ($list as $label => $subs) {
+            if (self::slugify($label) !== $cNeedle) continue;
+
+            $sNeedle = self::slugify($sub);
+            foreach ($subs as $subLabel) {
+                if (self::slugify($subLabel) === $sNeedle) return true;
+            }
+            return false;
+        }
+
+        return false;
     }
 }
