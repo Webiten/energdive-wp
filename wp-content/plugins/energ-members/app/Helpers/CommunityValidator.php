@@ -156,30 +156,121 @@ class CommunityValidator
      */
     public static function isValid($community, $sub)
     {
-        $community = (string)$community;
-        $sub = (string)$sub;
+        $community = is_string($community) ? trim($community) : '';
+        $sub       = is_string($sub) ? trim($sub) : '';
 
-        // 1) slug-first
+        if ($community === '' || $sub === '') {
+            return false;
+        }
+
+        // 1) First try slug-based validation (your frontend sends slugs)
         $slugs = self::slugList();
         if (isset($slugs[$community])) {
             return in_array($sub, $slugs[$community], true);
         }
 
-        // 2) fallback: label-based (older clients)
-        $list = self::list();
+        // 2) Backward compatibility: label-based validation
+        // e.g. "Oil & Gas" + "Upstream"
+        $labels = self::list();
+        if (isset($labels[$community])) {
+            return in_array($sub, $labels[$community], true);
+        }
 
-        // match label by slugify
-        $cNeedle = self::slugify($community);
-        foreach ($list as $label => $subs) {
-            if (self::slugify($label) !== $cNeedle) continue;
-
-            $sNeedle = self::slugify($sub);
-            foreach ($subs as $subLabel) {
-                if (self::slugify($subLabel) === $sNeedle) return true;
-            }
-            return false;
+        // 3) Extra safety: if someone sends label community but slug sub (or vice versa)
+        // Try mapping label->slug community and validate again
+        $communitySlug = self::communityLabelToSlug($community);
+        if ($communitySlug && isset($slugs[$communitySlug])) {
+            // If sub looks like label, convert it; if already slug, keep it.
+            $subSlug = self::subLabelToSlug($communitySlug, $sub) ?: $sub;
+            return in_array($subSlug, $slugs[$communitySlug], true);
         }
 
         return false;
+    }
+
+    /**
+     * Convert label community => slug community
+     * Example: "Oil & Gas" => "oil-gas"
+     */
+    private static function communityLabelToSlug(string $label): ?string
+    {
+        $map = [
+            'Oil & Gas' => 'oil-gas',
+            'Power Generation' => 'power-generation',
+            'Renewables' => 'renewables',
+            'Transmission' => 'transmission',
+            'Distribution' => 'distribution',
+            'Electricity Markets' => 'electricity-markets',
+            'New Energies' => 'new-energies',
+            'Energy Storage Systems' => 'energy-storage-systems',
+            'Sustainability' => 'sustainability',
+        ];
+        return $map[$label] ?? null;
+    }
+
+    /**
+     * Convert label sub-community => slug sub-community within a given community slug
+     * Example: ("oil-gas","Upstream") => "upstream"
+     */
+    private static function subLabelToSlug(string $communitySlug, string $subLabel): ?string
+    {
+        $labelToSlug = [
+            'oil-gas' => [
+                'Upstream' => 'upstream',
+                'Pipelines' => 'pipelines',
+                'Refining' => 'refining',
+                'Petrochemicals' => 'petrochemicals',
+                'CGD' => 'cgd',
+                'LPG' => 'lpg',
+                'Retail' => 'retail',
+                'Oil Markets' => 'oil-markets',
+            ],
+            'power-generation' => [
+                'Thermal' => 'thermal',
+                'Nuclear' => 'nuclear',
+            ],
+            'renewables' => [
+                'Solar' => 'solar',
+                'Wind' => 'wind',
+                'Hydro' => 'hydro',
+                'Biopower' => 'biopower',
+                'Cogeneration' => 'cogeneration',
+                'Waste-to-Energy' => 'waste-to-energy',
+            ],
+            'transmission' => [
+                'Smart Grid' => 'smart-grid',
+            ],
+            'distribution' => [
+                'Smart Meters & AMI' => 'smart-meters-ami',
+                'EV Charging' => 'ev-charging',
+                'Data Centres' => 'data-centres',
+                'Smart Cities' => 'smart-cities',
+                'Railways & Metros' => 'railways-metros',
+            ],
+            'electricity-markets' => [
+                'Power Markets' => 'power-markets',
+                'Carbon Markets' => 'carbon-markets',
+                'RCO' => 'rco',
+            ],
+            'new-energies' => [
+                'Green Hydrogen' => 'green-hydrogen',
+                'E-Fuels' => 'e-fuels',
+            ],
+            'energy-storage-systems' => [
+                'BESS' => 'bess',
+                'Pumped Hydro' => 'pumped-hydro',
+                'CAES' => 'caes',
+                'Thermal' => 'thermal',
+                'Flywheel' => 'flywheel',
+            ],
+            'sustainability' => [
+                'Energy Efficiency' => 'energy-efficiency',
+                'Occupational Health' => 'occupational-health',
+                'Industrial & Process Safety' => 'industrial-process-safety',
+                'Environment' => 'environment',
+            ],
+        ];
+
+        return $labelToSlug[$communitySlug][$subLabel] ?? null;
     }
 }
