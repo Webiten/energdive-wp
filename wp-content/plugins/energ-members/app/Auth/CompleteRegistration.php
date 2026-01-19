@@ -21,7 +21,7 @@ class CompleteRegistration
             $params = [];
         }
 
-        // Required fields (community can come from community OR communities[])
+        // Required fields
         $required = [
             'first_name',
             'last_name',
@@ -40,29 +40,20 @@ class CompleteRegistration
             return new WP_Error('privacy_required', 'Privacy policy must be accepted', ['status' => 400]);
         }
 
-        // Optional fields (safe defaults)
+        // Optional fields
         $state       = isset($params['state']) ? sanitize_text_field($params['state']) : '';
         $subIndustry = isset($params['sub_industry']) ? sanitize_text_field($params['sub_industry']) : '';
 
         /**
-         * ✅ Community handling (support BOTH)
-         * - old: community + sub_community
-         * - new: communities[] + sub_communities[]
-         *
-         * IMPORTANT:
-         * Your CommunityValidator::list() currently uses LABELS (e.g. "Oil & Gas", "Upstream")
-         * while the UI sends SLUGS (e.g. "oil-gas", "upstream").
-         *
-         * So we normalize input to labels BEFORE validating/storing in primary columns.
+         * Communities (support both):
+         * - old: community (string)
+         * - new: communities (array)
          */
-
-        // 1) Normalize communities
         $communities = [];
         if (isset($params['communities']) && is_array($params['communities'])) {
             $communities = array_values(array_unique(array_filter(array_map('sanitize_text_field', $params['communities']))));
         }
 
-        // fallback to single community
         if (empty($communities)) {
             $singleCommunity = isset($params['community']) ? sanitize_text_field($params['community']) : '';
             if ($singleCommunity !== '') {
@@ -74,13 +65,16 @@ class CompleteRegistration
             return new WP_Error('missing_field', 'Missing field: community', ['status' => 400]);
         }
 
-        // 2) Normalize sub-communities
+        /**
+         * Sub-communities (support both):
+         * - old: sub_community (string)
+         * - new: sub_communities (array)
+         */
         $subCommunities = [];
         if (isset($params['sub_communities']) && is_array($params['sub_communities'])) {
             $subCommunities = array_values(array_unique(array_filter(array_map('sanitize_text_field', $params['sub_communities']))));
         }
 
-        // fallback to single sub_community
         if (empty($subCommunities)) {
             $singleSub = isset($params['sub_community']) ? sanitize_text_field($params['sub_community']) : '';
             if ($singleSub !== '') {
@@ -89,52 +83,17 @@ class CompleteRegistration
         }
 
         /**
-         * ✅ Build slug->label maps from CommunityValidator::list()
-         * This allows UI slugs to validate against the existing label-based list.
+         * ✅ Validation:
+         * If sub-communities are provided, each sub must be valid for at least one selected community.
+         *
+         * IMPORTANT: This expects CommunityValidator::isValid() to support slugs
+         * (which you already confirmed exists via slugList()).
          */
-        $list = CommunityValidator::list();
-
-        // communitySlug => communityLabel
-        $communitySlugToLabel = [];
-        // subSlug => subLabel (not unique globally, but OK for your current set)
-        $subSlugToLabel = [];
-
-        foreach ($list as $communityLabel => $subs) {
-            $cSlug = sanitize_title($communityLabel);
-            $communitySlugToLabel[$cSlug] = $communityLabel;
-
-            foreach ((array) $subs as $subLabel) {
-                $sSlug = sanitize_title($subLabel);
-                $subSlugToLabel[$sSlug] = $subLabel;
-            }
-        }
-
-        // Convert incoming communities/subs to LABELS if they are SLUGS
-        $communitiesLabel = array_map(function ($c) use ($communitySlugToLabel) {
-            $c = (string) $c;
-            $key = sanitize_title($c);
-            return $communitySlugToLabel[$key] ?? $c; // if already label, it will pass through
-        }, $communities);
-
-        $subCommunitiesLabel = array_map(function ($s) use ($subSlugToLabel) {
-            $s = (string) $s;
-            $key = sanitize_title($s);
-            return $subSlugToLabel[$key] ?? $s; // if already label, it will pass through
-        }, $subCommunities);
-
-        // De-dupe after mapping
-        $communitiesLabel = array_values(array_unique(array_filter($communitiesLabel)));
-        $subCommunitiesLabel = array_values(array_unique(array_filter($subCommunitiesLabel)));
-
-        /**
-         * ✅ Validation rules
-         * - If sub-communities provided, each sub must be valid for AT LEAST ONE selected community
-         */
-        if (!empty($subCommunitiesLabel)) {
-            foreach ($subCommunitiesLabel as $subLabel) {
+        if (!empty($subCommunities)) {
+            foreach ($subCommunities as $sub) {
                 $ok = false;
-                foreach ($communitiesLabel as $communityLabel) {
-                    if (CommunityValidator::isValid($communityLabel, $subLabel)) {
+                foreach ($communities as $community) {
+                    if (CommunityValidator::isValid($community, $sub)) {
                         $ok = true;
                         break;
                     }
@@ -150,48 +109,40 @@ class CompleteRegistration
         }
 
         /**
-         * ✅ Choose PRIMARY values (backward compatibility)
-         * - primaryCommunity = first selected (LABEL)
-         * - primarySubCommunity = first valid sub for that primary community, else empty
+         * ✅ Primary columns (backward compatible)
+         * Store first selected community and a sub-community that matches it (if available)
          */
-        $primaryCommunity = $communitiesLabel[0];
+        $primaryCommunity = $communities[0];
         $primarySubCommunity = '';
 
-        if (!empty($subCommunitiesLabel)) {
-            foreach ($subCommunitiesLabel as $subLabel) {
-                if (CommunityValidator::isValid($primaryCommunity, $subLabel)) {
-                    $primarySubCommunity = $subLabel;
+        if (!empty($subCommunities)) {
+            foreach ($subCommunities as $sub) {
+                if (CommunityValidator::isValid($primaryCommunity, $sub)) {
+                    $primarySubCommunity = $sub;
                     break;
                 }
             }
-            // If none match the primary community, keep empty.
-            // (Do NOT force an invalid pair into primary columns.)
         }
 
         $table = $wpdb->prefix . 'energ_members';
 
-        // ✅ Store JSON safely (store BOTH raw slugs + labels if you want; here: store slugs in json)
-        // If you prefer labels in JSON, replace $communities/$subCommunities below with $communitiesLabel/$subCommunitiesLabel.
-        $communitiesJson = wp_json_encode(array_values($communities));
-        $subCommunitiesJson = wp_json_encode(array_values($subCommunities));
-
         $dataToUpdate = [
-            'first_name'            => sanitize_text_field($params['first_name']),
-            'last_name'             => sanitize_text_field($params['last_name']),
-            'country'               => sanitize_text_field($params['country']),
-            'state'                 => $state,
+            'first_name'           => sanitize_text_field($params['first_name']),
+            'last_name'            => sanitize_text_field($params['last_name']),
+            'country'              => sanitize_text_field($params['country']),
+            'state'                => $state,
 
-            // ✅ primary columns store LABELS (because validator/list is label-based)
-            'community'             => $primaryCommunity,
-            'sub_community'         => $primarySubCommunity,
+            // ✅ store SLUGS in main columns
+            'community'            => sanitize_text_field($primaryCommunity),
+            'sub_community'        => sanitize_text_field($primarySubCommunity),
 
-            'industry'              => sanitize_text_field($params['industry']),
-            'sub_industry'          => $subIndustry,
-            'status'                => 'active',
+            'industry'             => sanitize_text_field($params['industry']),
+            'sub_industry'         => $subIndustry,
+            'status'               => 'active',
 
-            // ✅ JSON columns store SLUG arrays (or switch to labels if you prefer)
-            'communities_json'      => $communitiesJson,
-            'sub_communities_json'  => $subCommunitiesJson,
+            // ✅ store arrays as JSON (SLUGS)
+            'communities_json'     => wp_json_encode(array_values($communities)),
+            'sub_communities_json' => wp_json_encode(array_values($subCommunities)),
         ];
 
         $where = [ is_email($user) ? 'email' : 'phone' => $user ];
