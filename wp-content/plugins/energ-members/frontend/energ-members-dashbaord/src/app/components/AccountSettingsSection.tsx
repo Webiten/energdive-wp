@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -9,9 +9,13 @@ import { Badge } from "./ui/badge";
 import { User, Bell, CreditCard, Shield } from "lucide-react";
 import { useMe } from "../hooks/useMe";
 
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
 /**
- * ✅ Replace this taxonomy with your actual slugs/labels.
- * IMPORTANT: Store and send SLUGS to backend (recommended).
+ * ✅ Use SLUGS for values (store/send slugs to backend)
+ * If your DB is currently storing slugs like "oil-gas", keep it as-is.
  */
 const COMMUNITY_TAXONOMY: Array<{
   slug: string;
@@ -72,6 +76,160 @@ function normalizeStringList(value: any): string[] {
   return out;
 }
 
+function useOutsideClick(ref: React.RefObject<HTMLElement>, onOutside: () => void, enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    function handle(e: MouseEvent) {
+      const el = ref.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) onOutside();
+    }
+
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [ref, onOutside, enabled]);
+}
+
+type Option = { value: string; label: string };
+
+function MultiSelectPopover({
+  label,
+  disabled,
+  selected,
+  options,
+  placeholder,
+  onChange,
+  buttonText = "Add",
+}: {
+  label: string;
+  disabled?: boolean;
+  selected: string[];
+  options: Option[];
+  placeholder?: string;
+  onChange: (next: string[]) => void;
+  buttonText?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+
+  useOutsideClick(
+    boxRef,
+    () => setOpen(false),
+    open
+  );
+
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  function toggle(value: string) {
+    if (disabled) return;
+
+    const next = new Set(selected);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+
+    onChange(Array.from(next));
+  }
+
+  const selectedLabels = useMemo(() => {
+    const map = new Map(options.map((o) => [o.value, o.label]));
+    return selected.map((v) => map.get(v) ?? v);
+  }, [selected, options]);
+
+  return (
+    <div className="space-y-2" ref={boxRef}>
+      <Label>{label}</Label>
+
+      {/* Selected box + Add button */}
+      <div className="flex gap-2 items-start">
+        <div
+          className={cn(
+            "flex-1 min-h-[44px] rounded-md border bg-white px-3 py-2",
+            disabled ? "bg-gray-50 opacity-80" : "cursor-default"
+          )}
+        >
+          {selectedLabels.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedLabels.map((t, idx) => (
+                <span
+                  key={`${t}-${idx}`}
+                  className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-800"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">{placeholder ?? "None selected"}</p>
+          )}
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="border-emerald-200"
+          disabled={disabled}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {buttonText}
+        </Button>
+      </div>
+
+      {/* Dropdown */}
+      {open && !disabled && (
+        <div className="relative">
+          <div className="absolute z-50 mt-2 w-full rounded-md border bg-white shadow-lg">
+            <div className="max-h-64 overflow-auto p-2">
+              {options.length === 0 ? (
+                <div className="px-2 py-3 text-sm text-gray-500">No options available.</div>
+              ) : (
+                options.map((o) => {
+                  const checked = selectedSet.has(o.value);
+                  return (
+                    <button
+                      type="button"
+                      key={o.value}
+                      onClick={() => toggle(o.value)}
+                      className={cn(
+                        "w-full flex items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-gray-50",
+                        checked ? "bg-emerald-50" : ""
+                      )}
+                    >
+                      <span className="text-gray-800">{o.label}</span>
+                      <span
+                        className={cn(
+                          "inline-flex h-5 w-5 items-center justify-center rounded border text-xs",
+                          checked
+                            ? "border-emerald-600 bg-emerald-600 text-white"
+                            : "border-gray-300 text-transparent"
+                        )}
+                        aria-hidden
+                      >
+                        ✓
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t p-2 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="border-gray-200"
+                onClick={() => setOpen(false)}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AccountSettingsSection() {
   const { me, loading, error, updateMe } = useMe();
 
@@ -82,9 +240,7 @@ export function AccountSettingsSection() {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  // -------------------------
   // Profile fields
-  // -------------------------
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
@@ -97,21 +253,17 @@ export function AccountSettingsSection() {
   const [country, setCountry] = useState("");
   const [industry, setIndustry] = useState("");
 
-  // ✅ Multi-select values (slugs)
+  // Communities / sub communities (slugs)
   const [communities, setCommunities] = useState<string[]>([]);
   const [subCommunities, setSubCommunities] = useState<string[]>([]);
 
-  // -------------------------
   // Notification prefs
-  // -------------------------
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [eventReminders, setEventReminders] = useState(true);
   const [communityActivity, setCommunityActivity] = useState(false);
 
-  // -------------------------
-  // Password fields
-  // -------------------------
+  // Password
   const hasPassword = useMemo(() => {
     if (!me) return true;
     if (typeof (me as any).hasPassword === "boolean") return (me as any).hasPassword;
@@ -139,7 +291,6 @@ export function AccountSettingsSection() {
     setCountry((me as any).country ?? "");
     setIndustry((me as any).industry ?? "");
 
-    // Prefer arrays returned from backend
     const cRaw =
       (me as any).communities ??
       (me as any).communities_json ??
@@ -170,50 +321,37 @@ export function AccountSettingsSection() {
     setTimeout(() => setSaveMsg(null), 2500);
   }
 
-  // -------------------------
-  // Options derived from selected communities
-  // -------------------------
-  const communityOptions = useMemo(() => {
-    return COMMUNITY_TAXONOMY.map((c) => ({ value: c.slug, label: c.label }));
-  }, []);
+  // Options
+  const communityOptions: Option[] = useMemo(
+    () => COMMUNITY_TAXONOMY.map((c) => ({ value: c.slug, label: c.label })),
+    []
+  );
 
-  const subCommunityOptions = useMemo(() => {
+  const subCommunityOptions: Option[] = useMemo(() => {
     const selected = new Set(communities);
-    const subs: Array<{ value: string; label: string }> = [];
+    const out: Option[] = [];
 
     for (const c of COMMUNITY_TAXONOMY) {
       if (!selected.has(c.slug)) continue;
-      for (const s of c.subs) {
-        subs.push({ value: s.slug, label: s.label });
-      }
+      for (const s of c.subs) out.push({ value: s.slug, label: s.label });
     }
 
-    // de-dupe
+    // dedupe
     const seen = new Set<string>();
-    return subs.filter((x) => {
+    return out.filter((x) => {
       if (seen.has(x.value)) return false;
       seen.add(x.value);
       return true;
     });
   }, [communities]);
 
-  // If user changes communities, remove sub communities that are no longer valid
+  // If communities change, remove invalid sub communities
   useEffect(() => {
     const allowed = new Set(subCommunityOptions.map((x) => x.value));
     setSubCommunities((prev) => prev.filter((x) => allowed.has(x)));
   }, [subCommunityOptions]);
 
-  function onChangeMultiSelect(
-    e: React.ChangeEvent<HTMLSelectElement>,
-    setter: (v: string[]) => void
-  ) {
-    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-    setter(selected);
-  }
-
-  // -------------------------
   // Save handlers
-  // -------------------------
   async function onSaveProfile() {
     setSavingProfile(true);
     setLocalError(null);
@@ -227,7 +365,6 @@ export function AccountSettingsSection() {
         organization,
         country,
         industry,
-
         communities,
         subCommunities,
       });
@@ -295,7 +432,7 @@ export function AccountSettingsSection() {
     }
   }
 
-  // Membership: free only
+  // Free membership only
   const membership = useMemo(() => {
     return {
       planName: "Free Plan",
@@ -332,7 +469,7 @@ export function AccountSettingsSection() {
           )}
         </div>
 
-        {/* Profile Information */}
+        {/* Profile */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -342,7 +479,6 @@ export function AccountSettingsSection() {
           </CardHeader>
 
           <CardContent className="space-y-5">
-            {/* Names */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
@@ -353,7 +489,6 @@ export function AccountSettingsSection() {
                   disabled={loading || savingProfile || !me}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
@@ -365,14 +500,12 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            {/* Email + Phone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input id="email" type="email" value={email} disabled />
                 <p className="text-xs text-gray-500">Email is linked to your login and cannot be changed.</p>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" value={phone} disabled />
@@ -380,7 +513,6 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            {/* Job + Org */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="jobTitle">Job Title</Label>
@@ -391,7 +523,6 @@ export function AccountSettingsSection() {
                   disabled={loading || savingProfile || !me}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="organization">Organization</Label>
                 <Input
@@ -403,7 +534,6 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            {/* Country + Industry */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="country">Country</Label>
@@ -414,7 +544,6 @@ export function AccountSettingsSection() {
                   disabled={loading || savingProfile || !me}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="industry">Industry</Label>
                 <Input
@@ -426,71 +555,26 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            {/* Communities multi-select */}
-            <div className="space-y-2">
-              <Label>Communities</Label>
+            {/* ✅ EXACT UX YOU WANT */}
+            <MultiSelectPopover
+              label="Communities"
+              selected={communities}
+              options={communityOptions}
+              placeholder="No communities selected"
+              onChange={setCommunities}
+              disabled={loading || savingProfile || !me}
+              buttonText="Add"
+            />
 
-              <select
-                multiple
-                value={communities}
-                onChange={(e) => onChangeMultiSelect(e, setCommunities)}
-                disabled={loading || savingProfile || !me}
-                className="w-full min-h-[120px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
-              >
-                {communityOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-
-              <p className="text-xs text-gray-500">
-                Hold Ctrl/Command to select multiple.
-              </p>
-
-              <div className="text-xs text-gray-600">
-                Selected:{" "}
-                {communities.length ? (
-                  <span className="font-medium">{communities.length}</span>
-                ) : (
-                  <span className="text-gray-500">None</span>
-                )}
-              </div>
-            </div>
-
-            {/* Sub-Communities multi-select */}
-            <div className="space-y-2">
-              <Label>Sub-Communities</Label>
-
-              <select
-                multiple
-                value={subCommunities}
-                onChange={(e) => onChangeMultiSelect(e, setSubCommunities)}
-                disabled={loading || savingProfile || !me || subCommunityOptions.length === 0}
-                className="w-full min-h-[120px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200 disabled:bg-gray-50"
-              >
-                {subCommunityOptions.length === 0 ? (
-                  <option value="" disabled>
-                    Select a community first
-                  </option>
-                ) : (
-                  subCommunityOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))
-                )}
-              </select>
-
-              <div className="text-xs text-gray-600">
-                Selected:{" "}
-                {subCommunities.length ? (
-                  <span className="font-medium">{subCommunities.length}</span>
-                ) : (
-                  <span className="text-gray-500">None</span>
-                )}
-              </div>
-            </div>
+            <MultiSelectPopover
+              label="Sub-Communities"
+              selected={subCommunities}
+              options={subCommunityOptions}
+              placeholder={communities.length ? "No sub-communities selected" : "Select communities first"}
+              onChange={setSubCommunities}
+              disabled={loading || savingProfile || !me || communities.length === 0}
+              buttonText="Add"
+            />
 
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -502,7 +586,7 @@ export function AccountSettingsSection() {
           </CardContent>
         </Card>
 
-        {/* Notification Preferences */}
+        {/* Notifications */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -516,50 +600,31 @@ export function AccountSettingsSection() {
                 <Label>Email Notifications</Label>
                 <p className="text-sm text-gray-500">Receive updates about new articles and insights</p>
               </div>
-              <Switch
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} disabled={loading || savingPrefs || !me} />
             </div>
             <Separator />
-
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Weekly Digest</Label>
                 <p className="text-sm text-gray-500">Get a weekly summary of top content</p>
               </div>
-              <Switch
-                checked={weeklyDigest}
-                onCheckedChange={setWeeklyDigest}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={weeklyDigest} onCheckedChange={setWeeklyDigest} disabled={loading || savingPrefs || !me} />
             </div>
             <Separator />
-
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Event Reminders</Label>
                 <p className="text-sm text-gray-500">Notifications for upcoming webinars and events</p>
               </div>
-              <Switch
-                checked={eventReminders}
-                onCheckedChange={setEventReminders}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={eventReminders} onCheckedChange={setEventReminders} disabled={loading || savingPrefs || !me} />
             </div>
             <Separator />
-
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <Label>Community Activity</Label>
                 <p className="text-sm text-gray-500">Updates on discussions you're following</p>
               </div>
-              <Switch
-                checked={communityActivity}
-                onCheckedChange={setCommunityActivity}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={communityActivity} onCheckedChange={setCommunityActivity} disabled={loading || savingPrefs || !me} />
             </div>
 
             <Button
@@ -572,7 +637,7 @@ export function AccountSettingsSection() {
           </CardContent>
         </Card>
 
-        {/* Membership Status - Free only */}
+        {/* Membership - Free only */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -594,12 +659,11 @@ export function AccountSettingsSection() {
                 <p className="text-sm text-gray-500">{membership.period}</p>
               </div>
             </div>
-
             <p className="text-xs text-gray-500">Membership upgrades are currently not available.</p>
           </CardContent>
         </Card>
 
-        {/* Security / Password */}
+        {/* Security */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

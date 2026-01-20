@@ -97,7 +97,7 @@ export const AuthAPI = {
     return throwIfNotOk(res);
   },
 
-  /** ✏️ Update logged-in user (JWT) */
+  /** 👤 Update logged-in user (JWT) */
   async updateMe(payload: any) {
     const token = getAccessToken();
 
@@ -113,6 +113,7 @@ export const AuthAPI = {
 
     return throwIfNotOk(res);
   },
+
 
   /** 🚪 Logout */
   async logout() {

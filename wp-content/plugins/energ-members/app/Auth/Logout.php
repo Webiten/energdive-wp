@@ -1,11 +1,10 @@
 <?php
 namespace Energ\Auth;
 
-use WP_Error;
-
-class Logout {
-
-    public function handle($request) {
+class Logout
+{
+    public function handle($request)
+    {
         global $wpdb;
 
         // Accept refresh token from JSON OR header OR query (flexible)
@@ -13,36 +12,51 @@ class Logout {
         $refresh = $params['refresh_token'] ?? '';
 
         if (!$refresh && method_exists($request, 'get_header')) {
-            // Optional: allow passing refresh token in header: X-Refresh-Token
             $refresh = (string) $request->get_header('x-refresh-token');
         }
 
         if (!$refresh && method_exists($request, 'get_param')) {
-            // Optional: allow passing refresh token in query/body param
             $refresh = (string) $request->get_param('refresh_token');
         }
 
-        // 1) If refresh token exists, revoke it (your existing behavior)
+        // Also accept SID from middleware (if logout endpoint is JWT protected)
+        $sid = 0;
+        if (method_exists($request, 'get_param')) {
+            $sid = (int) $request->get_param('auth_sid');
+        }
+
+        $table = $wpdb->prefix . 'energ_refresh_tokens';
+        $revoked = false;
+
+        // 1) Revoke by refresh token hash (recommended)
         if ($refresh) {
             $hash  = hash('sha256', $refresh);
-            $table = $wpdb->prefix . 'energ_refresh_tokens';
 
             $updated = $wpdb->update(
                 $table,
-                ['revoked' => 1],
+                ['revoked' => 1, 'revoked_at' => current_time('mysql', 1)],
                 ['token_hash' => $hash],
-                ['%d'],
+                ['%d', '%s'],
                 ['%s']
             );
 
-            if (!$updated) {
-                // Important: Do NOT block cookie logout if token revoke fails.
-                // Some clients might not have refresh tokens.
-                // We'll continue to clear WP session below.
-            }
+            if ($updated) $revoked = true;
         }
 
-        // 2) Always clear WP auth session/cookies (this is what fixes "still logged in")
+        // 2) If refresh token not provided, revoke by SID (works for JWT-protected logout)
+        if (!$revoked && $sid > 0) {
+            $updated = $wpdb->update(
+                $table,
+                ['revoked' => 1, 'revoked_at' => current_time('mysql', 1)],
+                ['id' => $sid],
+                ['%d', '%s'],
+                ['%d']
+            );
+
+            if ($updated) $revoked = true;
+        }
+
+        // 3) Clear WP auth session/cookies (safe even if not used)
         if (function_exists('wp_logout')) {
             wp_logout();
         }
@@ -51,8 +65,8 @@ class Logout {
             wp_clear_auth_cookie();
         }
 
-        // Also clear the current session token if possible
-        if (function_exists('wp_get_session_token') && function_exists('WP_Session_Tokens')) {
+        // 4) Clear current WP session token if possible
+        if (function_exists('wp_get_session_token') && class_exists('\WP_Session_Tokens')) {
             $token = wp_get_session_token();
             if ($token) {
                 $manager = \WP_Session_Tokens::get_instance(get_current_user_id());
@@ -65,7 +79,7 @@ class Logout {
         return [
             'success' => true,
             'message' => 'Logged out successfully',
-            'revoked_refresh_token' => $refresh ? true : false
+            'revoked' => $revoked,
         ];
     }
 }

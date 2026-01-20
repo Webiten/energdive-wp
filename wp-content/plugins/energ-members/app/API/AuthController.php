@@ -20,14 +20,17 @@ class AuthController
     }
 
     /**
-     * GET /wp-json/energ/v1/me
-     * JWT protected (JwtAuth middleware)
+     * ✅ GET /wp-json/energ/v1/me
+     * Returns:
+     * - communities: array (from communities_json)
+     * - subCommunities: array (from sub_communities_json)
+     * - phone always filled if available
+     * - hasPassword based on WP user meta (first time set password logic)
      */
     public static function me($request)
     {
         global $wpdb;
 
-        // ✅ Set by JwtAuth middleware (identifier = email or phone)
         $identifier = $request->get_param('auth_user');
         if (!$identifier) $identifier = $request->get_param('auth_identifier');
 
@@ -37,7 +40,7 @@ class AuthController
 
         $table = $wpdb->prefix . 'energ_members';
 
-        $user = $wpdb->get_row(
+        $row = $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT
                     id,
@@ -68,63 +71,87 @@ class AuthController
             ARRAY_A
         );
 
-        if (!$user) {
+        if (!$row) {
             return new WP_Error('user_not_found', 'User not found', ['status' => 404]);
         }
 
-        // Phone fallback if DB phone empty but identifier is phone
-        if (empty($user['phone']) && is_string($identifier) && preg_match('/^\+?\d[\d\s\-]{6,}$/', $identifier)) {
-            $user['phone'] = $identifier;
+        // ✅ Decode JSON arrays safely
+        $communities = self::decodeJsonArray($row['communities_json'] ?? null);
+        $subCommunities = self::decodeJsonArray($row['sub_communities_json'] ?? null);
+
+        // Backward compatibility: if JSON empty but legacy single value exists
+        if (empty($communities) && !empty($row['community'])) {
+            $communities = [ (string) $row['community'] ];
+        }
+        if (empty($subCommunities) && !empty($row['sub_community'])) {
+            $subCommunities = [ (string) $row['sub_community'] ];
         }
 
-        // Normalize communities/subCommunities arrays
-        $communities = self::decode_json_array($user['communities_json'] ?? null);
-        if (empty($communities) && !empty($user['community'])) {
-            $communities = [ (string) $user['community'] ];
+        // ✅ phone fallback: if phone null, set identifier when it looks like phone
+        if (empty($row['phone']) && preg_match('/^\+?\d[\d\s\-]{6,}$/', (string)$identifier)) {
+            $row['phone'] = $identifier;
         }
 
-        $subCommunities = self::decode_json_array($user['sub_communities_json'] ?? null);
-        if (empty($subCommunities) && !empty($user['sub_community'])) {
-            $subCommunities = [ (string) $user['sub_community'] ];
-        }
-
-        // Notifications stored in WP user meta (recommended since table doesn't have notifications_json)
-        $notifications = [];
-        $wpUserId = intval($user['user_id'] ?? 0);
+        // ✅ Password logic:
+        // Use WP user meta 'energ_password_set' to decide first-time set password.
+        $hasPassword = true;
+        $wpUserId = intval($row['user_id'] ?? 0);
         if ($wpUserId > 0) {
-            $raw = get_user_meta($wpUserId, 'energ_notifications', true);
-            $notifications = is_array($raw) ? $raw : (is_string($raw) ? json_decode($raw, true) : []);
-            if (!is_array($notifications)) $notifications = [];
+            $flag = get_user_meta($wpUserId, 'energ_password_set', true);
+            $hasPassword = ($flag === '1' || $flag === 1 || $flag === true);
+        } else {
+            // If no WP user linked, treat as true to avoid showing "set password" incorrectly.
+            $hasPassword = true;
         }
 
-        // hasPassword from WP user
-        $hasPassword = null;
-        if ($wpUserId > 0) {
-            $wpUser = get_user_by('id', $wpUserId);
-            $hasPassword = ($wpUser && !empty($wpUser->user_pass)) ? true : false;
-        }
+        $user = [
+            'id' => intval($row['id']),
+            'user_id' => $wpUserId,
+            'username' => $row['username'],
+            'email' => $row['email'],
+            'phone' => $row['phone'],
 
-        // Attach normalized fields for frontend
-        $user['communities'] = $communities;
-        $user['subCommunities'] = $subCommunities;
-        $user['notifications'] = $notifications;
-        $user['hasPassword'] = $hasPassword;
+            'firstName' => $row['first_name'],
+            'lastName' => $row['last_name'],
+            'jobTitle' => null,
+            'organization' => null,
+
+            'dob' => $row['dob'],
+            'country' => $row['country'],
+            'state' => $row['state'],
+            'industry' => $row['industry'],
+            'sub_industry' => $row['sub_industry'],
+
+            // Legacy single values:
+            'community' => $row['community'],
+            'sub_community' => $row['sub_community'],
+
+            // ✅ Multi values:
+            'communities' => $communities,
+            'subCommunities' => $subCommunities,
+
+            'status' => $row['status'],
+            'signup_mode' => $row['signup_mode'],
+            'created_at' => $row['created_at'],
+
+            // ✅ used by frontend
+            'hasPassword' => $hasPassword,
+        ];
 
         return [
             'success' => true,
-            'user'    => $user,
+            'user' => $user,
         ];
     }
 
     /**
-     * POST /wp-json/energ/v1/me
-     * JWT protected (JwtAuth middleware)
-     *
-     * Supports:
-     * - Profile update (energ_members)
-     * - Communities/subCommunities update (JSON columns)
-     * - Notifications update (WP user meta)
-     * - Password set/change (WP user; first time no current password)
+     * ✅ POST /wp-json/energ/v1/me
+     * Payload supports:
+     * - firstName, lastName, jobTitle, organization, country, industry
+     * - communities: array
+     * - subCommunities: array
+     * - notifications: object (stored as JSON in user meta, or in members JSON if you add column later)
+     * - password: { currentPassword?, newPassword }
      */
     public static function updateMe($request)
     {
@@ -132,6 +159,7 @@ class AuthController
 
         $identifier = $request->get_param('auth_user');
         if (!$identifier) $identifier = $request->get_param('auth_identifier');
+
         if (!$identifier) {
             return new WP_Error('unauthorized', 'Invalid or missing token', ['status' => 401]);
         }
@@ -141,23 +169,9 @@ class AuthController
 
         $table = $wpdb->prefix . 'energ_members';
 
-        $user = $wpdb->get_row(
+        $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT
-                    id,
-                    user_id,
-                    email,
-                    phone,
-                    first_name,
-                    last_name,
-                    country,
-                    state,
-                    industry,
-                    sub_industry,
-                    community,
-                    sub_community,
-                    communities_json,
-                    sub_communities_json
+                "SELECT id, user_id, email, phone, communities_json, sub_communities_json
                  FROM {$table}
                  WHERE email = %s OR phone = %s
                  LIMIT 1",
@@ -167,140 +181,121 @@ class AuthController
             ARRAY_A
         );
 
-        if (!$user) {
+        if (!$row) {
             return new WP_Error('user_not_found', 'User not found', ['status' => 404]);
         }
 
-        $memberId = intval($user['id']);
-        $wpUserId = intval($user['user_id'] ?? 0);
+        $memberId = intval($row['id']);
+        $wpUserId = intval($row['user_id'] ?? 0);
 
-        // -----------------------------
-        // 1) Update energ_members profile fields
-        // -----------------------------
-        $updates = [];
-        $formats = [];
+        // ---- sanitize helpers
+        $getStr = function ($key) use ($params) {
+            $v = $params[$key] ?? null;
+            if (!is_string($v)) return null;
+            $v = trim($v);
+            return $v === '' ? null : $v;
+        };
 
-        $cols = self::get_table_columns($table);
+        $getArr = function ($key) use ($params) {
+            $v = $params[$key] ?? null;
+            if (!is_array($v)) return null;
+            $out = [];
+            $seen = [];
+            foreach ($v as $item) {
+                if (!is_string($item)) continue;
+                $s = trim($item);
+                if ($s === '') continue;
+                $k = strtolower($s);
+                if (isset($seen[$k])) continue;
+                $seen[$k] = true;
+                $out[] = $s;
+            }
+            return $out;
+        };
 
-        $map = [
-            'firstName'   => 'first_name',
-            'lastName'    => 'last_name',
-            'country'     => 'country',
-            'state'       => 'state',
-            'industry'    => 'industry',
-            'subIndustry' => 'sub_industry',
-        ];
+        // ---- build DB update
+        $update = [];
+        $format = [];
 
-        foreach ($map as $inKey => $dbCol) {
-            if (!array_key_exists($inKey, $params)) continue;
-            if (!in_array($dbCol, $cols, true)) continue;
+        $firstName = $getStr('firstName');
+        $lastName = $getStr('lastName');
+        $country = $getStr('country');
+        $industry = $getStr('industry');
 
-            $updates[$dbCol] = is_null($params[$inKey]) ? '' : (string) $params[$inKey];
-            $formats[] = '%s';
+        if ($firstName !== null) { $update['first_name'] = $firstName; $format[] = '%s'; }
+        if ($lastName !== null)  { $update['last_name']  = $lastName;  $format[] = '%s'; }
+        if ($country !== null)   { $update['country']    = $country;   $format[] = '%s'; }
+        if ($industry !== null)  { $update['industry']   = $industry;  $format[] = '%s'; }
+
+        $communities = $getArr('communities');
+        if ($communities !== null) {
+            $update['communities_json'] = wp_json_encode($communities);
+            $format[] = '%s';
+            // legacy:
+            $update['community'] = $communities[0] ?? null;
+            $format[] = '%s';
         }
 
-        // Communities (multi)
-        if (array_key_exists('communities', $params)) {
-            $communities = self::sanitize_string_array($params['communities']);
-
-            if (in_array('communities_json', $cols, true)) {
-                $updates['communities_json'] = wp_json_encode($communities);
-                $formats[] = '%s';
-            }
-
-            // Keep legacy single value too
-            if (in_array('community', $cols, true)) {
-                $updates['community'] = isset($communities[0]) ? $communities[0] : '';
-                $formats[] = '%s';
-            }
+        $subCommunities = $getArr('subCommunities');
+        if ($subCommunities !== null) {
+            $update['sub_communities_json'] = wp_json_encode($subCommunities);
+            $format[] = '%s';
+            // legacy:
+            $update['sub_community'] = $subCommunities[0] ?? null;
+            $format[] = '%s';
         }
 
-        // Sub-communities (multi)
-        if (array_key_exists('subCommunities', $params)) {
-            $subCommunities = self::sanitize_string_array($params['subCommunities']);
-
-            if (in_array('sub_communities_json', $cols, true)) {
-                $updates['sub_communities_json'] = wp_json_encode($subCommunities);
-                $formats[] = '%s';
-            }
-
-            // Keep legacy single value too
-            if (in_array('sub_community', $cols, true)) {
-                $updates['sub_community'] = isset($subCommunities[0]) ? $subCommunities[0] : '';
-                $formats[] = '%s';
-            }
-        }
-
-        if (!empty($updates)) {
-            $ok = $wpdb->update(
+        // ---- save member row
+        if (!empty($update)) {
+            $wpdb->update(
                 $table,
-                $updates,
+                $update,
                 ['id' => $memberId],
-                $formats,
+                $format,
                 ['%d']
             );
-
-            if ($ok === false) {
-                return new WP_Error('update_failed', 'Failed to update member profile', ['status' => 500]);
-            }
         }
 
-        // -----------------------------
-        // 2) Notifications -> WP user meta
-        // -----------------------------
-        if (array_key_exists('notifications', $params)) {
-            if ($wpUserId <= 0) {
-                return new WP_Error('missing_wp_user', 'User ID missing for notifications update', ['status' => 400]);
-            }
-
-            $n = is_array($params['notifications']) ? $params['notifications'] : [];
-            $notifications = [
-                'emailNotifications' => !empty($n['emailNotifications']),
-                'weeklyDigest'       => !empty($n['weeklyDigest']),
-                'eventReminders'     => !empty($n['eventReminders']),
-                'communityActivity'  => !empty($n['communityActivity']),
-            ];
-
-            update_user_meta($wpUserId, 'energ_notifications', $notifications);
+        // ---- notifications: store in WP user meta for now
+        // (your members table doesn't have a notifications column)
+        if ($wpUserId > 0 && isset($params['notifications']) && is_array($params['notifications'])) {
+            update_user_meta($wpUserId, 'energ_notifications', wp_json_encode($params['notifications']));
         }
 
-        // -----------------------------
-        // 3) Password set/change
-        // -----------------------------
-        if (!empty($params['password']) && is_array($params['password'])) {
+        // ---- password update: first time no current password required
+        if (isset($params['password']) && is_array($params['password'])) {
             if ($wpUserId <= 0) {
-                return new WP_Error('missing_wp_user', 'User ID missing for password update', ['status' => 400]);
+                return new WP_Error('no_wp_user', 'No WordPress user linked to this member.', ['status' => 400]);
             }
 
-            $pw = $params['password'];
-            $newPassword = isset($pw['newPassword']) ? (string) $pw['newPassword'] : '';
-            $currentPassword = isset($pw['currentPassword']) ? (string) $pw['currentPassword'] : '';
-
+            $newPassword = $params['password']['newPassword'] ?? '';
+            $newPassword = is_string($newPassword) ? trim($newPassword) : '';
             if (strlen($newPassword) < 8) {
-                return new WP_Error('weak_password', 'New password must be at least 8 characters', ['status' => 400]);
+                return new WP_Error('weak_password', 'New password must be at least 8 characters.', ['status' => 400]);
             }
 
-            $wpUser = get_user_by('id', $wpUserId);
-            if (!$wpUser) {
-                return new WP_Error('wp_user_not_found', 'WP user not found for password update', ['status' => 404]);
-            }
+            $flag = get_user_meta($wpUserId, 'energ_password_set', true);
+            $isFirstTime = !($flag === '1' || $flag === 1 || $flag === true);
 
-            $passwordAlreadySet = !empty($wpUser->user_pass);
+            if (!$isFirstTime) {
+                $currentPassword = $params['password']['currentPassword'] ?? '';
+                $currentPassword = is_string($currentPassword) ? $currentPassword : '';
 
-            // If already set, require current password check
-            if ($passwordAlreadySet) {
-                if ($currentPassword === '') {
-                    return new WP_Error('current_password_required', 'Current password is required', ['status' => 400]);
+                $wpUser = get_user_by('id', $wpUserId);
+                if (!$wpUser) {
+                    return new WP_Error('wp_user_missing', 'Linked WordPress user not found.', ['status' => 400]);
                 }
-                if (!wp_check_password($currentPassword, $wpUser->user_pass, $wpUser->ID)) {
-                    return new WP_Error('invalid_current_password', 'Current password is incorrect', ['status' => 400]);
+
+                if (!wp_check_password($currentPassword, $wpUser->user_pass, $wpUserId)) {
+                    return new WP_Error('wrong_password', 'Current password is incorrect.', ['status' => 400]);
                 }
             }
 
-            wp_set_password($newPassword, $wpUser->ID);
+            wp_set_password($newPassword, $wpUserId);
+            update_user_meta($wpUserId, 'energ_password_set', '1');
         }
 
-        // Return fresh data
+        // Return fresh /me
         return self::me($request);
     }
 
@@ -319,26 +314,19 @@ class AuthController
         return (new \Energ\Auth\CompleteRegistration)->handle($request);
     }
 
-    /* =========================
-       Helpers
-    ========================= */
-
-    private static function sanitize_string_array($value)
+    private static function decodeJsonArray($raw)
     {
-        $arr = [];
-        if (is_array($value)) {
-            $arr = $value;
-        } elseif (is_string($value)) {
-            $arr = explode(',', $value);
-        } else {
-            return [];
-        }
+        if (!$raw) return [];
+        if (is_array($raw)) return $raw;
+
+        $decoded = json_decode((string)$raw, true);
+        if (!is_array($decoded)) return [];
 
         $out = [];
         $seen = [];
-        foreach ($arr as $v) {
-            if (!is_string($v)) continue;
-            $s = trim($v);
+        foreach ($decoded as $item) {
+            if (!is_string($item)) continue;
+            $s = trim($item);
             if ($s === '') continue;
             $k = strtolower($s);
             if (isset($seen[$k])) continue;
@@ -346,36 +334,5 @@ class AuthController
             $out[] = $s;
         }
         return $out;
-    }
-
-    private static function decode_json_array($json)
-    {
-        if (!is_string($json) || trim($json) === '') return [];
-        $decoded = json_decode($json, true);
-        if (!is_array($decoded)) return [];
-        $out = [];
-        foreach ($decoded as $v) {
-            if (is_string($v) && trim($v) !== '') {
-                $out[] = trim($v);
-            }
-        }
-        return $out;
-    }
-
-    private static function get_table_columns($table)
-    {
-        global $wpdb;
-        static $cacheCols = [];
-        if (isset($cacheCols[$table])) return $cacheCols[$table];
-
-        $cols = [];
-        $rows = $wpdb->get_results("SHOW COLUMNS FROM {$table}", ARRAY_A);
-        if (is_array($rows)) {
-            foreach ($rows as $r) {
-                if (!empty($r['Field'])) $cols[] = $r['Field'];
-            }
-        }
-        $cacheCols[$table] = $cols;
-        return $cols;
     }
 }

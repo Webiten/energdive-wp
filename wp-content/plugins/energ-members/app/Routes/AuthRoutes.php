@@ -57,11 +57,11 @@ register_rest_route('energ/v1', '/me', [
 ]);
 
 register_rest_route('energ/v1', '/auth/logout', [
-    'methods'  => 'POST',
-    'callback' => function ($req) {
-        return (new Logout)->handle($req);
-    },
-    'permission_callback' => '__return_true',
+  'methods'  => 'POST',
+  'callback' => function ($req) { return (new \Energ\Auth\Logout)->handle($req); },
+  'permission_callback' => function ($req) {
+      return \Energ\Middleware\JwtAuth::allow($req);
+  },
 ]);
 
 register_rest_route('energ/v1', '/auth/logout-all', [

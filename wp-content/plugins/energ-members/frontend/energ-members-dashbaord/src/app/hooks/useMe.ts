@@ -143,12 +143,12 @@ function normalizeMe(raw: any): MeResponse {
       "",
     subCommunities: asStringArray(
       u?.subCommunities ??
-        u?.sub_communities ??
-        u?.sub_communities_json ??
-        meta?.sub_communities ??
-        meta?.sub_communities_json ??
-        acf?.sub_communities ??
-        acf?.sub_communities_json
+      u?.sub_communities ??
+      u?.sub_communities_json ??
+      meta?.sub_communities ??
+      meta?.sub_communities_json ??
+      acf?.sub_communities ??
+      acf?.sub_communities_json
     ),
 
     notifications: u?.notifications ?? meta?.notifications ?? acf?.notifications,
@@ -183,7 +183,7 @@ async function fetchMeFromServer(signal?: AbortSignal): Promise<MeResponse | nul
   }
 }
 
-async function updateMeOnServer(payload: UpdateMePayload): Promise<MeResponse> {
+async function updateMeOnServer(payload: Partial<MeResponse>): Promise<MeResponse> {
   const raw = await AuthAPI.updateMe(payload);
   return normalizeMe(raw);
 }
