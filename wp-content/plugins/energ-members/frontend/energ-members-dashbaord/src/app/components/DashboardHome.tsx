@@ -122,7 +122,7 @@ export function DashboardHome() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export function DashboardHome() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div> */}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -251,7 +251,7 @@ export function DashboardHome() {
             </Card>
 
             {/* Active Discussions */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5 text-emerald-600" />
@@ -283,7 +283,7 @@ export function DashboardHome() {
                   </div>
                 ))}
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
 
           {/* Sidebar - Trending This Week */}

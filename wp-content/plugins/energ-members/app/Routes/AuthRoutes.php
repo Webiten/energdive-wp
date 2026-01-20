@@ -7,11 +7,6 @@ use Energ\Auth\LogoutAll;
 
 defined('ABSPATH') || exit;
 
-/**
- * This file is loaded INSIDE rest_api_init
- * Do NOT wrap with add_action again
- */
-
 register_rest_route('energ/v1', '/auth/request-otp', [
     'methods'  => 'POST',
     'callback' => [AuthController::class, 'requestOtp'],
@@ -31,9 +26,7 @@ register_rest_route('energ/v1', '/auth/refresh-token', [
 ]);
 
 /**
- * ✅ JWT "me" route
- * GET /wp-json/energ/v1/me
- * Requires: Authorization: Bearer <access_token>
+ * GET /me
  */
 register_rest_route('energ/v1', '/me', [
     'methods'  => 'GET',
@@ -44,9 +37,7 @@ register_rest_route('energ/v1', '/me', [
 ]);
 
 /**
- * ✅ JWT "me" update route
- * POST /wp-json/energ/v1/me
- * Requires: Authorization: Bearer <access_token>
+ * ✅ POST /me (update profile: communities/sub-communities etc)
  */
 register_rest_route('energ/v1', '/me', [
     'methods'  => 'POST',
@@ -57,11 +48,11 @@ register_rest_route('energ/v1', '/me', [
 ]);
 
 register_rest_route('energ/v1', '/auth/logout', [
-  'methods'  => 'POST',
-  'callback' => function ($req) { return (new \Energ\Auth\Logout)->handle($req); },
-  'permission_callback' => function ($req) {
-      return \Energ\Middleware\JwtAuth::allow($req);
-  },
+    'methods'  => 'POST',
+    'callback' => function ($req) {
+        return (new Logout)->handle($req);
+    },
+    'permission_callback' => '__return_true',
 ]);
 
 register_rest_route('energ/v1', '/auth/logout-all', [

@@ -1,63 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthAPI } from "../lib/api";
 
-/* =========================
-   Types
-========================= */
-
 export type MeResponse = {
   id?: number | string;
-
-  // Identity (read-only in UI)
   email?: string;
   phone?: string;
 
-  // Profile
   firstName?: string;
   lastName?: string;
   jobTitle?: string;
   organization?: string;
+
   country?: string;
   industry?: string;
 
-  // Communities
-  community?: string;
+  communities?: string[];
   subCommunities?: string[];
-
-  // Notifications
-  notifications?: {
-    emailNotifications?: boolean;
-    weeklyDigest?: boolean;
-    eventReminders?: boolean;
-    communityActivity?: boolean;
-  };
-
-  // Membership (system-controlled)
-  membership?: {
-    planName?: string;
-    tier?: string;
-    status?: string;
-    price?: string;
-    period?: string;
-    description?: string;
-  };
-
-  // Security
-  hasPassword?: boolean;
 
   roleLabel?: string;
 };
-
-export type UpdateMePayload = Partial<Omit<MeResponse, "membership">> & {
-  password?: {
-    currentPassword?: string;
-    newPassword: string;
-  };
-};
-
-/* =========================
-   Cache
-========================= */
 
 type Cache = {
   data: MeResponse | null;
@@ -73,124 +34,58 @@ const cache: Cache = {
   error: null,
 };
 
-/* =========================
-   Helpers
-========================= */
-
 function asStringArray(value: any): string[] {
   if (!value) return [];
-  if (Array.isArray(value)) return value.filter((x) => typeof x === "string");
+  if (Array.isArray(value)) return value.filter((x) => typeof x === "string" && x.trim());
   if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    // supports "a,b,c" and json string
+    try {
+      const maybe = JSON.parse(value);
+      if (Array.isArray(maybe)) return maybe.filter((x) => typeof x === "string" && x.trim());
+    } catch {}
+    return value.split(",").map((s) => s.trim()).filter(Boolean);
   }
   return [];
 }
 
 function normalizeMe(raw: any): MeResponse {
   const u = raw?.user ?? raw;
-  const meta = u?.meta ?? {};
-  const acf = u?.acf ?? {};
 
   return {
     id: u?.id ?? u?.ID,
+    email: u?.email ?? u?.user_email ?? u?.data?.email,
+    phone: u?.phone ?? u?.mobile ?? "",
 
-    email: u?.email ?? u?.user_email ?? u?.data?.email ?? meta?.email ?? "",
-    phone:
-      u?.phone ??
-      u?.mobile ??
-      u?.identifier ??
-      meta?.phone ??
-      meta?.mobile ??
-      "",
+    firstName: u?.firstName ?? u?.first_name ?? "",
+    lastName: u?.lastName ?? u?.last_name ?? "",
 
-    firstName:
-      u?.firstName ??
-      u?.first_name ??
-      meta?.first_name ??
-      acf?.first_name ??
-      "",
-    lastName:
-      u?.lastName ??
-      u?.last_name ??
-      meta?.last_name ??
-      acf?.last_name ??
-      "",
+    jobTitle: u?.jobTitle ?? u?.job_title ?? "",
+    organization: u?.organization ?? u?.company ?? "",
 
-    jobTitle:
-      u?.jobTitle ??
-      u?.job_title ??
-      meta?.job_title ??
-      acf?.job_title ??
-      "",
-    organization:
-      u?.organization ??
-      u?.company ??
-      meta?.organization ??
-      acf?.organization ??
-      "",
+    country: u?.country ?? "",
+    industry: u?.industry ?? "",
 
-    country: u?.country ?? meta?.country ?? acf?.country ?? "",
-    industry: u?.industry ?? meta?.industry ?? acf?.industry ?? "",
-
-    community:
-      u?.community ??
-      u?.primaryCommunity ??
-      meta?.community ??
-      acf?.community ??
-      "",
-    subCommunities: asStringArray(
-      u?.subCommunities ??
-      u?.sub_communities ??
-      u?.sub_communities_json ??
-      meta?.sub_communities ??
-      meta?.sub_communities_json ??
-      acf?.sub_communities ??
-      acf?.sub_communities_json
-    ),
-
-    notifications: u?.notifications ?? meta?.notifications ?? acf?.notifications,
-
-    membership: u?.membership ?? meta?.membership ?? acf?.membership,
-
-    hasPassword:
-      typeof u?.hasPassword === "boolean"
-        ? u.hasPassword
-        : typeof meta?.has_password === "boolean"
-          ? meta.has_password
-          : typeof u?.passwordSet === "boolean"
-            ? u.passwordSet
-            : undefined,
-
-    roleLabel: u?.roleLabel ?? meta?.roleLabel ?? acf?.roleLabel,
+    // ✅ these are critical
+    communities: asStringArray(u?.communities ?? u?.communities_json ?? u?.community),
+    subCommunities: asStringArray(u?.sub_communities ?? u?.sub_communities_json ?? u?.sub_community),
   };
 }
 
-/* =========================
-   Server Calls
-========================= */
-
-async function fetchMeFromServer(signal?: AbortSignal): Promise<MeResponse | null> {
+async function fetchMeFromServer(): Promise<MeResponse | null> {
   try {
-    const raw = await AuthAPI.me({ signal });
+    const raw = await AuthAPI.me();
     return normalizeMe(raw);
   } catch (e: any) {
-    const status = e?.status ?? e?.data?.status;
+    const status = e?.data?.status ?? e?.status;
     if (status === 401 || status === 403) return null;
     return null;
   }
 }
 
-async function updateMeOnServer(payload: Partial<MeResponse>): Promise<MeResponse> {
+async function updateMeOnServer(payload: any): Promise<MeResponse> {
   const raw = await AuthAPI.updateMe(payload);
   return normalizeMe(raw);
 }
-
-/* =========================
-   Hook
-========================= */
 
 export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean }) {
   const ttlMs = options?.ttlMs ?? 60_000;
@@ -200,14 +95,12 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
   const [loading, setLoading] = useState<boolean>(!cache.fetchedAt);
   const [error, setError] = useState<string | null>(cache.error);
 
-  const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      abortRef.current?.abort();
     };
   }, []);
 
@@ -216,29 +109,20 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
     return Date.now() - cache.fetchedAt > ttlMs;
   }, [ttlMs]);
 
-  const safeSet = useCallback((fn: () => void) => {
-    if (mountedRef.current) fn();
+  const safeSetState = useCallback((fn: () => void) => {
+    if (!mountedRef.current) return;
+    fn();
   }, []);
 
   const refresh = useCallback(async () => {
-    if (cache.promise) {
+    safeSetState(() => {
       setLoading(true);
-      const data = await cache.promise;
-      setMe(data);
-      setError(cache.error);
-      setLoading(false);
-      return;
-    }
-
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
-
-    setLoading(true);
-    setError(null);
+      setError(null);
+    });
 
     cache.promise = (async () => {
       try {
-        const data = await fetchMeFromServer(abortRef.current?.signal);
+        const data = await fetchMeFromServer();
         cache.data = data;
         cache.error = null;
         cache.fetchedAt = Date.now();
@@ -254,81 +138,63 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
     })();
 
     const data = await cache.promise;
-    safeSet(() => {
+    safeSetState(() => {
       setMe(data);
       setError(cache.error);
       setLoading(false);
     });
-  }, [safeSet]);
+  }, [safeSetState]);
 
   const updateMe = useCallback(
-    async (payload: UpdateMePayload) => {
-      setLoading(true);
-      setError(null);
+    async (payload: any) => {
+      safeSetState(() => {
+        setLoading(true);
+        setError(null);
+      });
 
       try {
         const updated = await updateMeOnServer(payload);
+
         cache.data = { ...(cache.data ?? {}), ...updated };
+        cache.error = null;
         cache.fetchedAt = Date.now();
-        safeSet(() => setMe(cache.data));
+
+        safeSetState(() => setMe(cache.data));
         return cache.data;
       } catch (e: any) {
         const msg = e?.message ?? "Failed to save.";
         cache.error = msg;
-        safeSet(() => setError(msg));
+        safeSetState(() => setError(msg));
         throw e;
       } finally {
-        safeSet(() => setLoading(false));
+        safeSetState(() => setLoading(false));
       }
     },
-    [safeSet]
+    [safeSetState]
   );
 
   useEffect(() => {
     if (isStale) refresh();
     else {
-      setMe(cache.data);
-      setError(cache.error);
-      setLoading(false);
+      safeSetState(() => {
+        setMe(cache.data);
+        setError(cache.error);
+        setLoading(false);
+      });
     }
-  }, [isStale, refresh]);
+  }, [isStale, refresh, safeSetState]);
 
   useEffect(() => {
     if (!revalidateOnFocus) return;
+
     const onFocus = () => {
-      if (!cache.fetchedAt || Date.now() - cache.fetchedAt > ttlMs) refresh();
+      const stale = !cache.fetchedAt || Date.now() - cache.fetchedAt > ttlMs;
+      if (stale) refresh();
     };
+
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [revalidateOnFocus, ttlMs, refresh]);
 
   return { me, loading, error, refresh, updateMe };
-}
-
-/* =========================
-   Utils
-========================= */
-
-export function clearMeCache() {
-  cache.data = null;
-  cache.error = null;
-  cache.fetchedAt = 0;
-  cache.promise = null;
-}
-
-export function getMeDisplayName(me: MeResponse | null) {
-  const first = (me?.firstName ?? "").trim();
-  const last = (me?.lastName ?? "").trim();
-  const full = `${first} ${last}`.trim();
-  if (full) return full;
-  if (me?.email) return me.email.split("@")[0];
-  return "User";
-}
-
-export function getMeInitials(me: MeResponse | null) {
-  const first = (me?.firstName ?? "").trim();
-  const last = (me?.lastName ?? "").trim();
-  if (first || last) return `${first[0] ?? ""}${last[0] ?? ""}`.toUpperCase() || "U";
-  if (me?.email) return me.email.slice(0, 2).toUpperCase();
-  return "U";
 }
