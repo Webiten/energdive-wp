@@ -1,203 +1,154 @@
 <?php
-
-namespace Energ\Frontend;
-
-use Energ\Helpers\CommunityValidator;
+namespace EnergMembers\Frontend;
 
 defined('ABSPATH') || exit;
 
-/**
- * Frontend shortcodes that mount a small JS-driven UI.
- */
-class Shortcodes
-{
-    public static function register(): void
-    {
-        add_shortcode('energ_members_auth', [self::class, 'renderAuth']);
-        add_shortcode('energ_members_dashboard', [self::class, 'renderDashboard']);
-    }
+class Shortcodes {
 
-    public static function renderAuth($atts = []): string
-    {
-        $atts = shortcode_atts([
-            'redirect' => home_url('/dashboard/'),
-        ], (array) $atts);
+  public function __construct() {
+    add_shortcode('energ_login', [$this, 'render_login']);
+  }
 
-        $communitySlugs = CommunityValidator::slugList();
-        $communityLabels = CommunityValidator::list();
-
-        $data = [
-            'redirect' => esc_url_raw($atts['redirect']),
-            'communitySlugs' => $communitySlugs,
-            'communityLabels' => $communityLabels,
-        ];
-
-        ob_start();
-        ?>
-        <div class="energ-ui" data-energ-ui="auth" data-config="<?php echo esc_attr(wp_json_encode($data)); ?>">
-            <div class="energ-card">
-                <div class="energ-header">
-                    <h2>Member Login</h2>
-                    <p>Use your email or mobile number to receive a one-time password.</p>
-                </div>
-
-                <div class="energ-alert energ-hidden" role="alert"></div>
-
-                <div class="energ-steps">
-                    <div class="energ-step" data-step="identifier">
-                        <label class="energ-label">Email or Mobile</label>
-                        <input class="energ-input" type="text" inputmode="email" placeholder="name@company.com or +91XXXXXXXXXX" data-field="identifier" />
-                        <button class="energ-btn energ-btn-primary" type="button" data-action="requestOtp">Send OTP</button>
-                    </div>
-
-                    <div class="energ-step energ-hidden" data-step="otp">
-                        <label class="energ-label">Enter OTP</label>
-                        <input class="energ-input" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit OTP" data-field="otp" />
-                        <div class="energ-row">
-                            <button class="energ-btn energ-btn-primary" type="button" data-action="verifyOtp">Verify & Login</button>
-                            <button class="energ-btn" type="button" data-action="resendOtp">Resend</button>
-                        </div>
-                    </div>
-
-                    <div class="energ-step energ-hidden" data-step="onboarding">
-                        <h3>Complete Your Profile</h3>
-                        <div class="energ-grid">
-                            <div>
-                                <label class="energ-label">First Name</label>
-                                <input class="energ-input" type="text" data-field="first_name" />
-                            </div>
-                            <div>
-                                <label class="energ-label">Last Name</label>
-                                <input class="energ-input" type="text" data-field="last_name" />
-                            </div>
-                            <div>
-                                <label class="energ-label">Country</label>
-                                <input class="energ-input" type="text" data-field="country" placeholder="India" />
-                            </div>
-                            <div>
-                                <label class="energ-label">State</label>
-                                <input class="energ-input" type="text" data-field="state" placeholder="Gujarat" />
-                            </div>
-                            <div>
-                                <label class="energ-label">Industry</label>
-                                <input class="energ-input" type="text" data-field="industry" placeholder="Oil & Gas" />
-                            </div>
-                            <div>
-                                <label class="energ-label">Sub Industry</label>
-                                <input class="energ-input" type="text" data-field="sub_industry" placeholder="Upstream" />
-                            </div>
-                        </div>
-
-                        <div class="energ-grid">
-                            <div>
-                                <label class="energ-label">Communities</label>
-                                <select class="energ-input" multiple size="6" data-field="communities"></select>
-                            </div>
-                            <div>
-                                <label class="energ-label">Sub-Communities</label>
-                                <select class="energ-input" multiple size="6" data-field="sub_communities"></select>
-                            </div>
-                        </div>
-
-                        <label class="energ-checkbox">
-                            <input type="checkbox" data-field="privacy_accepted" />
-                            <span>I accept the privacy policy.</span>
-                        </label>
-
-                        <button class="energ-btn energ-btn-primary" type="button" data-action="completeRegistration">Complete Registration</button>
-                    </div>
-                </div>
-
-                <div class="energ-footer">
-                    <small>Having trouble? Contact support.</small>
-                </div>
-            </div>
+  /* =====================================================
+     MAIN WRAPPER
+     ===================================================== */
+  private function wrapper($content) {
+    return '
+      <div class="energ-auth">
+        <div class="energ-card">
+          ' . $content . '
         </div>
-        <?php
-        return (string) ob_get_clean();
-    }
+      </div>
+    ';
+  }
 
-    public static function renderDashboard($atts = []): string
-    {
-        $atts = shortcode_atts([
-            'login_url' => home_url('/login/'),
-        ], (array) $atts);
+  /* =====================================================
+     LOGIN FORM
+     ===================================================== */
+  public function render_login() {
+    ob_start();
+    ?>
+    <div class="energ-header">
+      <h2>Welcome back</h2>
+      <p>Login to continue to your account</p>
+    </div>
 
-        $communitySlugs = CommunityValidator::slugList();
-        $communityLabels = CommunityValidator::list();
+    <form id="energ-login-form" class="energ-form">
+      <div class="energ-field">
+        <label>Email address</label>
+        <input
+          type="email"
+          name="email"
+          class="energ-input"
+          placeholder="you@example.com"
+          required
+        />
+      </div>
 
-        $data = [
-            'login_url' => esc_url_raw($atts['login_url']),
-            'communitySlugs' => $communitySlugs,
-            'communityLabels' => $communityLabels,
-        ];
+      <div class="energ-response"></div>
 
-        ob_start();
-        ?>
-        <div class="energ-ui" data-energ-ui="dashboard" data-config="<?php echo esc_attr(wp_json_encode($data)); ?>">
-            <div class="energ-card">
-                <div class="energ-header">
-                    <h2>Member Dashboard</h2>
-                    <p>View and update your profile.</p>
-                </div>
+      <button type="submit" class="energ-btn">
+        Send OTP
+      </button>
+    </form>
 
-                <div class="energ-alert energ-hidden" role="alert"></div>
+    <div class="energ-footer">
+      <a href="#" id="energ-show-register">New user? Create account</a>
+    </div>
 
-                <div class="energ-dashboard energ-hidden" data-role="dashboard">
-                    <div class="energ-row energ-row-between">
-                        <div>
-                            <strong data-bind="memberName"></strong><br />
-                            <span data-bind="memberIdentifier"></span>
-                        </div>
-                        <div>
-                            <button class="energ-btn" type="button" data-action="logout">Logout</button>
-                        </div>
-                    </div>
+    <div id="energ-otp-step" style="display:none;">
+      <?php echo $this->render_otp(false); ?>
+    </div>
 
-                    <h3>Profile</h3>
-                    <div class="energ-grid">
-                        <div>
-                            <label class="energ-label">First Name</label>
-                            <input class="energ-input" type="text" data-field="firstName" />
-                        </div>
-                        <div>
-                            <label class="energ-label">Last Name</label>
-                            <input class="energ-input" type="text" data-field="lastName" />
-                        </div>
-                        <div>
-                            <label class="energ-label">Country</label>
-                            <input class="energ-input" type="text" data-field="country" />
-                        </div>
-                        <div>
-                            <label class="energ-label">Industry</label>
-                            <input class="energ-input" type="text" data-field="industry" />
-                        </div>
-                    </div>
+    <div id="energ-register-step" style="display:none;">
+      <?php echo $this->render_register(false); ?>
+    </div>
 
-                    <div class="energ-grid">
-                        <div>
-                            <label class="energ-label">Communities</label>
-                            <select class="energ-input" multiple size="6" data-field="communities"></select>
-                        </div>
-                        <div>
-                            <label class="energ-label">Sub-Communities</label>
-                            <select class="energ-input" multiple size="6" data-field="subCommunities"></select>
-                        </div>
-                    </div>
+    <script>
+      document.addEventListener("energ:show-otp", function () {
+        document.getElementById("energ-login-form").style.display = "none";
+        document.querySelector(".energ-footer").style.display = "none";
+        document.getElementById("energ-otp-step").style.display = "block";
+      });
 
-                    <button class="energ-btn energ-btn-primary" type="button" data-action="saveProfile">Save Changes</button>
-                </div>
+      document.getElementById("energ-show-register").addEventListener("click", function (e) {
+        e.preventDefault();
+        document.getElementById("energ-login-form").style.display = "none";
+        document.querySelector(".energ-footer").style.display = "none";
+        document.getElementById("energ-register-step").style.display = "block";
+      });
+    </script>
+    <?php
 
-                <div class="energ-loading" data-role="loading">
-                    <p>Loading...</p>
-                </div>
+    return $this->wrapper(ob_get_clean());
+  }
 
-                <div class="energ-footer">
-                    <small>Session tokens are stored in the browser for this device.</small>
-                </div>
-            </div>
-        </div>
-        <?php
-        return (string) ob_get_clean();
-    }
+  /* =====================================================
+     OTP FORM
+     ===================================================== */
+  public function render_otp($wrap = true) {
+    ob_start();
+    ?>
+    <div class="energ-header">
+      <h2>Verify OTP</h2>
+      <p>Enter the 6-digit code sent to you</p>
+    </div>
+
+    <form id="energ-otp-form" class="energ-form">
+      <div class="energ-otp">
+        <?php for ($i = 0; $i < 6; $i++) : ?>
+          <input type="text" maxlength="1" inputmode="numeric" />
+        <?php endfor; ?>
+      </div>
+
+      <div class="energ-response"></div>
+
+      <button type="submit" class="energ-btn">
+        Verify & Continue
+      </button>
+    </form>
+    <?php
+
+    $html = ob_get_clean();
+    return $wrap ? $this->wrapper($html) : $html;
+  }
+
+  /* =====================================================
+     REGISTER FORM
+     ===================================================== */
+  public function render_register($wrap = true) {
+    ob_start();
+    ?>
+    <div class="energ-header">
+      <h2>Create account</h2>
+      <p>Join us in less than a minute</p>
+    </div>
+
+    <form id="energ-register-form" class="energ-form">
+      <div class="energ-field">
+        <label>Full name</label>
+        <input type="text" name="name" class="energ-input" required />
+      </div>
+
+      <div class="energ-field">
+        <label>Email address</label>
+        <input type="email" name="email" class="energ-input" required />
+      </div>
+
+      <div class="energ-field">
+        <label>Password</label>
+        <input type="password" name="password" class="energ-input" required />
+      </div>
+
+      <div class="energ-response"></div>
+
+      <button type="submit" class="energ-btn">
+        Create account
+      </button>
+    </form>
+    <?php
+
+    $html = ob_get_clean();
+    return $wrap ? $this->wrapper($html) : $html;
+  }
 }
