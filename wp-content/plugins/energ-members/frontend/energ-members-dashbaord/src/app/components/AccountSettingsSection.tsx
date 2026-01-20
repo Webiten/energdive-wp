@@ -13,6 +13,29 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function normalizeStringList(value: any): string[] {
+  const arr: string[] = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+
+  const cleaned = arr
+    .map((s) => (typeof s === "string" ? s.trim() : ""))
+    .filter(Boolean);
+
+  // dedupe (case-insensitive)
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of cleaned) {
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
+}
+
 export function AccountSettingsSection() {
   const { me, loading, error, updateMe } = useMe();
 
@@ -29,19 +52,21 @@ export function AccountSettingsSection() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // email/phone typically auth-bound => keep read-only in UI (email is displayed; phone displayed if present)
+  // email/phone typically auth-bound => read-only in UI
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
   const [jobTitle, setJobTitle] = useState("");
   const [organization, setOrganization] = useState("");
 
-  // "left fields" typically include these:
   const [country, setCountry] = useState("");
   const [industry, setIndustry] = useState("");
 
-  // Communities
-  const [community, setCommunity] = useState("");
+  // Communities (MULTI)
+  const [communities, setCommunities] = useState<string[]>([]);
+  const [communityInput, setCommunityInput] = useState("");
+
+  // Sub-communities (MULTI)
   const [subCommunities, setSubCommunities] = useState<string[]>([]);
   const [subCommunityInput, setSubCommunityInput] = useState("");
 
@@ -57,8 +82,6 @@ export function AccountSettingsSection() {
   // Password fields
   // -------------------------
   const hasPassword = useMemo(() => {
-    // Backend should return me.hasPassword (boolean).
-    // If not present, assume true (safer; prevents showing "set password first time" incorrectly).
     if (!me) return true;
     if (typeof (me as any).hasPassword === "boolean") return (me as any).hasPassword;
     if (typeof (me as any).passwordSet === "boolean") return (me as any).passwordSet;
@@ -73,27 +96,41 @@ export function AccountSettingsSection() {
   useEffect(() => {
     if (!me) return;
 
-    // keep compatibility with your existing shape
-    setFirstName((me as any).firstName ?? "");
-    setLastName((me as any).lastName ?? "");
+    setFirstName((me as any).firstName ?? (me as any).first_name ?? "");
+    setLastName((me as any).lastName ?? (me as any).last_name ?? "");
 
     setEmail((me as any).email ?? "");
-    setPhone((me as any).phone ?? (me as any).mobile ?? (me as any).identifier ?? "");
+    setPhone(
+      (me as any).phone ??
+        (me as any).mobile ??
+        (me as any).phone_number ??
+        (me as any).identifier ??
+        ""
+    );
 
-    setJobTitle((me as any).jobTitle ?? "");
-    setOrganization((me as any).organization ?? "");
+    setJobTitle((me as any).jobTitle ?? (me as any).job_title ?? "");
+    setOrganization((me as any).organization ?? (me as any).company ?? "");
 
     setCountry((me as any).country ?? "");
     setIndustry((me as any).industry ?? "");
 
-    // community fields (support multiple possible keys)
-    setCommunity((me as any).community ?? (me as any).primaryCommunity ?? "");
-    const sc =
+    // NEW: Prefer arrays from backend: communities/subCommunities
+    const cRaw =
+      (me as any).communities ??
+      (me as any).communities_json ??
+      (me as any).community ??
+      (me as any).primaryCommunity ??
+      [];
+    setCommunities(normalizeStringList(cRaw));
+
+    const scRaw =
       (me as any).subCommunities ??
       (me as any).sub_communities ??
+      (me as any).sub_communities_json ??
       (me as any).subCommunitiesJson ??
+      (me as any).sub_community ??
       [];
-    setSubCommunities(Array.isArray(sc) ? sc : []);
+    setSubCommunities(normalizeStringList(scRaw));
 
     const n = (me as any).notifications;
     if (n) {
@@ -111,24 +148,24 @@ export function AccountSettingsSection() {
     setTimeout(() => setSaveMsg(null), 2500);
   }
 
-  function normalizeSubCommunities(list: string[]) {
-    const cleaned = list
-      .map((s) => (typeof s === "string" ? s.trim() : ""))
-      .filter(Boolean);
-    // dedupe (case-insensitive)
-    const seen = new Set<string>();
-    const out: string[] = [];
-    for (const s of cleaned) {
-      const key = s.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(s);
-    }
-    return out;
+  // -------------------------
+  // Community add/remove
+  // -------------------------
+  function addCommunityFromInput() {
+    const next = normalizeStringList([...communities, communityInput]);
+    setCommunities(next);
+    setCommunityInput("");
   }
 
+  function removeCommunity(name: string) {
+    setCommunities((prev) => prev.filter((x) => x !== name));
+  }
+
+  // -------------------------
+  // Sub-community add/remove
+  // -------------------------
   function addSubCommunityFromInput() {
-    const next = normalizeSubCommunities([...subCommunities, subCommunityInput]);
+    const next = normalizeStringList([...subCommunities, subCommunityInput]);
     setSubCommunities(next);
     setSubCommunityInput("");
   }
@@ -149,15 +186,14 @@ export function AccountSettingsSection() {
       await updateMe({
         firstName,
         lastName,
-        // Email should generally be read-only; but you can still send it if your backend allows.
-        // If you want strict read-only, remove email from payload.
-        email,
         jobTitle,
         organization,
         country,
         industry,
-        community,
-        subCommunities: normalizeSubCommunities(subCommunities),
+
+        // IMPORTANT: multi arrays
+        communities: normalizeStringList(communities),
+        subCommunities: normalizeStringList(subCommunities),
       });
 
       flashMsg("Profile updated successfully.");
@@ -200,15 +236,9 @@ export function AccountSettingsSection() {
       const np = newPassword.trim();
       const cp = currentPassword;
 
-      if (np.length < 8) {
-        throw new Error("New password must be at least 8 characters.");
-      }
-      if (np !== confirmNewPassword) {
-        throw new Error("New password and confirm password do not match.");
-      }
-      if (hasPassword && !cp) {
-        throw new Error("Current password is required.");
-      }
+      if (np.length < 8) throw new Error("New password must be at least 8 characters.");
+      if (np !== confirmNewPassword) throw new Error("New password and confirm password do not match.");
+      if (hasPassword && !cp) throw new Error("Current password is required.");
 
       await updateMe({
         password: {
@@ -230,13 +260,13 @@ export function AccountSettingsSection() {
   }
 
   // -------------------------
-  // Membership: force Free only (as per requirement)
+  // Membership: force Free only
   // -------------------------
   const membership = useMemo(() => {
     return {
       planName: "Free Plan",
       status: "Active",
-      price: "$0",
+      price: "₹0",
       period: "",
       description: "Basic access to the platform features available to all members.",
     };
@@ -262,9 +292,7 @@ export function AccountSettingsSection() {
           )}
 
           {!loading && saveMsg && (
-            <div className="mt-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm">
-              {saveMsg}
-            </div>
+            <div className="mt-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm">{saveMsg}</div>
           )}
         </div>
 
@@ -305,14 +333,7 @@ export function AccountSettingsSection() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  // If you want email editable, change to disabled={loading||savingProfile||!me}
-                  disabled
-                />
+                <Input id="email" type="email" value={email} disabled />
                 <p className="text-xs text-gray-500">Email is linked to your login and cannot be changed.</p>
               </div>
 
@@ -369,19 +390,60 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            {/* Community */}
+            {/* Communities (MULTI) */}
             <div className="space-y-2">
-              <Label htmlFor="community">Community</Label>
-              <Input
-                id="community"
-                value={community}
-                onChange={(e) => setCommunity(e.target.value)}
-                disabled={loading || savingProfile || !me}
-                placeholder="e.g., Oil & Gas / Power & Utility / Safety & Environment"
-              />
-              <p className="text-xs text-gray-500">
-                Use the same naming as your portal taxonomy.
-              </p>
+              <Label>Communities</Label>
+
+              <div className="flex gap-2">
+                <Input
+                  value={communityInput}
+                  onChange={(e) => setCommunityInput(e.target.value)}
+                  disabled={loading || savingProfile || !me}
+                  placeholder="Type and press Add (e.g., oil-gas)"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!communityInput.trim()) return;
+                      addCommunityFromInput();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-emerald-200"
+                  onClick={() => {
+                    if (!communityInput.trim()) return;
+                    addCommunityFromInput();
+                  }}
+                  disabled={loading || savingProfile || !me || !communityInput.trim()}
+                >
+                  Add
+                </Button>
+              </div>
+
+              {communities.length > 0 ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {communities.map((c) => (
+                    <Badge key={c} variant="secondary" className="px-3 py-2 select-none">
+                      <span className="mr-2">{c}</span>
+                      <button
+                        type="button"
+                        className="text-gray-600 hover:text-gray-900"
+                        onClick={() => (me ? removeCommunity(c) : null)}
+                        disabled={!me || loading || savingProfile}
+                        aria-label={`Remove ${c}`}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">No communities selected.</p>
+              )}
+
+              <p className="text-xs text-gray-500">Use the same naming as your portal taxonomy.</p>
             </div>
 
             {/* Sub-Communities */}
@@ -393,7 +455,7 @@ export function AccountSettingsSection() {
                   value={subCommunityInput}
                   onChange={(e) => setSubCommunityInput(e.target.value)}
                   disabled={loading || savingProfile || !me}
-                  placeholder="Type and press Add"
+                  placeholder="Type and press Add (e.g., upstream)"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -419,11 +481,7 @@ export function AccountSettingsSection() {
               {subCommunities.length > 0 ? (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {subCommunities.map((sc) => (
-                    <Badge
-                      key={sc}
-                      variant="secondary"
-                      className={cn("px-3 py-2 select-none", me ? "" : "opacity-60")}
-                    >
+                    <Badge key={sc} variant="secondary" className={cn("px-3 py-2 select-none", me ? "" : "opacity-60")}>
                       <span className="mr-2">{sc}</span>
                       <button
                         type="button"
@@ -452,8 +510,6 @@ export function AccountSettingsSection() {
           </CardContent>
         </Card>
 
-        {/* Interests & Sectors REMOVED as per requirement */}
-
         {/* Notification Preferences */}
         <Card>
           <CardHeader>
@@ -468,11 +524,7 @@ export function AccountSettingsSection() {
                 <Label>Email Notifications</Label>
                 <p className="text-sm text-gray-500">Receive updates about new articles and insights</p>
               </div>
-              <Switch
-                checked={emailNotifications}
-                onCheckedChange={setEmailNotifications}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} disabled={loading || savingPrefs || !me} />
             </div>
             <Separator />
 
@@ -481,11 +533,7 @@ export function AccountSettingsSection() {
                 <Label>Weekly Digest</Label>
                 <p className="text-sm text-gray-500">Get a weekly summary of top content</p>
               </div>
-              <Switch
-                checked={weeklyDigest}
-                onCheckedChange={setWeeklyDigest}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={weeklyDigest} onCheckedChange={setWeeklyDigest} disabled={loading || savingPrefs || !me} />
             </div>
             <Separator />
 
@@ -494,11 +542,7 @@ export function AccountSettingsSection() {
                 <Label>Event Reminders</Label>
                 <p className="text-sm text-gray-500">Notifications for upcoming webinars and events</p>
               </div>
-              <Switch
-                checked={eventReminders}
-                onCheckedChange={setEventReminders}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={eventReminders} onCheckedChange={setEventReminders} disabled={loading || savingPrefs || !me} />
             </div>
             <Separator />
 
@@ -507,18 +551,10 @@ export function AccountSettingsSection() {
                 <Label>Community Activity</Label>
                 <p className="text-sm text-gray-500">Updates on discussions you're following</p>
               </div>
-              <Switch
-                checked={communityActivity}
-                onCheckedChange={setCommunityActivity}
-                disabled={loading || savingPrefs || !me}
-              />
+              <Switch checked={communityActivity} onCheckedChange={setCommunityActivity} disabled={loading || savingPrefs || !me} />
             </div>
 
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={onSavePreferences}
-              disabled={loading || savingPrefs || !me}
-            >
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={onSavePreferences} disabled={loading || savingPrefs || !me}>
               {savingPrefs ? "Saving…" : "Save Preferences"}
             </Button>
           </CardContent>
@@ -547,9 +583,7 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            <p className="text-xs text-gray-500">
-              Membership upgrades are currently not available.
-            </p>
+            <p className="text-xs text-gray-500">Membership upgrades are currently not available.</p>
           </CardContent>
         </Card>
 
@@ -594,15 +628,11 @@ export function AccountSettingsSection() {
               </div>
 
               <p className="text-xs text-gray-500">
-                Password update must be handled by a secure WordPress endpoint (JWT-protected) and validated server-side.
+                Password updates are handled securely server-side via the JWT-protected endpoint.
               </p>
             </div>
 
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={onUpdatePassword}
-              disabled={loading || savingPassword || !me}
-            >
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={onUpdatePassword} disabled={loading || savingPassword || !me}>
               {savingPassword ? "Updating…" : "Update Password"}
             </Button>
           </CardContent>

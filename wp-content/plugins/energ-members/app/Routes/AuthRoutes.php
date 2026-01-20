@@ -31,13 +31,26 @@ register_rest_route('energ/v1', '/auth/refresh-token', [
 ]);
 
 /**
- * ✅ NEW: JWT "me" route
+ * ✅ JWT "me" route
  * GET /wp-json/energ/v1/me
  * Requires: Authorization: Bearer <access_token>
  */
 register_rest_route('energ/v1', '/me', [
     'methods'  => 'GET',
     'callback' => [AuthController::class, 'me'],
+    'permission_callback' => function ($req) {
+        return \Energ\Middleware\JwtAuth::allow($req);
+    },
+]);
+
+/**
+ * ✅ JWT "me" update route
+ * POST /wp-json/energ/v1/me
+ * Requires: Authorization: Bearer <access_token>
+ */
+register_rest_route('energ/v1', '/me', [
+    'methods'  => 'POST',
+    'callback' => [AuthController::class, 'updateMe'],
     'permission_callback' => function ($req) {
         return \Energ\Middleware\JwtAuth::allow($req);
     },
