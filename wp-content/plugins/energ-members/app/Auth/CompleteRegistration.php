@@ -25,6 +25,8 @@ class CompleteRegistration
         $required = [
             'first_name',
             'last_name',
+            'job_title',
+            'organization',
             'country',
             'industry',
             'privacy_accepted',
@@ -42,7 +44,21 @@ class CompleteRegistration
 
         // Optional fields
         $state       = isset($params['state']) ? sanitize_text_field($params['state']) : '';
-        $subIndustry = isset($params['sub_industry']) ? sanitize_text_field($params['sub_industry']) : '';
+
+        // Industry / sub-industry may arrive as string OR array (multi-select)
+        $industryVal = $params['industry'] ?? '';
+        if (is_array($industryVal)) {
+            $industryVal = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $industryVal)))));
+        } else {
+            $industryVal = sanitize_text_field((string) $industryVal);
+        }
+
+        $subIndustryVal = $params['sub_industry'] ?? '';
+        if (is_array($subIndustryVal)) {
+            $subIndustryVal = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $subIndustryVal)))));
+        } else {
+            $subIndustryVal = sanitize_text_field((string) $subIndustryVal);
+        }
 
         /**
          * Communities (support both):
@@ -129,6 +145,8 @@ class CompleteRegistration
         $dataToUpdate = [
             'first_name'           => sanitize_text_field($params['first_name']),
             'last_name'            => sanitize_text_field($params['last_name']),
+            'job_title'            => sanitize_text_field($params['job_title']),
+            'organization'         => sanitize_text_field($params['organization']),
             'country'              => sanitize_text_field($params['country']),
             'state'                => $state,
 
@@ -136,8 +154,8 @@ class CompleteRegistration
             'community'            => sanitize_text_field($primaryCommunity),
             'sub_community'        => sanitize_text_field($primarySubCommunity),
 
-            'industry'             => sanitize_text_field($params['industry']),
-            'sub_industry'         => $subIndustry,
+            'industry'             => $industryVal,
+            'sub_industry'         => $subIndustryVal,
             'status'               => 'active',
 
             // ✅ store arrays as JSON (SLUGS)

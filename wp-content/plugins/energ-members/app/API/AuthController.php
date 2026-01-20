@@ -64,6 +64,8 @@ class AuthController
                     phone,
                     first_name,
                     last_name,
+                    job_title,
+                    organization,
                     country,
                     state,
                     industry,
@@ -144,7 +146,26 @@ class AuthController
         $job_title    = isset($params['jobTitle']) ? sanitize_text_field($params['jobTitle']) : null;
         $organization = isset($params['organization']) ? sanitize_text_field($params['organization']) : null;
         $country      = isset($params['country']) ? sanitize_text_field($params['country']) : null;
-        $industry     = isset($params['industry']) ? sanitize_text_field($params['industry']) : null;
+        // Industry / sub-industry can be string OR array (multi-select from UI)
+        $industry = null;
+        if (array_key_exists('industry', $params)) {
+            $val = $params['industry'];
+            if (is_array($val)) {
+                $industry = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $val)))));
+            } else {
+                $industry = sanitize_text_field((string) $val);
+            }
+        }
+
+        $sub_industry = null;
+        if (array_key_exists('subIndustry', $params) || array_key_exists('sub_industry', $params)) {
+            $val = $params['subIndustry'] ?? $params['sub_industry'] ?? '';
+            if (is_array($val)) {
+                $sub_industry = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $val)))));
+            } else {
+                $sub_industry = sanitize_text_field((string) $val);
+            }
+        }
 
         $communities = isset($params['communities']) ? $params['communities'] : null;
         $subCommunities = isset($params['subCommunities']) ? $params['subCommunities'] : null;
@@ -158,6 +179,7 @@ class AuthController
         if ($organization !== null) { $update['organization'] = $organization; $format[] = '%s'; }
         if ($country !== null)      { $update['country'] = $country; $format[] = '%s'; }
         if ($industry !== null)     { $update['industry'] = $industry; $format[] = '%s'; }
+        if ($sub_industry !== null) { $update['sub_industry'] = $sub_industry; $format[] = '%s'; }
 
         if (is_array($communities)) {
             $clean = array_values(array_unique(array_filter(array_map('sanitize_text_field', $communities))));
