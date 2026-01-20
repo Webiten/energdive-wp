@@ -10,10 +10,6 @@
 defined('ABSPATH') || exit;
 // die('ENERG MEMBERS PLUGIN LOADED');
 
-add_action('init', function () {
-    error_log('ENERG MEMBERS PLUGIN INIT LOADED');
-});
-
 
 // ===============================
 // PSR-4 AUTOLOADER
@@ -41,6 +37,23 @@ spl_autoload_register(function ($class) {
 // ===============================
 add_action('rest_api_init', function () {
     require_once __DIR__ . '/app/Routes/AuthRoutes.php';
+});
+
+// ===============================
+// FRONTEND SHORTCODES
+// ===============================
+add_action('init', function () {
+    // Shortcodes are lightweight and safe to register on init.
+    if (class_exists('Energ\\Frontend\\Shortcodes')) {
+        \Energ\Frontend\Shortcodes::register();
+    } else {
+        // File will be present in this plugin; keep require as a safe fallback.
+        $file = __DIR__ . '/app/Frontend/Shortcodes.php';
+        if (file_exists($file)) {
+            require_once $file;
+            \Energ\Frontend\Shortcodes::register();
+        }
+    }
 });
 
 
@@ -76,56 +89,41 @@ add_action('energ_cleanup_otp_limits', function () {
 });
 
 add_action('wp_enqueue_scripts', function () {
-
-    wp_enqueue_script(
-        'energ-auth',
-        plugin_dir_url(__FILE__) . 'assets/js/auth.js',
-        [],
-        time(),
-        true
-    );
-
-    wp_localize_script('energ-auth', 'ENERG', [
-        'api' => rest_url('energ/v1'),
-        'nonce' => wp_create_nonce('wp_rest')
-    ]);
-});
-
-add_action('wp_enqueue_scripts', function () {
-
-    // Only load on dashboard page
-    if (!is_page('dashboard')) {
+    // Enqueue only on pages where shortcodes are present.
+    if (!is_singular()) {
         return;
     }
 
-    $base = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist';
+    global $post;
+    if (!$post || empty($post->post_content)) {
+        return;
+    }
 
-    // CSS
+    $needs = has_shortcode($post->post_content, 'energ_members_auth')
+        || has_shortcode($post->post_content, 'energ_members_dashboard');
+
+    if (!$needs) {
+        return;
+    }
+
     wp_enqueue_style(
-        'energ-dashboard-css',
-        $base . 'assets/index-B-DnV36w.css',
+        'energ-members-ui',
+        plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
         [],
-        null
+        '1.0.0'
     );
 
-    // JS
     wp_enqueue_script(
-        'energ-dashboard-js',
-        $base . 'assets/index-CbZZyaug.js',
+        'energ-members-ui',
+        plugin_dir_url(__FILE__) . 'assets/js/auth.js',
         [],
-        null,
+        '1.0.0',
         true
     );
 
-    // Pass API + JWT
-    wp_localize_script('energ-dashboard-js', 'ENERG_APP', [
-        'apiBase' => rest_url('energ/v1'),
-        'nonce'   => wp_create_nonce('wp_rest'),
+    wp_localize_script('energ-members-ui', 'ENERG', [
+        'api'   => rest_url('energ/v1'),
+        'nonce' => wp_create_nonce('wp_rest'),
+        'home'  => home_url('/'),
     ]);
-});
-
-
-
-add_action('wp_footer', function () {
-    echo '<script src="' . plugin_dir_url(__FILE__) . 'assets/js/auth.js"></script>';
 });

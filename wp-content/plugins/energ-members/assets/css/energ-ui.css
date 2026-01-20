@@ -1,0 +1,20 @@
+.energ-ui{max-width:720px;margin:24px auto;padding:0 16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+.energ-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.06);padding:20px}
+.energ-header h2{margin:0 0 6px;font-size:22px;line-height:1.2}
+.energ-header p{margin:0 0 16px;color:rgba(0,0,0,.7)}
+.energ-label{display:block;font-size:13px;font-weight:600;margin:10px 0 6px}
+.energ-input{width:100%;box-sizing:border-box;border:1px solid rgba(0,0,0,.16);border-radius:10px;padding:10px 12px;font-size:14px}
+.energ-input:focus{outline:none;border-color:rgba(0,0,0,.35)}
+.energ-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.energ-row-between{justify-content:space-between}
+.energ-btn{appearance:none;border:1px solid rgba(0,0,0,.16);background:#fff;border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer}
+.energ-btn-primary{background:#111;color:#fff;border-color:#111}
+.energ-btn:disabled{opacity:.6;cursor:not-allowed}
+.energ-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.energ-grid{grid-template-columns:1fr}}
+.energ-alert{margin:12px 0;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.08)}
+.energ-alert[data-variant="error"]{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.25)}
+.energ-alert[data-variant="success"]{background:rgba(22,163,74,.08);border-color:rgba(22,163,74,.25)}
+.energ-checkbox{display:flex;gap:10px;align-items:center;margin:14px 0}
+.energ-footer{margin-top:16px;color:rgba(0,0,0,.55)}
+.energ-hidden{display:none!important}
