@@ -1,6 +1,6 @@
 /* ============================================================
-   ENERG MEMBERS – FINAL PREMIUM SAAS UI
-   Linear / Vercel / Notion level
+   ENERG MEMBERS – FINAL MERGED PREMIUM SAAS UI
+   Linear / Vercel / Notion level (Production Ready)
    ============================================================ */
 
 /* =========================
@@ -83,6 +83,16 @@ body {
   max-width: 480px;
 }
 
+.energ-brand-logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 24px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 14px;
+}
+
 .energ-auth-brand h1 {
   font-size: 48px;
   line-height: 1.1;
@@ -157,6 +167,18 @@ body {
 }
 
 /* =========================
+   STEP TRANSITIONS
+   ========================= */
+.energ-step {
+  animation: energStepFade .45s ease;
+}
+
+@keyframes energStepFade {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================
    FLOATING LABELS
    ========================= */
 .energ-field {
@@ -173,7 +195,6 @@ body {
   color: var(--text-muted);
   pointer-events: none;
   transition: all .2s ease;
-  background: transparent;
 }
 
 .energ-field .energ-input {
@@ -199,6 +220,10 @@ body {
   border: 1px solid var(--panel-border);
   color: var(--text);
   font-size: 15px;
+}
+
+.energ-input:hover {
+  border-color: rgba(255,255,255,0.3);
 }
 
 .energ-input:focus {
@@ -236,13 +261,13 @@ body {
 }
 
 .energ-btn-primary {
+  width: 100%;
   background: linear-gradient(
     135deg,
     var(--brand),
     var(--brand-accent)
   );
   color: #020617;
-  width: 100%;
 }
 
 .energ-btn-primary:hover {
@@ -257,6 +282,33 @@ body {
 
 .energ-btn-ghost:hover {
   color: var(--text);
+}
+
+/* =========================
+   TABS
+   ========================= */
+.energ-tabs {
+  display: flex;
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  margin-bottom: 28px;
+}
+
+.energ-tab {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background .2s ease, color .2s ease;
+}
+
+.energ-tab.is-active {
+  color: var(--text);
+  background: rgba(255,255,255,0.14);
+  box-shadow: inset 0 -2px 0 var(--brand);
 }
 
 /* =========================
@@ -299,7 +351,7 @@ body {
 }
 
 /* =========================
-   SUCCESS POP + LOTTIE
+   SUCCESS / LOTTIE
    ========================= */
 @keyframes energPop {
   0% { transform: scale(.6); opacity: 0; }
@@ -308,10 +360,11 @@ body {
 
 .energ-success {
   text-align: center;
+  padding: 32px 0;
 }
 
 .energ-success-pop {
-  animation: energPop .4s ease;
+  animation: energPop .45s ease;
 }
 
 #energ-lottie {
