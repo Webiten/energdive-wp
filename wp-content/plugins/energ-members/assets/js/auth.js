@@ -204,3 +204,14 @@
     });
   }
 })();
+
+
+document.addEventListener("energ:show-otp", () => {
+  document.getElementById("energ-login-form").style.display = "none";
+  document.getElementById("energ-otp-form").style.display = "block";
+});
+
+document.addEventListener("energ:success", () => {
+  document.getElementById("energ-otp-form").style.display = "none";
+  document.getElementById("energ-success-step").style.display = "block";
+});
