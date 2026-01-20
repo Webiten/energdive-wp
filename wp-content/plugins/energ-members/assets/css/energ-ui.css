@@ -1,20 +1,223 @@
-.energ-ui{max-width:720px;margin:24px auto;padding:0 16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
-.energ-card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.06);padding:20px}
-.energ-header h2{margin:0 0 6px;font-size:22px;line-height:1.2}
-.energ-header p{margin:0 0 16px;color:rgba(0,0,0,.7)}
-.energ-label{display:block;font-size:13px;font-weight:600;margin:10px 0 6px}
-.energ-input{width:100%;box-sizing:border-box;border:1px solid rgba(0,0,0,.16);border-radius:10px;padding:10px 12px;font-size:14px}
-.energ-input:focus{outline:none;border-color:rgba(0,0,0,.35)}
-.energ-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
-.energ-row-between{justify-content:space-between}
-.energ-btn{appearance:none;border:1px solid rgba(0,0,0,.16);background:#fff;border-radius:10px;padding:10px 12px;font-size:14px;cursor:pointer}
-.energ-btn-primary{background:#111;color:#fff;border-color:#111}
-.energ-btn:disabled{opacity:.6;cursor:not-allowed}
-.energ-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media (max-width:640px){.energ-grid{grid-template-columns:1fr}}
-.energ-alert{margin:12px 0;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.08)}
-.energ-alert[data-variant="error"]{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.25)}
-.energ-alert[data-variant="success"]{background:rgba(22,163,74,.08);border-color:rgba(22,163,74,.25)}
-.energ-checkbox{display:flex;gap:10px;align-items:center;margin:14px 0}
-.energ-footer{margin-top:16px;color:rgba(0,0,0,.55)}
-.energ-hidden{display:none!important}
+/* =========================================================
+   ENERG MEMBERS – PREMIUM AUTH UI
+   Senior-level SaaS UI (Public Website)
+   ========================================================= */
+
+/* ---------- Design Tokens ---------- */
+:root {
+  --energ-primary: #4f46e5;
+  --energ-primary-hover: #4338ca;
+  --energ-success: #16a34a;
+  --energ-danger: #dc2626;
+  --energ-bg: #f8fafc;
+  --energ-card-bg: #ffffff;
+  --energ-text: #0f172a;
+  --energ-muted: #64748b;
+  --energ-border: #e2e8f0;
+  --energ-radius: 14px;
+  --energ-shadow: 0 20px 40px rgba(2, 6, 23, 0.08);
+  --energ-font: -apple-system, BlinkMacSystemFont, "Inter",
+    "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* ---------- Reset / Base ---------- */
+.energ-auth *,
+.energ-auth *::before,
+.energ-auth *::after {
+  box-sizing: border-box;
+}
+
+.energ-auth {
+  font-family: var(--energ-font);
+  background: linear-gradient(135deg, #eef2ff, #f8fafc);
+  padding: 60px 16px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Card ---------- */
+.energ-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--energ-card-bg);
+  border-radius: var(--energ-radius);
+  box-shadow: var(--energ-shadow);
+  padding: 32px;
+  animation: energFadeUp 0.6s ease;
+}
+
+@keyframes energFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Header ---------- */
+.energ-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.energ-header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--energ-text);
+  margin-bottom: 8px;
+}
+
+.energ-header p {
+  font-size: 14px;
+  color: var(--energ-muted);
+}
+
+/* ---------- Form ---------- */
+.energ-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.energ-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.energ-field label {
+  font-size: 13px;
+  color: var(--energ-muted);
+}
+
+.energ-input {
+  width: 100%;
+  padding: 14px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--energ-border);
+  font-size: 15px;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.energ-input:focus {
+  outline: none;
+  border-color: var(--energ-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* ---------- Button ---------- */
+.energ-btn {
+  background: var(--energ-primary);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.05s;
+}
+
+.energ-btn:hover {
+  background: var(--energ-primary-hover);
+}
+
+.energ-btn:active {
+  transform: scale(0.98);
+}
+
+.energ-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- OTP Inputs ---------- */
+.energ-otp {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.energ-otp input {
+  width: 52px;
+  height: 56px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: 1px solid var(--energ-border);
+}
+
+.energ-otp input:focus {
+  border-color: var(--energ-primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  outline: none;
+}
+
+/* ---------- Messages ---------- */
+.energ-message {
+  font-size: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.energ-message.success {
+  background: #ecfdf5;
+  color: var(--energ-success);
+}
+
+.energ-message.error {
+  background: #fef2f2;
+  color: var(--energ-danger);
+}
+
+/* ---------- Footer Links ---------- */
+.energ-footer {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 14px;
+}
+
+.energ-footer a {
+  color: var(--energ-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.energ-footer a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Loader ---------- */
+.energ-loader {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 480px) {
+  .energ-card {
+    padding: 24px;
+  }
+
+  .energ-header h2 {
+    font-size: 22px;
+  }
+}
