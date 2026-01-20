@@ -1,6 +1,6 @@
 <?php
 
-namespace EnergMembers\Frontend;
+namespace Energ\Frontend;
 
 defined('ABSPATH') || exit;
 
