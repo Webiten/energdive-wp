@@ -1,6 +1,7 @@
 (() => {
+
   /* ==============================
-     STORAGE & HELPERS (UNCHANGED)
+     STORAGE
      ============================== */
   const STORAGE_KEYS = {
     access: 'energ_access_token',
@@ -31,24 +32,27 @@
     if (expiresIn) setStored(STORAGE_KEYS.expiresAt, String(nowMs() + expiresIn * 1000));
   };
 
+  /* ==============================
+     HELPERS
+     ============================== */
   const parseConfig = el => {
     try { return JSON.parse(el.getAttribute('data-config') || '{}'); }
     catch { return {}; }
   };
 
-  const alertBox = root => root.querySelector('.energ-alert');
-
-  const showAlert = (root, msg, variant = 'error') => {
-    const box = alertBox(root);
+  const showAlert = (root, msg, type = 'error') => {
+    const box = root.querySelector('.energ-alert');
     if (!box) return;
+
     if (!msg) {
       box.classList.add('energ-hidden');
       box.textContent = '';
       return;
     }
-    box.classList.remove('energ-hidden');
-    box.className = `energ-alert ${variant}`;
+
+    box.className = `energ-alert ${type}`;
     box.textContent = msg;
+    box.classList.remove('energ-hidden');
   };
 
   const setBusy = (btn, busy, label = 'Please wait...') => {
@@ -58,47 +62,25 @@
     btn.textContent = busy ? label : btn.dataset.label;
   };
 
-  /* ==============================
-     MICRO INTERACTIONS (NEW)
-     ============================== */
-
-  function shakeOTP(root) {
+  const shakeOTP = root => {
     const otp = root.querySelector('[data-otp]');
     if (!otp) return;
     otp.classList.remove('energ-shake');
     void otp.offsetWidth;
     otp.classList.add('energ-shake');
-  }
-
-  function successPop(el) {
-    if (!el) return;
-    el.classList.add('energ-success-pop');
-  }
+  };
 
   /* ==============================
-     BRANDING INJECTION (NEW)
-     ============================== */
-  function applyBranding(root) {
-    const cfg = parseConfig(root);
-    if (cfg.brandColor) {
-      document.documentElement.style.setProperty('--brand', cfg.brandColor);
-    }
-
-    if (cfg.brandLogo) {
-      const logo = root.querySelector('[data-brand-logo]');
-      if (logo) logo.style.backgroundImage = `url(${cfg.brandLogo})`;
-    }
-  }
-
-  /* ==============================
-     API (UNCHANGED)
+     API
      ============================== */
   async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
     const session = getSession();
+
     const headers = {
       'Content-Type': 'application/json',
       'X-WP-Nonce': ENERG.nonce || ''
     };
+
     if (auth && session.accessToken) {
       headers.Authorization = `Bearer ${session.accessToken}`;
     }
@@ -115,74 +97,86 @@
 
     if (res.ok) return data;
 
-    if (res.status === 401 && auth && session.refreshToken) {
-      const refreshed = await apiFetch('/auth/refresh-token', {
-        method: 'POST',
-        body: { refresh_token: session.refreshToken },
-        auth: false
-      });
-      if (refreshed?.access_token) {
-        setSession({
-          accessToken: refreshed.access_token,
-          refreshToken: refreshed.refresh_token || session.refreshToken,
-          identifier: session.identifier,
-          expiresIn: refreshed.expires_in
-        });
-        return apiFetch(path, { method, body, auth });
-      }
-    }
-
     throw new Error(data.message || 'Request failed');
   }
 
   /* ==============================
-     AUTH MOUNT
+     AUTH MOUNT (EMAIL ONLY)
      ============================== */
   function mountAuth(root) {
-    applyBranding(root);
-
     const cfg = parseConfig(root);
+
     const step = name => {
-      root.querySelectorAll('[data-step]').forEach(s => s.classList.add('energ-hidden'));
-      const el = root.querySelector(`[data-step="${name}"]`);
-      if (el) el.classList.remove('energ-hidden');
+      root.querySelectorAll('[data-step]').forEach(s =>
+        s.classList.add('energ-hidden')
+      );
+      root.querySelector(`[data-step="${name}"]`)
+        ?.classList.remove('energ-hidden');
     };
+
+    const emailInput = root.querySelector('[data-field="email"]');
+    const identifierInput = root.querySelector('[data-field="identifier"]');
+
+    const otpInput = root.querySelector('[data-field="otp"]');
 
     const btnRequest = root.querySelector('[data-action="requestOtp"]');
     const btnVerify = root.querySelector('[data-action="verifyOtp"]');
     const btnResend = root.querySelector('[data-action="resendOtp"]');
 
+    /* Sync email → identifier */
+    emailInput?.addEventListener('input', () => {
+      identifierInput.value = emailInput.value.trim();
+    });
+
+    /* REQUEST OTP */
     btnRequest?.addEventListener('click', async () => {
       showAlert(root, '');
+      const identifier = identifierInput.value.trim();
+
+      if (!identifier || !identifier.includes('@')) {
+        showAlert(root, 'Please enter a valid email address');
+        return;
+      }
+
       setBusy(btnRequest, true, 'Sending OTP...');
+
       try {
-        const id = root.querySelector('[data-field="identifier"]').value;
         const data = await apiFetch('/auth/request-otp', {
           method: 'POST',
-          body: { identifier: id, context: 'login' },
+          body: { identifier, context: 'login' },
           auth: false
         });
+
         if (data?.success) {
-          showAlert(root, 'OTP sent successfully.', 'success');
+          setStored(STORAGE_KEYS.identifier, identifier);
+          showAlert(root, 'OTP sent to your email', 'success');
           step('otp');
         }
       } catch (e) {
-        showAlert(root, e.message, 'error');
+        showAlert(root, e.message);
       } finally {
         setBusy(btnRequest, false);
       }
     });
 
+    /* VERIFY OTP */
     btnVerify?.addEventListener('click', async () => {
       showAlert(root, '');
-      setBusy(btnVerify, true, 'Verifying...');
-      try {
-        const otp = root.querySelector('[data-field="otp"]').value;
-        const id = root.querySelector('[data-field="identifier"]').value;
+      const otp = otpInput.value.trim();
+      const identifier = identifierInput.value.trim();
 
+      if (otp.length < 6) {
+        shakeOTP(root);
+        showAlert(root, 'Please enter valid OTP');
+        return;
+      }
+
+      setBusy(btnVerify, true, 'Verifying...');
+
+      try {
         const data = await apiFetch('/auth/verify-otp', {
           method: 'POST',
-          body: { identifier: id, otp },
+          body: { identifier, otp },
           auth: false
         });
 
@@ -190,48 +184,43 @@
           setSession({
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
-            identifier: id,
+            identifier,
             expiresIn: data.expires_in
           });
 
-          showAlert(root, 'Success! Redirecting...', 'success');
-          const card = root.querySelector('.energ-card');
-          successPop(card);
-
-          // LOTTIE SUCCESS
-          const lottieBox = root.querySelector('#energ-lottie');
-          if (lottieBox && window.lottie) {
-            lottie.loadAnimation({
-              container: lottieBox,
-              renderer: 'svg',
-              loop: false,
-              autoplay: true,
-              path: 'https://assets10.lottiefiles.com/packages/lf20_jbrw3hcz.json'
-            });
+          if (data.is_new_user) {
+            showAlert(root, 'Almost done! Complete your profile.', 'success');
+            step('onboarding'); // PHONE VERIFY WILL BE HERE
+          } else {
+            showAlert(root, 'Login successful. Redirecting...', 'success');
+            setTimeout(() => {
+              window.location.href = cfg.redirect || ENERG.home || '/';
+            }, 900);
           }
-
-          setTimeout(() => {
-            window.location.href = cfg.redirect || ENERG.home || '/';
-          }, 1500);
         } else {
           shakeOTP(root);
-          showAlert(root, 'Invalid OTP.', 'error');
+          showAlert(root, 'Invalid OTP');
         }
       } catch (e) {
         shakeOTP(root);
-        showAlert(root, e.message, 'error');
+        showAlert(root, e.message);
       } finally {
         setBusy(btnVerify, false);
       }
     });
 
     btnResend?.addEventListener('click', () => btnRequest?.click());
+
+    step('identifier');
   }
 
   /* ==============================
      INIT
      ============================== */
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-energ-ui="auth"]').forEach(mountAuth);
+    document
+      .querySelectorAll('[data-energ-ui="auth"]')
+      .forEach(mountAuth);
   });
+
 })();

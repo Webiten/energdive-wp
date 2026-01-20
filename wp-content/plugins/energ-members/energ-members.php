@@ -127,3 +127,22 @@ add_action('wp_enqueue_scripts', function () {
         'home'  => home_url('/'),
     ]);
 });
+
+
+
+wp_enqueue_style(
+  'energ-complete',
+  plugin_dir_url(__FILE__) . '../assets/css/energ-complete.css'
+);
+
+wp_enqueue_script(
+  'energ-complete',
+  plugin_dir_url(__FILE__) . '../assets/js/energ-complete.js',
+  ['jquery'],
+  null,
+  true
+);
+
+wp_localize_script('energ-complete','ENERG',[
+  'ajax'=>admin_url('admin-ajax.php')
+]);
