@@ -4,14 +4,51 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
-import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
+import { Badge } from "./ui/badge";
 import { User, Bell, CreditCard, Shield } from "lucide-react";
 import { useMe } from "../hooks/useMe";
 
-function cn(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
-}
+/**
+ * ✅ Replace this taxonomy with your actual slugs/labels.
+ * IMPORTANT: Store and send SLUGS to backend (recommended).
+ */
+const COMMUNITY_TAXONOMY: Array<{
+  slug: string;
+  label: string;
+  subs: Array<{ slug: string; label: string }>;
+}> = [
+  {
+    slug: "oil-gas",
+    label: "Oil & Gas",
+    subs: [
+      { slug: "upstream", label: "Upstream" },
+      { slug: "midstream", label: "Midstream" },
+      { slug: "downstream", label: "Downstream" },
+      { slug: "petrochemicals", label: "Petrochemicals" },
+      { slug: "drilling-services", label: "Drilling & Services" },
+    ],
+  },
+  {
+    slug: "power-utility",
+    label: "Power & Utility",
+    subs: [
+      { slug: "thermal", label: "Thermal" },
+      { slug: "hydro", label: "Hydro" },
+      { slug: "nuclear", label: "Nuclear" },
+      { slug: "transmission", label: "Transmission" },
+    ],
+  },
+  {
+    slug: "safety-environment",
+    label: "Safety & Environment",
+    subs: [
+      { slug: "hse-management", label: "HSE Management" },
+      { slug: "process-safety", label: "Process Safety" },
+      { slug: "fire-emergency", label: "Fire & Emergency" },
+    ],
+  },
+];
 
 function normalizeStringList(value: any): string[] {
   const arr: string[] = Array.isArray(value)
@@ -24,7 +61,6 @@ function normalizeStringList(value: any): string[] {
     .map((s) => (typeof s === "string" ? s.trim() : ""))
     .filter(Boolean);
 
-  // dedupe (case-insensitive)
   const seen = new Set<string>();
   const out: string[] = [];
   for (const s of cleaned) {
@@ -52,7 +88,6 @@ export function AccountSettingsSection() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // email/phone typically auth-bound => read-only in UI
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -62,13 +97,9 @@ export function AccountSettingsSection() {
   const [country, setCountry] = useState("");
   const [industry, setIndustry] = useState("");
 
-  // Communities (MULTI)
+  // ✅ Multi-select values (slugs)
   const [communities, setCommunities] = useState<string[]>([]);
-  const [communityInput, setCommunityInput] = useState("");
-
-  // Sub-communities (MULTI)
   const [subCommunities, setSubCommunities] = useState<string[]>([]);
-  const [subCommunityInput, setSubCommunityInput] = useState("");
 
   // -------------------------
   // Notification prefs
@@ -100,13 +131,7 @@ export function AccountSettingsSection() {
     setLastName((me as any).lastName ?? (me as any).last_name ?? "");
 
     setEmail((me as any).email ?? "");
-    setPhone(
-      (me as any).phone ??
-        (me as any).mobile ??
-        (me as any).phone_number ??
-        (me as any).identifier ??
-        ""
-    );
+    setPhone((me as any).phone ?? (me as any).identifier ?? "");
 
     setJobTitle((me as any).jobTitle ?? (me as any).job_title ?? "");
     setOrganization((me as any).organization ?? (me as any).company ?? "");
@@ -114,22 +139,19 @@ export function AccountSettingsSection() {
     setCountry((me as any).country ?? "");
     setIndustry((me as any).industry ?? "");
 
-    // NEW: Prefer arrays from backend: communities/subCommunities
+    // Prefer arrays returned from backend
     const cRaw =
       (me as any).communities ??
       (me as any).communities_json ??
       (me as any).community ??
-      (me as any).primaryCommunity ??
       [];
-    setCommunities(normalizeStringList(cRaw));
-
     const scRaw =
       (me as any).subCommunities ??
-      (me as any).sub_communities ??
       (me as any).sub_communities_json ??
-      (me as any).subCommunitiesJson ??
       (me as any).sub_community ??
       [];
+
+    setCommunities(normalizeStringList(cRaw));
     setSubCommunities(normalizeStringList(scRaw));
 
     const n = (me as any).notifications;
@@ -149,29 +171,44 @@ export function AccountSettingsSection() {
   }
 
   // -------------------------
-  // Community add/remove
+  // Options derived from selected communities
   // -------------------------
-  function addCommunityFromInput() {
-    const next = normalizeStringList([...communities, communityInput]);
-    setCommunities(next);
-    setCommunityInput("");
-  }
+  const communityOptions = useMemo(() => {
+    return COMMUNITY_TAXONOMY.map((c) => ({ value: c.slug, label: c.label }));
+  }, []);
 
-  function removeCommunity(name: string) {
-    setCommunities((prev) => prev.filter((x) => x !== name));
-  }
+  const subCommunityOptions = useMemo(() => {
+    const selected = new Set(communities);
+    const subs: Array<{ value: string; label: string }> = [];
 
-  // -------------------------
-  // Sub-community add/remove
-  // -------------------------
-  function addSubCommunityFromInput() {
-    const next = normalizeStringList([...subCommunities, subCommunityInput]);
-    setSubCommunities(next);
-    setSubCommunityInput("");
-  }
+    for (const c of COMMUNITY_TAXONOMY) {
+      if (!selected.has(c.slug)) continue;
+      for (const s of c.subs) {
+        subs.push({ value: s.slug, label: s.label });
+      }
+    }
 
-  function removeSubCommunity(name: string) {
-    setSubCommunities((prev) => prev.filter((x) => x !== name));
+    // de-dupe
+    const seen = new Set<string>();
+    return subs.filter((x) => {
+      if (seen.has(x.value)) return false;
+      seen.add(x.value);
+      return true;
+    });
+  }, [communities]);
+
+  // If user changes communities, remove sub communities that are no longer valid
+  useEffect(() => {
+    const allowed = new Set(subCommunityOptions.map((x) => x.value));
+    setSubCommunities((prev) => prev.filter((x) => allowed.has(x)));
+  }, [subCommunityOptions]);
+
+  function onChangeMultiSelect(
+    e: React.ChangeEvent<HTMLSelectElement>,
+    setter: (v: string[]) => void
+  ) {
+    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+    setter(selected);
   }
 
   // -------------------------
@@ -191,9 +228,8 @@ export function AccountSettingsSection() {
         country,
         industry,
 
-        // IMPORTANT: multi arrays
-        communities: normalizeStringList(communities),
-        subCommunities: normalizeStringList(subCommunities),
+        communities,
+        subCommunities,
       });
 
       flashMsg("Profile updated successfully.");
@@ -259,9 +295,7 @@ export function AccountSettingsSection() {
     }
   }
 
-  // -------------------------
-  // Membership: force Free only
-  // -------------------------
+  // Membership: free only
   const membership = useMemo(() => {
     return {
       planName: "Free Plan",
@@ -292,7 +326,9 @@ export function AccountSettingsSection() {
           )}
 
           {!loading && saveMsg && (
-            <div className="mt-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm">{saveMsg}</div>
+            <div className="mt-4 p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm">
+              {saveMsg}
+            </div>
           )}
         </div>
 
@@ -390,114 +426,70 @@ export function AccountSettingsSection() {
               </div>
             </div>
 
-            {/* Communities (MULTI) */}
+            {/* Communities multi-select */}
             <div className="space-y-2">
               <Label>Communities</Label>
 
-              <div className="flex gap-2">
-                <Input
-                  value={communityInput}
-                  onChange={(e) => setCommunityInput(e.target.value)}
-                  disabled={loading || savingProfile || !me}
-                  placeholder="Type and press Add (e.g., oil-gas)"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (!communityInput.trim()) return;
-                      addCommunityFromInput();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-emerald-200"
-                  onClick={() => {
-                    if (!communityInput.trim()) return;
-                    addCommunityFromInput();
-                  }}
-                  disabled={loading || savingProfile || !me || !communityInput.trim()}
-                >
-                  Add
-                </Button>
+              <select
+                multiple
+                value={communities}
+                onChange={(e) => onChangeMultiSelect(e, setCommunities)}
+                disabled={loading || savingProfile || !me}
+                className="w-full min-h-[120px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200"
+              >
+                {communityOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+
+              <p className="text-xs text-gray-500">
+                Hold Ctrl/Command to select multiple.
+              </p>
+
+              <div className="text-xs text-gray-600">
+                Selected:{" "}
+                {communities.length ? (
+                  <span className="font-medium">{communities.length}</span>
+                ) : (
+                  <span className="text-gray-500">None</span>
+                )}
               </div>
-
-              {communities.length > 0 ? (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {communities.map((c) => (
-                    <Badge key={c} variant="secondary" className="px-3 py-2 select-none">
-                      <span className="mr-2">{c}</span>
-                      <button
-                        type="button"
-                        className="text-gray-600 hover:text-gray-900"
-                        onClick={() => (me ? removeCommunity(c) : null)}
-                        disabled={!me || loading || savingProfile}
-                        aria-label={`Remove ${c}`}
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-500">No communities selected.</p>
-              )}
-
-              <p className="text-xs text-gray-500">Use the same naming as your portal taxonomy.</p>
             </div>
 
-            {/* Sub-Communities */}
+            {/* Sub-Communities multi-select */}
             <div className="space-y-2">
               <Label>Sub-Communities</Label>
 
-              <div className="flex gap-2">
-                <Input
-                  value={subCommunityInput}
-                  onChange={(e) => setSubCommunityInput(e.target.value)}
-                  disabled={loading || savingProfile || !me}
-                  placeholder="Type and press Add (e.g., upstream)"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (!subCommunityInput.trim()) return;
-                      addSubCommunityFromInput();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-emerald-200"
-                  onClick={() => {
-                    if (!subCommunityInput.trim()) return;
-                    addSubCommunityFromInput();
-                  }}
-                  disabled={loading || savingProfile || !me || !subCommunityInput.trim()}
-                >
-                  Add
-                </Button>
-              </div>
+              <select
+                multiple
+                value={subCommunities}
+                onChange={(e) => onChangeMultiSelect(e, setSubCommunities)}
+                disabled={loading || savingProfile || !me || subCommunityOptions.length === 0}
+                className="w-full min-h-[120px] rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-200 disabled:bg-gray-50"
+              >
+                {subCommunityOptions.length === 0 ? (
+                  <option value="" disabled>
+                    Select a community first
+                  </option>
+                ) : (
+                  subCommunityOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))
+                )}
+              </select>
 
-              {subCommunities.length > 0 ? (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {subCommunities.map((sc) => (
-                    <Badge key={sc} variant="secondary" className={cn("px-3 py-2 select-none", me ? "" : "opacity-60")}>
-                      <span className="mr-2">{sc}</span>
-                      <button
-                        type="button"
-                        className="text-gray-600 hover:text-gray-900"
-                        onClick={() => (me ? removeSubCommunity(sc) : null)}
-                        disabled={!me || loading || savingProfile}
-                        aria-label={`Remove ${sc}`}
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-500">No sub-communities selected.</p>
-              )}
+              <div className="text-xs text-gray-600">
+                Selected:{" "}
+                {subCommunities.length ? (
+                  <span className="font-medium">{subCommunities.length}</span>
+                ) : (
+                  <span className="text-gray-500">None</span>
+                )}
+              </div>
             </div>
 
             <Button
@@ -524,7 +516,11 @@ export function AccountSettingsSection() {
                 <Label>Email Notifications</Label>
                 <p className="text-sm text-gray-500">Receive updates about new articles and insights</p>
               </div>
-              <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} disabled={loading || savingPrefs || !me} />
+              <Switch
+                checked={emailNotifications}
+                onCheckedChange={setEmailNotifications}
+                disabled={loading || savingPrefs || !me}
+              />
             </div>
             <Separator />
 
@@ -533,7 +529,11 @@ export function AccountSettingsSection() {
                 <Label>Weekly Digest</Label>
                 <p className="text-sm text-gray-500">Get a weekly summary of top content</p>
               </div>
-              <Switch checked={weeklyDigest} onCheckedChange={setWeeklyDigest} disabled={loading || savingPrefs || !me} />
+              <Switch
+                checked={weeklyDigest}
+                onCheckedChange={setWeeklyDigest}
+                disabled={loading || savingPrefs || !me}
+              />
             </div>
             <Separator />
 
@@ -542,7 +542,11 @@ export function AccountSettingsSection() {
                 <Label>Event Reminders</Label>
                 <p className="text-sm text-gray-500">Notifications for upcoming webinars and events</p>
               </div>
-              <Switch checked={eventReminders} onCheckedChange={setEventReminders} disabled={loading || savingPrefs || !me} />
+              <Switch
+                checked={eventReminders}
+                onCheckedChange={setEventReminders}
+                disabled={loading || savingPrefs || !me}
+              />
             </div>
             <Separator />
 
@@ -551,10 +555,18 @@ export function AccountSettingsSection() {
                 <Label>Community Activity</Label>
                 <p className="text-sm text-gray-500">Updates on discussions you're following</p>
               </div>
-              <Switch checked={communityActivity} onCheckedChange={setCommunityActivity} disabled={loading || savingPrefs || !me} />
+              <Switch
+                checked={communityActivity}
+                onCheckedChange={setCommunityActivity}
+                disabled={loading || savingPrefs || !me}
+              />
             </div>
 
-            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={onSavePreferences} disabled={loading || savingPrefs || !me}>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={onSavePreferences}
+              disabled={loading || savingPrefs || !me}
+            >
               {savingPrefs ? "Saving…" : "Save Preferences"}
             </Button>
           </CardContent>
@@ -626,13 +638,13 @@ export function AccountSettingsSection() {
                   disabled={loading || savingPassword || !me}
                 />
               </div>
-
-              <p className="text-xs text-gray-500">
-                Password updates are handled securely server-side via the JWT-protected endpoint.
-              </p>
             </div>
 
-            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={onUpdatePassword} disabled={loading || savingPassword || !me}>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={onUpdatePassword}
+              disabled={loading || savingPassword || !me}
+            >
               {savingPassword ? "Updating…" : "Update Password"}
             </Button>
           </CardContent>
