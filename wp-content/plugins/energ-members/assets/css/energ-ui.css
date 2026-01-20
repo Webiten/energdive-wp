@@ -1,14 +1,38 @@
 /* ============================================================
    ENERG MEMBERS – FINAL PREMIUM SAAS UI
-   Built like Linear / Vercel / Notion
+   Linear / Vercel / Notion level
    ============================================================ */
 
+/* =========================
+   ANIMATED BACKGROUND
+   ========================= */
+@keyframes energGradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+body {
+  background: linear-gradient(
+    120deg,
+    #020617,
+    #1e1b4b,
+    #0f172a
+  );
+  background-size: 300% 300%;
+  animation: energGradientMove 18s ease infinite;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #f8fafc;
+}
+
+/* =========================
+   DESIGN TOKENS
+   ========================= */
 :root {
   --brand: #6366f1;
   --brand-strong: #4f46e5;
   --brand-accent: #22d3ee;
 
-  --bg: #020617;
   --panel-bg: rgba(255, 255, 255, 0.08);
   --panel-border: rgba(255, 255, 255, 0.14);
 
@@ -23,44 +47,36 @@
 
   --shadow-xl: 0 30px 80px rgba(0, 0, 0, 0.55);
   --blur: blur(22px);
-
-  --font: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* Reset */
+/* =========================
+   RESET
+   ========================= */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-body {
-  background: radial-gradient(
-    1000px circle at top left,
-    #1e1b4b,
-    #020617 60%
-  );
-  font-family: var(--font);
-  color: var(--text);
-}
-
-/* ============================================================
+/* =========================
    AUTH LAYOUT
-   ============================================================ */
-
+   ========================= */
 .energ-auth-layout {
   min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(420px, 1fr) minmax(420px, 560px);
 }
 
-/* Left Brand */
+/* Brand Panel */
 .energ-auth-brand {
   padding: 96px;
   display: flex;
   align-items: center;
-  background:
-    linear-gradient(135deg, rgba(99,102,241,.18), rgba(34,211,238,.12));
+  background: linear-gradient(
+    135deg,
+    rgba(99,102,241,.18),
+    rgba(34,211,238,.12)
+  );
 }
 
 .energ-auth-brand-inner {
@@ -88,10 +104,9 @@ body {
 .energ-auth-points li {
   font-size: 15px;
   margin-bottom: 12px;
-  opacity: .95;
 }
 
-/* Right Panel */
+/* Auth Panel */
 .energ-auth-panel {
   display: flex;
   align-items: center;
@@ -99,10 +114,9 @@ body {
   padding: 64px;
 }
 
-/* ============================================================
+/* =========================
    GLASS CARD
-   ============================================================ */
-
+   ========================= */
 .energ-glass {
   background: var(--panel-bg);
   backdrop-filter: var(--blur);
@@ -115,24 +129,17 @@ body {
   width: 100%;
   max-width: 460px;
   padding: 48px;
-  animation: energFadeUp .7s ease;
+  animation: energFadeUp .6s ease;
 }
 
 @keyframes energFadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(28px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
 }
 
-/* ============================================================
+/* =========================
    TYPOGRAPHY
-   ============================================================ */
-
+   ========================= */
 .energ-card h2 {
   font-size: 30px;
   margin-bottom: 6px;
@@ -149,47 +156,44 @@ body {
   margin-bottom: 32px;
 }
 
-/* ============================================================
-   TABS
-   ============================================================ */
-
-.energ-tabs {
-  display: flex;
-  background: rgba(255,255,255,0.06);
-  border-radius: var(--radius-md);
-  margin-bottom: 28px;
+/* =========================
+   FLOATING LABELS
+   ========================= */
+.energ-field {
+  position: relative;
+  margin-bottom: 22px;
 }
 
-.energ-tab {
-  flex: 1;
-  padding: 12px 0;
+.energ-field label {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
   font-size: 14px;
   color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
+  pointer-events: none;
+  transition: all .2s ease;
+  background: transparent;
 }
 
-.energ-tab.is-active {
-  color: var(--text);
-  background: rgba(255,255,255,0.14);
-  border-radius: var(--radius-md);
+.energ-field .energ-input {
+  padding: 20px 16px 12px;
 }
 
-/* ============================================================
-   FORM ELEMENTS
-   ============================================================ */
-
-.energ-label {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 8px;
-  color: var(--text-muted);
+.energ-field .energ-input:focus + label,
+.energ-field .energ-input:not(:placeholder-shown) + label {
+  top: -8px;
+  font-size: 12px;
+  color: var(--brand);
+  background: #020617;
+  padding: 0 6px;
 }
 
+/* =========================
+   INPUTS
+   ========================= */
 .energ-input {
   width: 100%;
-  padding: 16px;
   border-radius: var(--radius-md);
   background: rgba(255,255,255,0.10);
   border: 1px solid var(--panel-border);
@@ -211,10 +215,9 @@ body {
   max-width: 110px;
 }
 
-/* ============================================================
+/* =========================
    BUTTONS
-   ============================================================ */
-
+   ========================= */
 .energ-btn {
   display: inline-flex;
   align-items: center;
@@ -226,6 +229,10 @@ body {
   border: none;
   cursor: pointer;
   transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.energ-btn:active {
+  transform: scale(.97);
 }
 
 .energ-btn-primary {
@@ -252,10 +259,9 @@ body {
   color: var(--text);
 }
 
-/* ============================================================
-   OTP
-   ============================================================ */
-
+/* =========================
+   OTP + MICRO INTERACTIONS
+   ========================= */
 .energ-otp {
   display: flex;
   justify-content: space-between;
@@ -279,10 +285,43 @@ body {
   border-color: var(--brand);
 }
 
-/* ============================================================
-   ALERTS
-   ============================================================ */
+/* OTP Shake */
+@keyframes energShake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
 
+.energ-shake {
+  animation: energShake .35s;
+}
+
+/* =========================
+   SUCCESS POP + LOTTIE
+   ========================= */
+@keyframes energPop {
+  0% { transform: scale(.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.energ-success {
+  text-align: center;
+}
+
+.energ-success-pop {
+  animation: energPop .4s ease;
+}
+
+#energ-lottie {
+  width: 120px;
+  margin: 0 auto 20px;
+}
+
+/* =========================
+   ALERTS
+   ========================= */
 .energ-alert {
   margin-bottom: 20px;
   padding: 14px 16px;
@@ -304,15 +343,12 @@ body {
   display: none !important;
 }
 
-/* ============================================================
+/* =========================
    DASHBOARD
-   ============================================================ */
-
+   ========================= */
 .energ-dashboard-layout {
   min-height: 100vh;
   padding: 64px;
-  background:
-    radial-gradient(900px circle at top right, #1e1b4b, #020617 65%);
 }
 
 .energ-dashboard-shell {
@@ -327,14 +363,9 @@ body {
   margin-bottom: 32px;
 }
 
-.energ-dashboard-header h2 {
-  margin-bottom: 4px;
-}
-
-/* ============================================================
-   GRIDS
-   ============================================================ */
-
+/* =========================
+   GRID
+   ========================= */
 .energ-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -342,10 +373,9 @@ body {
   margin-bottom: 24px;
 }
 
-/* ============================================================
+/* =========================
    RESPONSIVE
-   ============================================================ */
-
+   ========================= */
 @media (max-width: 1024px) {
   .energ-auth-layout {
     grid-template-columns: 1fr;
