@@ -128,10 +128,11 @@ add_action('wp_enqueue_scripts', function () {
         $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashboard/dist/';
         $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashboard/dist/';
 
-        // 🔍 auto-detect built files
-        $js  = glob($dist_path . 'assets/index-*.js')[0] ?? null;
-        $css = glob($dist_path . 'assets/index-*.css')[0] ?? null;
+        $assets = glob($dist_path . 'assets/index-*.js');
+        $styles = glob($dist_path . 'assets/index-*.css');
 
+        $js  = $assets[0] ?? null;
+        $css = $styles[0] ?? null;
 
         if ($css) {
             wp_enqueue_style(
@@ -150,17 +151,25 @@ add_action('wp_enqueue_scripts', function () {
                 filemtime($js),
                 true
             );
-        }
 
-        // 🔑 Pass WP data to React
-        wp_add_inline_script('energ-dashboard-app', 'window.ENERG = ' . wp_json_encode([
-            'api'   => rest_url('energ/v1'),
-            'nonce' => wp_create_nonce('wp_rest'),
-            'home'  => home_url('/'),
-        ]) . ';', 'before');
+            // 🔥 PASS DATA BEFORE SCRIPT RUNS
+            wp_add_inline_script(
+                'energ-dashboard-app',
+                'window.ENERG = ' . wp_json_encode([
+                    'api'   => rest_url('energ/v1'),
+                    'nonce' => wp_create_nonce('wp_rest'),
+                    'home'  => home_url('/'),
+                ]) . ';',
+                'before'
+            );
+        }
     }
 });
 
-add_shortcode('energ_test', function () {
-    return '<div style="padding:20px;background:#000;color:#fff;">ENERG SHORTCODE WORKING</div>';
-});
+add_filter('script_loader_tag', function ($tag, $handle, $src) {
+    if ($handle === 'energ-dashboard-app') {
+        return '<script type="module" src="' . esc_url($src) . '"></script>';
+    }
+    return $tag;
+}, 10, 3);
+
