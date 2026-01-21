@@ -89,41 +89,74 @@ add_action('energ_cleanup_otp_limits', function () {
 });
 
 add_action('wp_enqueue_scripts', function () {
-    // Enqueue only on pages where shortcodes are present.
-    if (!is_singular()) {
-        return;
-    }
+
+    if (!is_singular()) return;
 
     global $post;
-    if (!$post || empty($post->post_content)) {
-        return;
+    if (!$post || empty($post->post_content)) return;
+
+    $needs_dashboard = has_shortcode($post->post_content, 'energ_members_dashboard');
+    $needs_auth      = has_shortcode($post->post_content, 'energ_members_auth');
+
+    if (!$needs_dashboard && !$needs_auth) return;
+
+    // =========================
+    // 🔐 AUTH UI (OLD)
+    // =========================
+    if ($needs_auth) {
+        wp_enqueue_style(
+            'energ-members-ui',
+            plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
+            [],
+            '1.0.0'
+        );
+
+        wp_enqueue_script(
+            'energ-members-auth',
+            plugin_dir_url(__FILE__) . 'assets/js/auth.js',
+            [],
+            '1.0.0',
+            true
+        );
     }
 
-    $needs = has_shortcode($post->post_content, 'energ_members_auth')
-        || has_shortcode($post->post_content, 'energ_members_dashboard');
+    // =========================
+    // 📊 REACT DASHBOARD (NEW)
+    // =========================
+    if ($needs_dashboard) {
 
-    if (!$needs) {
-        return;
+        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashboard/dist/';
+        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashboard/dist/';
+
+        // 🔍 auto-detect built files
+        $js  = glob($dist_path . 'assets/index-CbZZyaug.js')[0] ?? null;
+        $css = glob($dist_path . 'assets/index-B-DnV36w.css')[0] ?? null;
+
+        if ($css) {
+            wp_enqueue_style(
+                'energ-dashboard-style',
+                $dist_url . 'assets/' . basename($css),
+                [],
+                filemtime($css)
+            );
+        }
+
+        if ($js) {
+            wp_enqueue_script(
+                'energ-dashboard-app',
+                $dist_url . 'assets/' . basename($js),
+                [],
+                filemtime($js),
+                true
+            );
+        }
+
+        // 🔑 Pass WP data to React
+        wp_add_inline_script('energ-dashboard-app', 'window.ENERG = ' . wp_json_encode([
+            'api'   => rest_url('energ/v1'),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'home'  => home_url('/'),
+        ]) . ';', 'before');
     }
-
-    wp_enqueue_style(
-        'energ-members-ui',
-        plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
-        [],
-        '1.0.0'
-    );
-
-    wp_enqueue_script(
-        'energ-members-ui',
-        plugin_dir_url(__FILE__) . 'assets/js/auth.js',
-        [],
-        '1.0.0',
-        true
-    );
-
-    wp_localize_script('energ-members-ui', 'ENERG', [
-        'api'   => rest_url('energ/v1'),
-        'nonce' => wp_create_nonce('wp_rest'),
-        'home'  => home_url('/'),
-    ]);
 });
+

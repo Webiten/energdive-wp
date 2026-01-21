@@ -2,29 +2,45 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthAPI } from "../lib/api";
 
 /* =========================
+   Session Expiry Bus
+========================= */
+
+let sessionExpired = false;
+const sessionListeners = new Set<() => void>();
+
+export function onSessionExpired(cb: () => void) {
+  sessionListeners.add(cb);
+  return () => sessionListeners.delete(cb);
+}
+
+function triggerSessionExpired() {
+  if (sessionExpired) return;
+  sessionExpired = true;
+  sessionListeners.forEach((cb) => cb());
+}
+
+/* =========================
    Types
 ========================= */
 
 export type MeResponse = {
   id?: number | string;
 
-  // Identity (read-only in UI)
   email?: string;
   phone?: string;
 
-  // Profile
   firstName?: string;
   lastName?: string;
   jobTitle?: string;
   organization?: string;
   country?: string;
   industry?: string;
+  subIndustry?: string;
 
-  // Communities
   community?: string;
+  communities?: string[];
   subCommunities?: string[];
 
-  // Notifications
   notifications?: {
     emailNotifications?: boolean;
     weeklyDigest?: boolean;
@@ -32,7 +48,6 @@ export type MeResponse = {
     communityActivity?: boolean;
   };
 
-  // Membership (system-controlled)
   membership?: {
     planName?: string;
     tier?: string;
@@ -42,18 +57,11 @@ export type MeResponse = {
     description?: string;
   };
 
-  // Security
   hasPassword?: boolean;
-
   roleLabel?: string;
 };
 
-export type UpdateMePayload = Partial<Omit<MeResponse, "membership">> & {
-  password?: {
-    currentPassword?: string;
-    newPassword: string;
-  };
-};
+export type UpdateMePayload = Partial<Omit<MeResponse, "membership">>;
 
 /* =========================
    Cache
@@ -81,90 +89,38 @@ function asStringArray(value: any): string[] {
   if (!value) return [];
   if (Array.isArray(value)) return value.filter((x) => typeof x === "string");
   if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    return value.split(",").map((s) => s.trim()).filter(Boolean);
   }
   return [];
 }
 
 function normalizeMe(raw: any): MeResponse {
-  const u = raw?.user ?? raw;
-  const meta = u?.meta ?? {};
-  const acf = u?.acf ?? {};
+  const u = raw?.user ?? raw ?? {};
 
   return {
-    id: u?.id ?? u?.ID,
+    id: u.id,
 
-    email: u?.email ?? u?.user_email ?? u?.data?.email ?? meta?.email ?? "",
-    phone:
-      u?.phone ??
-      u?.mobile ??
-      u?.identifier ??
-      meta?.phone ??
-      meta?.mobile ??
-      "",
+    email: u.email ?? "",
+    phone: u.phone ?? "",
 
-    firstName:
-      u?.firstName ??
-      u?.first_name ??
-      meta?.first_name ??
-      acf?.first_name ??
-      "",
-    lastName:
-      u?.lastName ??
-      u?.last_name ??
-      meta?.last_name ??
-      acf?.last_name ??
-      "",
+    firstName: u.first_name ?? "",
+    lastName: u.last_name ?? "",
+    jobTitle: u.job_title ?? "",
+    organization: u.organization ?? "",
 
-    jobTitle:
-      u?.jobTitle ??
-      u?.job_title ??
-      meta?.job_title ??
-      acf?.job_title ??
-      "",
-    organization:
-      u?.organization ??
-      u?.company ??
-      meta?.organization ??
-      acf?.organization ??
-      "",
+    country: u.country ?? "",
+    industry: u.industry ?? "",
+    subIndustry: u.sub_industry ?? "",
 
-    country: u?.country ?? meta?.country ?? acf?.country ?? "",
-    industry: u?.industry ?? meta?.industry ?? acf?.industry ?? "",
+    community: u.community ?? "",
+    communities: asStringArray(u.communities ?? u.communities_json),
+    subCommunities: asStringArray(u.sub_communities ?? u.sub_communities_json),
 
-    community:
-      u?.community ??
-      u?.primaryCommunity ??
-      meta?.community ??
-      acf?.community ??
-      "",
-    subCommunities: asStringArray(
-      u?.subCommunities ??
-      u?.sub_communities ??
-      u?.sub_communities_json ??
-      meta?.sub_communities ??
-      meta?.sub_communities_json ??
-      acf?.sub_communities ??
-      acf?.sub_communities_json
-    ),
+    notifications: u.notifications,
+    membership: u.membership,
 
-    notifications: u?.notifications ?? meta?.notifications ?? acf?.notifications,
-
-    membership: u?.membership ?? meta?.membership ?? acf?.membership,
-
-    hasPassword:
-      typeof u?.hasPassword === "boolean"
-        ? u.hasPassword
-        : typeof meta?.has_password === "boolean"
-          ? meta.has_password
-          : typeof u?.passwordSet === "boolean"
-            ? u.passwordSet
-            : undefined,
-
-    roleLabel: u?.roleLabel ?? meta?.roleLabel ?? acf?.roleLabel,
+    hasPassword: u.has_password,
+    roleLabel: u.role_label,
   };
 }
 
@@ -178,12 +134,24 @@ async function fetchMeFromServer(signal?: AbortSignal): Promise<MeResponse | nul
     return normalizeMe(raw);
   } catch (e: any) {
     const status = e?.status ?? e?.data?.status;
-    if (status === 401 || status === 403) return null;
-    return null;
+
+    // 🔁 Try refresh token ONCE
+    if (status === 401 || status === 403) {
+      try {
+        await AuthAPI.refreshToken();
+        const retry = await AuthAPI.me({ signal });
+        return normalizeMe(retry);
+      } catch {
+        triggerSessionExpired(); // 🚨 FINAL FAIL → popup
+        return cache.data; // ❌ DO NOT WIPE UI
+      }
+    }
+
+    return cache.data;
   }
 }
 
-async function updateMeOnServer(payload: Partial<MeResponse>): Promise<MeResponse> {
+async function updateMeOnServer(payload: UpdateMePayload): Promise<MeResponse> {
   const raw = await AuthAPI.updateMe(payload);
   return normalizeMe(raw);
 }
@@ -194,7 +162,9 @@ async function updateMeOnServer(payload: Partial<MeResponse>): Promise<MeRespons
 
 export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean }) {
   const ttlMs = options?.ttlMs ?? 60_000;
-  const revalidateOnFocus = options?.revalidateOnFocus ?? true;
+
+  // 🔥 IMPORTANT: disable focus auto-refresh by default
+  const revalidateOnFocus = options?.revalidateOnFocus ?? false;
 
   const [me, setMe] = useState<MeResponse | null>(cache.data);
   const [loading, setLoading] = useState<boolean>(!cache.fetchedAt);
@@ -221,14 +191,7 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
   }, []);
 
   const refresh = useCallback(async () => {
-    if (cache.promise) {
-      setLoading(true);
-      const data = await cache.promise;
-      setMe(data);
-      setError(cache.error);
-      setLoading(false);
-      return;
-    }
+    if (cache.promise) return;
 
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -239,21 +202,24 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
     cache.promise = (async () => {
       try {
         const data = await fetchMeFromServer(abortRef.current?.signal);
-        cache.data = data;
-        cache.error = null;
+
+        if (data) {
+          cache.data = data;
+          cache.error = null;
+        }
+
         cache.fetchedAt = Date.now();
-        return data;
+        return cache.data;
       } catch (e: any) {
-        cache.data = null;
         cache.error = e?.message ?? "Failed to load profile.";
-        cache.fetchedAt = Date.now();
-        return null;
+        return cache.data;
       } finally {
         cache.promise = null;
       }
     })();
 
     const data = await cache.promise;
+
     safeSet(() => {
       setMe(data);
       setError(cache.error);
@@ -268,10 +234,13 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
 
       try {
         const updated = await updateMeOnServer(payload);
-        cache.data = { ...(cache.data ?? {}), ...updated };
+
+        // 🔥 SINGLE SOURCE OF TRUTH
+        cache.data = updated;
         cache.fetchedAt = Date.now();
-        safeSet(() => setMe(cache.data));
-        return cache.data;
+
+        safeSet(() => setMe(updated));
+        return updated;
       } catch (e: any) {
         const msg = e?.message ?? "Failed to save.";
         cache.error = msg;
@@ -295,9 +264,11 @@ export function useMe(options?: { ttlMs?: number; revalidateOnFocus?: boolean })
 
   useEffect(() => {
     if (!revalidateOnFocus) return;
+
     const onFocus = () => {
-      if (!cache.fetchedAt || Date.now() - cache.fetchedAt > ttlMs) refresh();
+      if (Date.now() - cache.fetchedAt > ttlMs) refresh();
     };
+
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [revalidateOnFocus, ttlMs, refresh]);
@@ -314,6 +285,7 @@ export function clearMeCache() {
   cache.error = null;
   cache.fetchedAt = 0;
   cache.promise = null;
+  sessionExpired = false;
 }
 
 export function getMeDisplayName(me: MeResponse | null) {

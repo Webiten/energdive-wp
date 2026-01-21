@@ -158,7 +158,7 @@ class AuthController
         }
 
         $sub_industry = null;
-        if (array_key_exists('subIndustry', $params) || array_key_exists('sub_industry', $params)) {
+        if (isset($params['sub_industry']) || isset($params['subIndustry'])) {
             $val = $params['subIndustry'] ?? $params['sub_industry'] ?? '';
             if (is_array($val)) {
                 $sub_industry = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $val)))));
@@ -167,19 +167,45 @@ class AuthController
             }
         }
 
-        $communities = isset($params['communities']) ? $params['communities'] : null;
-        $subCommunities = isset($params['subCommunities']) ? $params['subCommunities'] : null;
+        $communities = $params['communities'] ?? $params['community'] ?? null;
+
+        $subCommunities = $params['sub_communities']
+            ?? $params['subCommunities']
+            ?? $params['sub_community']
+            ?? null;
+
 
         $update = [];
         $format = [];
 
-        if ($first_name !== null)   { $update['first_name'] = $first_name; $format[] = '%s'; }
-        if ($last_name !== null)    { $update['last_name'] = $last_name; $format[] = '%s'; }
-        if ($job_title !== null)    { $update['job_title'] = $job_title; $format[] = '%s'; }
-        if ($organization !== null) { $update['organization'] = $organization; $format[] = '%s'; }
-        if ($country !== null)      { $update['country'] = $country; $format[] = '%s'; }
-        if ($industry !== null)     { $update['industry'] = $industry; $format[] = '%s'; }
-        if ($sub_industry !== null) { $update['sub_industry'] = $sub_industry; $format[] = '%s'; }
+        if ($first_name !== null) {
+            $update['first_name'] = $first_name;
+            $format[] = '%s';
+        }
+        if ($last_name !== null) {
+            $update['last_name'] = $last_name;
+            $format[] = '%s';
+        }
+        if ($job_title !== null) {
+            $update['job_title'] = $job_title;
+            $format[] = '%s';
+        }
+        if ($organization !== null) {
+            $update['organization'] = $organization;
+            $format[] = '%s';
+        }
+        if ($country !== null) {
+            $update['country'] = $country;
+            $format[] = '%s';
+        }
+        if ($industry !== null) {
+            $update['industry'] = $industry;
+            $format[] = '%s';
+        }
+        if ($sub_industry !== null) {
+            $update['sub_industry'] = $sub_industry;
+            $format[] = '%s';
+        }
 
         if (is_array($communities)) {
             $clean = array_values(array_unique(array_filter(array_map('sanitize_text_field', $communities))));

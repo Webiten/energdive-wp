@@ -21,7 +21,8 @@ class CompleteRegistration
             $params = [];
         }
 
-        // Required fields
+        /* ================= REQUIRED FIELDS ================= */
+
         $required = [
             'first_name',
             'last_name',
@@ -42,10 +43,11 @@ class CompleteRegistration
             return new WP_Error('privacy_required', 'Privacy policy must be accepted', ['status' => 400]);
         }
 
-        // Optional fields
-        $state       = isset($params['state']) ? sanitize_text_field($params['state']) : '';
+        /* ================= OPTIONAL FIELDS ================= */
 
-        // Industry / sub-industry may arrive as string OR array (multi-select)
+        $state = isset($params['state']) ? sanitize_text_field($params['state']) : '';
+
+        // Industry / sub-industry (string OR array)
         $industryVal = $params['industry'] ?? '';
         if (is_array($industryVal)) {
             $industryVal = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $industryVal)))));
@@ -60,18 +62,17 @@ class CompleteRegistration
             $subIndustryVal = sanitize_text_field((string) $subIndustryVal);
         }
 
-        /**
-         * Communities (support both):
-         * - old: community (string)
-         * - new: communities (array)
-         */
+        /* ================= COMMUNITIES ================= */
+
+        // New: communities (array)
         $communities = [];
         if (isset($params['communities']) && is_array($params['communities'])) {
             $communities = array_values(array_unique(array_filter(array_map('sanitize_text_field', $params['communities']))));
         }
 
+        // Old fallback: community (string)
         if (empty($communities)) {
-            $singleCommunity = isset($params['community']) ? sanitize_text_field($params['community']) : '';
+            $singleCommunity = isset($params['community'] ) ? sanitize_text_field($params['community']) : '';
             if ($singleCommunity !== '') {
                 $communities = [$singleCommunity];
             }
@@ -81,16 +82,14 @@ class CompleteRegistration
             return new WP_Error('missing_field', 'Missing field: community', ['status' => 400]);
         }
 
-        /**
-         * Sub-communities (support both):
-         * - old: sub_community (string)
-         * - new: sub_communities (array)
-         */
+        /* ================= SUB-COMMUNITIES ================= */
+
         $subCommunities = [];
         if (isset($params['sub_communities']) && is_array($params['sub_communities'])) {
             $subCommunities = array_values(array_unique(array_filter(array_map('sanitize_text_field', $params['sub_communities']))));
         }
 
+        // Old fallback
         if (empty($subCommunities)) {
             $singleSub = isset($params['sub_community']) ? sanitize_text_field($params['sub_community']) : '';
             if ($singleSub !== '') {
@@ -98,23 +97,18 @@ class CompleteRegistration
             }
         }
 
-        /**
-         * ✅ Validation:
-         * If sub-communities are provided, each sub must be valid for at least one selected community.
-         *
-         * IMPORTANT: This expects CommunityValidator::isValid() to support slugs
-         * (which you already confirmed exists via slugList()).
-         */
+        /* ================= VALIDATION ================= */
+
         if (!empty($subCommunities)) {
             foreach ($subCommunities as $sub) {
-                $ok = false;
+                $valid = false;
                 foreach ($communities as $community) {
                     if (CommunityValidator::isValid($community, $sub)) {
-                        $ok = true;
+                        $valid = true;
                         break;
                     }
                 }
-                if (!$ok) {
+                if (!$valid) {
                     return new WP_Error(
                         'invalid_community',
                         'Invalid community or sub-community',
@@ -124,21 +118,9 @@ class CompleteRegistration
             }
         }
 
-        /**
-         * ✅ Primary columns (backward compatible)
-         * Store first selected community and a sub-community that matches it (if available)
-         */
-        $primaryCommunity = $communities[0];
-        $primarySubCommunity = '';
+        /* ================= DATABASE UPDATE ================= */
 
-        if (!empty($subCommunities)) {
-            foreach ($subCommunities as $sub) {
-                if (CommunityValidator::isValid($primaryCommunity, $sub)) {
-                    $primarySubCommunity = $sub;
-                    break;
-                }
-            }
-        }
+        $primaryCommunity = $communities[0] ?? '';
 
         $table = $wpdb->prefix . 'energ_members';
 
@@ -150,17 +132,19 @@ class CompleteRegistration
             'country'              => sanitize_text_field($params['country']),
             'state'                => $state,
 
-            // ✅ store SLUGS in main columns
+            // ✅ Legacy column (ONLY primary community)
             'community'            => sanitize_text_field($primaryCommunity),
-            'sub_community'        => sanitize_text_field($primarySubCommunity),
+
+            // ❌ STOP using single sub_community (kills multi-select)
+            'sub_community'        => null,
 
             'industry'             => $industryVal,
             'sub_industry'         => $subIndustryVal,
             'status'               => 'active',
 
-            // ✅ store arrays as JSON (SLUGS)
-            'communities_json'     => wp_json_encode(array_values($communities)),
-            'sub_communities_json' => wp_json_encode(array_values($subCommunities)),
+            // ✅ SOURCE OF TRUTH
+            'communities_json'     => wp_json_encode($communities),
+            'sub_communities_json' => wp_json_encode($subCommunities),
         ];
 
         $where = [ is_email($user) ? 'email' : 'phone' => $user ];

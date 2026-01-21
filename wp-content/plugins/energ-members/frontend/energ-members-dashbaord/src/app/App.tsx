@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-// Auth Components
+// 🔐 Auth Components
 import { LoginPage } from "./components/auth/LoginPage";
 import { VerificationPage } from "./components/auth/VerificationPage";
 import { RegisterPage } from "./components/auth/RegisterPage";
 import { RegistrationSuccess } from "./components/auth/RegistrationSuccess";
+import { SessionExpiredModal } from "./components/SessionExpiredModal";
 
-// Dashboard Components
+// ⏱ Session Hook
+import { useSessionTimeout } from "./hooks/useSessionTimeout";
+
+// 📊 Dashboard Components
 import { TopBar } from "./components/TopBar";
 import { SecondHeader } from "./components/SecondHeader";
 import { DashboardHome } from "./components/DashboardHome";
@@ -17,7 +21,7 @@ import { EventsSection } from "./components/EventsSection";
 import { BookmarksSection } from "./components/BookmarksSection";
 import { AccountSettingsSection } from "./components/AccountSettingsSection";
 
-// API
+// 🌐 API
 import { AuthAPI } from "./lib/api";
 
 type AppState =
@@ -31,26 +35,48 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>("login");
   const [activeSection, setActiveSection] = useState("dashboard");
 
-  // 🔑 SINGLE SOURCE OF TRUTH
+  // 🔑 Single source of truth
   const [identifier, setIdentifier] = useState<string>("");
 
   const [requiresApproval, setRequiresApproval] = useState(false);
+
+  /* =======================
+     🔥 SESSION TIMEOUT (5 MIN) — FINAL FIX
+  ======================= */
+
+  const sessionConfigRef = useRef<{
+    timeoutMs: number;
+    onExpire: () => void;
+  } | null>(null);
+
+  // Start timer ONLY once when dashboard loads
+  if (appState === "dashboard" && !sessionConfigRef.current) {
+    sessionConfigRef.current = {
+      timeoutMs: 5 * 60 * 1000, // ✅ 5 minutes
+      onExpire: () => {
+        setAppState("login");
+      },
+    };
+  }
+
+  // Clear timer config on logout
+  if (appState !== "dashboard") {
+    sessionConfigRef.current = null;
+  }
+
+  useSessionTimeout(sessionConfigRef.current);
 
   /* =======================
      AUTH FLOW HANDLERS
   ======================= */
 
   const handleVerificationSent = (value: string) => {
-    setIdentifier(value);           // ✅ email OR phone
+    setIdentifier(value);
     setAppState("verification");
   };
 
   const handleVerified = (isNewUser: boolean) => {
-    if (isNewUser) {
-      setAppState("register");
-    } else {
-      setAppState("dashboard");
-    }
+    setAppState(isNewUser ? "register" : "dashboard");
   };
 
   const handleResendVerification = async () => {
@@ -59,20 +85,16 @@ export default function App() {
   };
 
   const handleRegistrationComplete = () => {
-    setRequiresApproval(false);      // safety
-    setAppState("dashboard");        // ✅ Direct to dashboard
+    setRequiresApproval(false);
+    setAppState("dashboard");
   };
 
   const handleContinueToDashboard = () => {
-    if (!requiresApproval) {
-      setAppState("dashboard");
-    } else {
-      setAppState("login");
-    }
+    setAppState(requiresApproval ? "login" : "dashboard");
   };
 
   /* =======================
-     DASHBOARD RENDER
+     DASHBOARD CONTENT
   ======================= */
 
   const renderDashboardContent = () => {
@@ -96,50 +118,49 @@ export default function App() {
     }
   };
 
-  if (appState === "dashboard") {
-    return (
-      <div className="size-full bg-gray-50">
-        <TopBar onLogout={() => setAppState("login")} />
-        <SecondHeader
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-        {renderDashboardContent()}
-      </div>
-    );
-  }
-
-  /* =======================
-     AUTH FLOW RENDER
-  ======================= */
-
   return (
-    <div className="size-full">
-      {appState === "login" && (
-        <LoginPage onVerificationSent={handleVerificationSent} />
-      )}
+    <>
+      {/* 🚨 MUST ALWAYS BE MOUNTED */}
+      <SessionExpiredModal />
 
-      {appState === "verification" && (
-        <VerificationPage
-          identifier={identifier}        // ✅ FIXED
-          onVerified={handleVerified}
-          onResend={handleResendVerification}
-        />
-      )}
+      {appState === "dashboard" ? (
+        <div className="size-full bg-gray-50">
+          <TopBar onLogout={() => setAppState("login")} />
+          <SecondHeader
+            activeSection={activeSection}
+            onSectionChange={setActiveSection}
+          />
+          {renderDashboardContent()}
+        </div>
+      ) : (
+        <div className="size-full">
+          {appState === "login" && (
+            <LoginPage onVerificationSent={handleVerificationSent} />
+          )}
 
-      {appState === "register" && (
-        <RegisterPage
-          identifier={identifier}        // (if needed later)
-          onRegistrationComplete={handleRegistrationComplete}
-        />
-      )}
+          {appState === "verification" && (
+            <VerificationPage
+              identifier={identifier}
+              onVerified={handleVerified}
+              onResend={handleResendVerification}
+            />
+          )}
 
-      {appState === "registration-success" && (
-        <RegistrationSuccess
-          requiresApproval={requiresApproval}
-          onContinue={handleContinueToDashboard}
-        />
+          {appState === "register" && (
+            <RegisterPage
+              identifier={identifier}
+              onRegistrationComplete={handleRegistrationComplete}
+            />
+          )}
+
+          {appState === "registration-success" && (
+            <RegistrationSuccess
+              requiresApproval={requiresApproval}
+              onContinue={handleContinueToDashboard}
+            />
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }

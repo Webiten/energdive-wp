@@ -238,6 +238,9 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     country: "",
     state: "",
 
+    jobTitle: "",
+    organization: "",
+
     communities: [] as string[],
     subCommunities: [] as string[],
 
@@ -245,6 +248,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     subIndustry: "",
     areaOfIndustry: "",
   });
+
 
   const [otpState, setOtpState] = useState<"idle" | "sent" | "verifying" | "verified" | "error">("idle");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -440,6 +444,10 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
         country: formData.country,
         state: formData.state,
 
+        job_title: formData.jobTitle,
+        organization: formData.organization,
+
+
         // ✅ old fields (so your existing backend validation/DB works)
         community: primaryCommunity,
         sub_community: primarySubCommunity,
@@ -468,9 +476,12 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     formData.lastName &&
     formData.mobile &&
     formData.country &&
+    formData.jobTitle &&
+    formData.organization &&
     formData.communities.length > 0 &&
     formData.industry &&
     otpState === "verified";
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-gray-50 py-12 px-6">
@@ -673,6 +684,30 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="jobTitle">Job Title</Label>
+                  <Input
+                    id="jobTitle"
+                    value={formData.jobTitle}
+                    onChange={(e) => handleInputChange("jobTitle", e.target.value)}
+                    placeholder="e.g. Senior Engineer"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="Organization">Organization</Label>
+                  <Input
+                    id="organization"
+                    value={formData.organization}
+                    onChange={(e) => handleInputChange("organization", e.target.value)}
+                    placeholder="Company / Organization Name"
+                  />
+
+                </div>
+              </div>
+
+
               {/* Professional Classification */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Professional Classification</h3>
@@ -712,9 +747,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   <Label>Sub-Communities</Label>
 
                   <div
-                    className={`grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border p-3 ${
-                      !formData.communities.length ? "opacity-50 pointer-events-none" : ""
-                    }`}
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border p-3 ${!formData.communities.length ? "opacity-50 pointer-events-none" : ""
+                      }`}
                   >
                     {availableSubCommunities.length ? (
                       availableSubCommunities.map((sub) => {
