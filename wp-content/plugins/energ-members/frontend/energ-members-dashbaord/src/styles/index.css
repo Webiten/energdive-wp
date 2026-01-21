@@ -1,11 +1,11 @@
-@import './fonts.css';
-@import './tailwind.css';
-@import './theme.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* optional safety */
+/* Custom imports AFTER tailwind */
+@import './fonts.css';
+@import './theme.css';
+
 #energ-dashboard-root {
   font-family: Inter, system-ui, sans-serif;
 }
