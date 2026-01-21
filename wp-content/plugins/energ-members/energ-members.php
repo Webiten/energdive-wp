@@ -1,4 +1,5 @@
 <?php
+die('🔥 ENERG PLUGIN LOADED');
 /**
  * Plugin Name: Energ Members (Stable)
  * Description: OTP login + JWT auth system
