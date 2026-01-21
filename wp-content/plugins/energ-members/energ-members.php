@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: Energ Members (Stable)
  * Description: OTP login + JWT auth system
@@ -7,12 +8,15 @@
  */
 
 defined('ABSPATH') || exit;
+// die('ENERG MEMBERS PLUGIN LOADED');
 
-/* ===============================
-   PSR-4 AUTOLOADER
-================================ */
+
+// ===============================
+// PSR-4 AUTOLOADER
+// ===============================
 spl_autoload_register(function ($class) {
-    $prefix   = 'Energ\\';
+
+    $prefix = 'Energ\\';
     $base_dir = __DIR__ . '/app/';
 
     if (strpos($class, $prefix) !== 0) {
@@ -20,38 +24,40 @@ spl_autoload_register(function ($class) {
     }
 
     $relative = substr($class, strlen($prefix));
-    $file     = $base_dir . str_replace('\\', '/', $relative) . '.php';
+    $file = $base_dir . str_replace('\\', '/', $relative) . '.php';
 
     if (file_exists($file)) {
         require_once $file;
     }
 });
 
-/* ===============================
-   API ROUTES
-================================ */
+
+// ===============================
+// BOOT ROUTES (ONLY THIS)
+// ===============================
 add_action('rest_api_init', function () {
     require_once __DIR__ . '/app/Routes/AuthRoutes.php';
 });
 
-/* ===============================
-   SHORTCODES
-================================ */
+// ===============================
+// frontend SHORTCODES
+// ===============================
 add_action('init', function () {
-    // EnergClub (PHP UI)
-    if (class_exists('Energ\\Frontend\\EnergClubShortcodes')) {
-        \Energ\Frontend\EnergClubShortcodes::register();
-    }
-
-    // Legacy shortcodes (optional)
-    if (class_exists('Energ\\Frontend\\Shortcodes')) {
-        \Energ\Frontend\Shortcodes::register();
+    // Shortcodes are lightweight and safe to register on init.
+    if (class_exists('Energ\\frontend\\Shortcodes')) {
+        \Energ\frontend\Shortcodes::register();
+    } else {
+        // File will be present in this plugin; keep require as a safe fallback.
+        $file = __DIR__ . '/app/frontend/Shortcodes.php';
+        if (file_exists($file)) {
+            require_once $file;
+            \Energ\frontend\Shortcodes::register();
+        }
     }
 });
 
-/* ===============================
-   CRON CLEANUP
-================================ */
+
+
 register_activation_hook(__FILE__, function () {
     if (!wp_next_scheduled('energ_cleanup_cron')) {
         wp_schedule_event(time(), 'hourly', 'energ_cleanup_cron');
@@ -60,73 +66,105 @@ register_activation_hook(__FILE__, function () {
 
 add_action('energ_cleanup_cron', function () {
     global $wpdb;
-    $wpdb->query("DELETE FROM {$wpdb->prefix}energ_otps WHERE expires_at < NOW()");
-    $wpdb->query("DELETE FROM {$wpdb->prefix}energ_refresh_tokens WHERE expires_at < NOW()");
+
+    // 🧹 Expired OTPs
+    $wpdb->query(
+        "DELETE FROM {$wpdb->prefix}energ_otps
+         WHERE expires_at < NOW()"
+    );
+
+    // 🧹 Expired refresh tokens
+    $wpdb->query(
+        "DELETE FROM {$wpdb->prefix}energ_refresh_tokens
+         WHERE expires_at < NOW()"
+    );
 });
 
-/* ===============================
-   AJAX: Area of Industry map
-================================ */
-add_action('wp_ajax_energclub_area_map', function () {
-    $community     = sanitize_text_field($_POST['community'] ?? '');
-    $sub_community = sanitize_text_field($_POST['sub_community'] ?? '');
-
-    if (!class_exists('Energ\\Frontend\\EnergClubData')) {
-        wp_send_json_error(['message' => 'EnergClubData missing']);
-    }
-
-    $area = \Energ\Frontend\EnergClubData::areaOfIndustry($community, $sub_community);
-    wp_send_json_success(['area' => $area]);
+add_action('energ_cleanup_otp_limits', function () {
+    global $wpdb;
+    $wpdb->query(
+        "DELETE FROM {$wpdb->prefix}energ_otp_limits
+         WHERE last_attempt < NOW() - INTERVAL 1 DAY"
+    );
 });
 
-add_action('wp_ajax_nopriv_energclub_area_map', function () {
-    $community     = sanitize_text_field($_POST['community'] ?? '');
-    $sub_community = sanitize_text_field($_POST['sub_community'] ?? '');
-
-    if (!class_exists('Energ\\Frontend\\EnergClubData')) {
-        wp_send_json_error(['message' => 'EnergClubData missing']);
-    }
-
-    $area = \Energ\Frontend\EnergClubData::areaOfIndustry($community, $sub_community);
-    wp_send_json_success(['area' => $area]);
-});
-
-/* ===============================
-   FRONTEND ASSETS
-================================ */
 add_action('wp_enqueue_scripts', function () {
 
-    if (!is_singular()) {
-        return;
-    }
+    if (!is_singular()) return;
 
     global $post;
-    if (!$post || empty($post->post_content)) {
-        return;
+    if (!$post || empty($post->post_content)) return;
+
+    $needs_dashboard = has_shortcode($post->post_content, 'energ_members_dashboard');
+    $needs_auth      = has_shortcode($post->post_content, 'energ_members_auth');
+
+    if (!$needs_dashboard && !$needs_auth) return;
+
+    // =========================
+    // 🔐 AUTH UI (OLD)
+    // =========================
+    if ($needs_auth) {
+        wp_enqueue_style(
+            'energ-members-ui',
+            plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
+            [],
+            '1.0.0'
+        );
+
+        wp_enqueue_script(
+            'energ-members-auth',
+            plugin_dir_url(__FILE__) . 'assets/js/auth.js',
+            [],
+            '1.0.0',
+            true
+        );
     }
 
-    $needs_energclub = (
-        has_shortcode($post->post_content, 'energclub_login') ||
-        has_shortcode($post->post_content, 'energclub_register') ||
-        has_shortcode($post->post_content, 'energclub_dashboard')
-    );
+    // =========================
+    // 📊 REACT DASHBOARD (NEW)
+    // =========================
+    if ($needs_dashboard) {
 
-    if (!$needs_energclub) {
-        return;
+        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
+        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
+
+        $jsFiles  = glob($dist_path . 'assets/index-*.js');
+        $cssFiles = glob($dist_path . 'assets/index-*.css');
+
+        if (!empty($cssFiles)) {
+            wp_enqueue_style(
+                'energ-dashboard-style',
+                $dist_url . 'assets/' . basename($cssFiles[0]),
+                [],
+                filemtime($cssFiles[0])
+            );
+        }
+
+        if (!empty($jsFiles)) {
+            wp_enqueue_script(
+                'energ-dashboard-app',
+                $dist_url . 'assets/' . basename($jsFiles[0]),
+                [],
+                filemtime($jsFiles[0]),
+                true
+            );
+
+            wp_add_inline_script(
+                'energ-dashboard-app',
+                'window.ENERG = ' . wp_json_encode([
+                    'api'   => rest_url('energ/v1'),
+                    'nonce' => wp_create_nonce('wp_rest'),
+                    'home'  => home_url('/'),
+                ]) . ';',
+                'before'
+            );
+        }
     }
-
-    wp_enqueue_style(
-        'energclub-css',
-        plugin_dir_url(__FILE__) . 'assets/css/energclub.css',
-        [],
-        '1.0.0'
-    );
-
-    wp_enqueue_script(
-        'energclub-js',
-        plugin_dir_url(__FILE__) . 'assets/js/energclub.js',
-        [],
-        '1.0.0',
-        true
-    );
 });
+
+add_filter('script_loader_tag', function ($tag, $handle, $src) {
+    if ($handle === 'energ-dashboard-app') {
+        return '<script type="module" src="' . esc_url($src) . '"></script>';
+    }
+    return $tag;
+}, 10, 3);
