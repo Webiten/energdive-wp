@@ -1,5 +1,5 @@
 <?php
-die('🔥 ENERG PLUGIN LOADED');
+
 /**
  * Plugin Name: Energ Members (Stable)
  * Description: OTP login + JWT auth system
@@ -52,15 +52,26 @@ add_action('init', function () {
 
 /**
  * ===============================
- * FRONTEND ASSETS (FORCE LOAD)
+ * FRONTEND ASSETS (REACT DASHBOARD)
  * ===============================
  */
 add_action('wp_enqueue_scripts', function () {
 
+    if (!is_singular()) return;
+
+    global $post;
+    if (!$post || empty($post->post_content)) return;
+
+    if (!has_shortcode($post->post_content, 'energ_members_dashboard')) return;
+
+    // 🔥 MATCHING ACTUAL FOLDER NAME
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
-    if (!is_dir($dist_path)) return;
+    if (!is_dir($dist_path)) {
+        error_log('ENERG: dist folder not found');
+        return;
+    }
 
     $jsFiles  = glob($dist_path . 'assets/index-*.js');
     $cssFiles = glob($dist_path . 'assets/index-*.css');
@@ -72,7 +83,7 @@ add_action('wp_enqueue_scripts', function () {
             'energ-dashboard-style',
             $dist_url . 'assets/' . basename($cssFiles[0]),
             [],
-            time()
+            filemtime($cssFiles[0])
         );
     }
 
@@ -80,21 +91,22 @@ add_action('wp_enqueue_scripts', function () {
         'energ-dashboard-app',
         $dist_url . 'assets/' . basename($jsFiles[0]),
         [],
-        time(),
+        filemtime($jsFiles[0]),
         true
     );
 
     wp_add_inline_script(
         'energ-dashboard-app',
         'window.ENERG = ' . wp_json_encode([
-            'api'   => rest_url('energ/v1'),
-            'nonce' => wp_create_nonce('wp_rest'),
-            'home'  => home_url('/'),
+            "api"   => rest_url("energ/v1"),
+            "nonce" => wp_create_nonce("wp_rest"),
+            "home"  => home_url("/")
         ]) . ';
         console.log("🔥 ENERG INLINE OK", window.ENERG);',
         'before'
     );
 });
+
 
 /**
  * ===============================
