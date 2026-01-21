@@ -12,21 +12,18 @@ class Shortcodes
 
     public static function dashboard()
     {
-        // ✅ ALWAYS render root div
+        // Gate the dashboard for guests
+        if (!is_user_logged_in()) {
+            return '<p>Please login to access dashboard.</p>';
+        }
+
+        // React mount point
         return '<div id="energ-dashboard-root"></div>';
     }
 
     public static function auth()
     {
+        // Auth UI mount point
         return '<div id="energ-auth-root"></div>';
     }
 }
-
-
-add_shortcode('energ_members_dashboard', function () {
-    if (!is_user_logged_in()) {
-        return '<p>Please login to access dashboard.</p>';
-    }
-
-    return '<div id="energ-dashboard-root"></div>';
-});

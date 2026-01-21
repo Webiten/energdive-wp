@@ -43,16 +43,15 @@ add_action('rest_api_init', function () {
 // frontend SHORTCODES
 // ===============================
 add_action('init', function () {
-    // Shortcodes are lightweight and safe to register on init.
-    if (class_exists('Energ\\frontend\\Shortcodes')) {
-        \Energ\frontend\Shortcodes::register();
-    } else {
-        // File will be present in this plugin; keep require as a safe fallback.
-        $file = __DIR__ . '/app/frontend/Shortcodes.php';
-        if (file_exists($file)) {
-            require_once $file;
-            \Energ\frontend\Shortcodes::register();
-        }
+    if (class_exists('Energ\\Frontend\\Shortcodes')) {
+        \Energ\Frontend\Shortcodes::register();
+        return;
+    }
+
+    $file = __DIR__ . '/app/Frontend/Shortcodes.php';
+    if (file_exists($file)) {
+        require_once $file;
+        \Energ\Frontend\Shortcodes::register();
     }
 });
 
@@ -123,12 +122,11 @@ add_action('wp_enqueue_scripts', function () {
     // =========================
     // 📊 REACT DASHBOARD (NEW)
     // =========================
-    if ($needs_dashboard) {
+    if ($needs_dashboard && is_user_logged_in()) {
 
         $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
         $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
-        // ✅ auto-detect latest build
         $js_files  = glob($dist_path . 'assets/index-*.js');
         $css_files = glob($dist_path . 'assets/index-*.css');
 
@@ -149,17 +147,17 @@ add_action('wp_enqueue_scripts', function () {
                 filemtime($js_files[0]),
                 true
             );
-        }
 
-        wp_add_inline_script(
-            'energ-dashboard-app',
-            'window.ENERG = ' . wp_json_encode([
-                'api'   => rest_url('energ/v1'),
-                'nonce' => wp_create_nonce('wp_rest'),
-                'home'  => home_url('/'),
-            ]) . ';',
-            'before'
-        );
+            wp_add_inline_script(
+                'energ-dashboard-app',
+                'window.ENERG = ' . wp_json_encode([
+                    'api'   => rest_url('energ/v1'),
+                    'nonce' => wp_create_nonce('wp_rest'),
+                    'home'  => home_url('/'),
+                ]) . ';',
+                'before'
+            );
+        }
     }
 });
 
