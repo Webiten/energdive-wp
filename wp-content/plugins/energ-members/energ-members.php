@@ -78,7 +78,7 @@ add_action('wp_enqueue_scripts', function () {
     global $post;
     if (!$post || empty($post->post_content)) return;
 
-    $needs_dashboard = has_shortcode($post->post_content, 'energ_members_dashboard');
+    $needs_dashboard = has_shortcode($post->post_content, 'energ_members_dashbaord');
     $needs_auth      = has_shortcode($post->post_content, 'energ_members_auth');
 
     if (!$needs_dashboard && !$needs_auth) return;
