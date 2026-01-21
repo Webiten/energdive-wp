@@ -40,18 +40,18 @@ add_action('rest_api_init', function () {
 });
 
 // ===============================
-// FRONTEND SHORTCODES
+// frontend SHORTCODES
 // ===============================
 add_action('init', function () {
     // Shortcodes are lightweight and safe to register on init.
-    if (class_exists('Energ\\Frontend\\Shortcodes')) {
-        \Energ\Frontend\Shortcodes::register();
+    if (class_exists('Energ\\frontend\\Shortcodes')) {
+        \Energ\frontend\Shortcodes::register();
     } else {
         // File will be present in this plugin; keep require as a safe fallback.
-        $file = __DIR__ . '/app/Frontend/Shortcodes.php';
+        $file = __DIR__ . '/app/frontend/Shortcodes.php';
         if (file_exists($file)) {
             require_once $file;
-            \Energ\Frontend\Shortcodes::register();
+            \Energ\frontend\Shortcodes::register();
         }
     }
 });

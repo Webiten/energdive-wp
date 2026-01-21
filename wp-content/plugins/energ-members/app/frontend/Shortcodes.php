@@ -1,6 +1,6 @@
 <?php
 
-namespace Energ\Frontend;
+namespace Energ\frontend;
 
 class Shortcodes
 {
