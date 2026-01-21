@@ -11,14 +11,13 @@ class Shortcodes
     }
 
     public static function dashboard()
-{
-    ob_start();
-    ?>
-    <div id="energ-dashboard-root"></div>
-    <?php
-    return ob_get_clean();
-}
+    {
+        if (!is_user_logged_in()) {
+            return '<p>Please login to access dashboard.</p>';
+        }
 
+        return '<div id="energ-dashboard-root"></div>';
+    }
 
     public static function auth()
     {
