@@ -21,3 +21,12 @@ class Shortcodes
         return '<div id="energ-auth-root"></div>';
     }
 }
+
+
+add_shortcode('energ_members_dashboard', function () {
+    if (!is_user_logged_in()) {
+        return '<p>Please login to access dashboard.</p>';
+    }
+
+    return '<div id="energ-dashboard-root"></div>';
+});
