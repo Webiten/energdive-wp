@@ -119,11 +119,10 @@ export default function App() {
 
   return (
     <>
-      {/* ✅ SAFE TO MOUNT ALWAYS */}
       <SessionExpiredModal />
 
       {appState === "dashboard" ? (
-        <div className="size-full bg-gray-50">
+        <div className="min-h-screen w-full bg-gray-50">
           <TopBar onLogout={() => setAppState("login")} />
           <SecondHeader
             activeSection={activeSection}
@@ -132,7 +131,7 @@ export default function App() {
           {renderDashboardContent()}
         </div>
       ) : (
-        <div className="size-full">
+        <div className="min-h-screen w-full">
           {appState === "login" && (
             <LoginPage onVerificationSent={handleVerificationSent} />
           )}
@@ -162,4 +161,5 @@ export default function App() {
       )}
     </>
   );
+
 }
