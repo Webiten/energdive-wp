@@ -125,34 +125,30 @@ add_action('wp_enqueue_scripts', function () {
     // =========================
     if ($needs_dashboard) {
 
-        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashboard/dist/';
-        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashboard/dist/';
+        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
+        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
-        $assets = glob($dist_path . 'assets/index-*.js');
-        $styles = glob($dist_path . 'assets/index-*.css');
+        $jsFiles  = glob($dist_path . 'assets/index-*.js');
+        $cssFiles = glob($dist_path . 'assets/index-*.css');
 
-        $js  = $assets[0] ?? null;
-        $css = $styles[0] ?? null;
-
-        if ($css) {
+        if (!empty($cssFiles)) {
             wp_enqueue_style(
                 'energ-dashboard-style',
-                $dist_url . 'assets/' . basename($css),
+                $dist_url . 'assets/' . basename($cssFiles[0]),
                 [],
-                filemtime($css)
+                filemtime($cssFiles[0])
             );
         }
 
-        if ($js) {
+        if (!empty($jsFiles)) {
             wp_enqueue_script(
                 'energ-dashboard-app',
-                $dist_url . 'assets/' . basename($js),
+                $dist_url . 'assets/' . basename($jsFiles[0]),
                 [],
-                filemtime($js),
+                filemtime($jsFiles[0]),
                 true
             );
 
-            // 🔥 PASS DATA BEFORE SCRIPT RUNS
             wp_add_inline_script(
                 'energ-dashboard-app',
                 'window.ENERG = ' . wp_json_encode([
@@ -172,4 +168,3 @@ add_filter('script_loader_tag', function ($tag, $handle, $src) {
     }
     return $tag;
 }, 10, 3);
-
