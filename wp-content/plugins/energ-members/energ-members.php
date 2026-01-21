@@ -129,8 +129,9 @@ add_action('wp_enqueue_scripts', function () {
         $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashboard/dist/';
 
         // 🔍 auto-detect built files
-        $js  = glob($dist_path . 'assets/index-CbZZyaug.js')[0] ?? null;
-        $css = glob($dist_path . 'assets/index-B-DnV36w.css')[0] ?? null;
+        $js  = glob($dist_path . 'assets/index-*.js')[0] ?? null;
+        $css = glob($dist_path . 'assets/index-*.css')[0] ?? null;
+
 
         if ($css) {
             wp_enqueue_style(
