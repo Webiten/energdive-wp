@@ -1,5 +1,5 @@
 <?php
-
+error_log('ENERG Shortcodes loaded');
 namespace Energ\Frontend;
 
 class Shortcodes
