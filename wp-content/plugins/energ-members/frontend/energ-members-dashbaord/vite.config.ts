@@ -6,6 +6,9 @@ import path from "path";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
+  // 🔑 IMPORTANT for WordPress plugin
+  base: "",
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -19,6 +22,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+    },
+  },
+
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+
+    rollupOptions: {
+      // 🔥 THIS WAS MISSING
+      input: path.resolve(__dirname, "src/main.tsx"),
     },
   },
 });
