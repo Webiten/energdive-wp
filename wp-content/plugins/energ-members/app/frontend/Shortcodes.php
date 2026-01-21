@@ -1,6 +1,6 @@
 <?php
 
-namespace Energ\frontend;
+namespace Energ\Frontend;
 
 class Shortcodes
 {
@@ -12,10 +12,7 @@ class Shortcodes
 
     public static function dashboard()
     {
-        if (!is_user_logged_in()) {
-            return '<p>Please login to access dashboard.</p>';
-        }
-
+        // ✅ ALWAYS render root div
         return '<div id="energ-dashboard-root"></div>';
     }
 
