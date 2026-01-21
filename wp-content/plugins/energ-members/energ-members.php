@@ -8,17 +8,16 @@
 
 defined('ABSPATH') || exit;
 
-// ===============================
-// PSR-4 AUTOLOADER
-// ===============================
+/**
+ * ===============================
+ * PSR-4 AUTOLOADER
+ * ===============================
+ */
 spl_autoload_register(function ($class) {
-
     $prefix   = 'Energ\\';
     $base_dir = __DIR__ . '/app/';
 
-    if (strpos($class, $prefix) !== 0) {
-        return;
-    }
+    if (strpos($class, $prefix) !== 0) return;
 
     $relative = substr($class, strlen($prefix));
     $file     = $base_dir . str_replace('\\', '/', $relative) . '.php';
@@ -28,29 +27,33 @@ spl_autoload_register(function ($class) {
     }
 });
 
-// ===============================
-// BOOT REST ROUTES
-// ===============================
+/**
+ * ===============================
+ * REST ROUTES
+ * ===============================
+ */
 add_action('rest_api_init', function () {
     require_once __DIR__ . '/app/Routes/AuthRoutes.php';
 });
 
-// ===============================
-// FRONTEND SHORTCODES
-// ===============================
+/**
+ * ===============================
+ * SHORTCODES
+ * ===============================
+ */
 add_action('init', function () {
-
     $file = __DIR__ . '/app/frontend/Shortcodes.php';
-
     if (file_exists($file)) {
         require_once $file;
-        \Energ\frontend\Shortcodes::register();
+        \Energ\Frontend\Shortcodes::register();
     }
 });
 
-// ===============================
-// CRON SETUP
-// ===============================
+/**
+ * ===============================
+ * CRON CLEANUP
+ * ===============================
+ */
 register_activation_hook(__FILE__, function () {
     if (!wp_next_scheduled('energ_cleanup_cron')) {
         wp_schedule_event(time(), 'hourly', 'energ_cleanup_cron');
@@ -59,22 +62,15 @@ register_activation_hook(__FILE__, function () {
 
 add_action('energ_cleanup_cron', function () {
     global $wpdb;
-
     $wpdb->query("DELETE FROM {$wpdb->prefix}energ_otps WHERE expires_at < NOW()");
     $wpdb->query("DELETE FROM {$wpdb->prefix}energ_refresh_tokens WHERE expires_at < NOW()");
 });
 
-add_action('energ_cleanup_otp_limits', function () {
-    global $wpdb;
-    $wpdb->query(
-        "DELETE FROM {$wpdb->prefix}energ_otp_limits
-         WHERE last_attempt < NOW() - INTERVAL 1 DAY"
-    );
-});
-
-// ===============================
-// ENQUEUE FRONTEND ASSETS
-// ===============================
+/**
+ * ===============================
+ * FRONTEND ASSETS
+ * ===============================
+ */
 add_action('wp_enqueue_scripts', function () {
 
     if (!is_singular()) return;
@@ -87,30 +83,21 @@ add_action('wp_enqueue_scripts', function () {
 
     if (!$needs_dashboard && !$needs_auth) return;
 
-    // =========================
-    // 🔐 AUTH UI (OLD)
-    // =========================
+    /**
+     * OLD AUTH UI (if needed)
+     */
     if ($needs_auth) {
-
         wp_enqueue_style(
             'energ-members-ui',
             plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
             [],
             '1.0.0'
         );
-
-        wp_enqueue_script(
-            'energ-members-auth',
-            plugin_dir_url(__FILE__) . 'assets/js/auth.js',
-            [],
-            '1.0.0',
-            true
-        );
     }
 
-    // =========================
-    // 📊 REACT DASHBOARD (VITE BUILD)
-    // =========================
+    /**
+     * REACT DASHBOARD (VITE BUILD)
+     */
     if ($needs_dashboard) {
 
         $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashboard/dist/';
@@ -152,14 +139,14 @@ add_action('wp_enqueue_scripts', function () {
     }
 });
 
-// ===============================
-// FORCE VITE MODULE SCRIPT
-// ===============================
+/**
+ * ===============================
+ * FORCE VITE MODULE SCRIPT
+ * ===============================
+ */
 add_filter('script_loader_tag', function ($tag, $handle, $src) {
-
     if ($handle === 'energ-dashboard-app') {
         return '<script type="module" src="' . esc_url($src) . '"></script>';
     }
-
     return $tag;
 }, 10, 3);

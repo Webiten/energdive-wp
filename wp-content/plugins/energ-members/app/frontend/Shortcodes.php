@@ -12,8 +12,8 @@ class Shortcodes
 
     public static function dashboard()
     {
-        // ✅ ALWAYS render root div
-        return '<div id="energ-dashboard-root"></div>';
+        // ✅ React mounts here
+        return '<div id="energ-members-root"></div>';
     }
 
     public static function auth()
