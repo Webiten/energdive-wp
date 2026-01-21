@@ -57,30 +57,24 @@ add_action('init', function () {
  */
 add_action('wp_enqueue_scripts', function () {
 
-    echo '<!-- 🔥 ENERG ENQUEUE RUNNING -->';
-
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
-    if (!is_dir($dist_path)) {
-        echo '<!-- ❌ DIST FOLDER NOT FOUND -->';
-        return;
-    }
+    if (!is_dir($dist_path)) return;
 
     $jsFiles  = glob($dist_path . 'assets/index-*.js');
     $cssFiles = glob($dist_path . 'assets/index-*.css');
 
-    if (empty($jsFiles)) {
-        echo '<!-- ❌ JS FILE NOT FOUND -->';
-        return;
-    }
+    if (empty($jsFiles)) return;
 
-    wp_enqueue_style(
-        'energ-dashboard-style',
-        $dist_url . 'assets/' . basename($cssFiles[0]),
-        [],
-        time()
-    );
+    if (!empty($cssFiles)) {
+        wp_enqueue_style(
+            'energ-dashboard-style',
+            $dist_url . 'assets/' . basename($cssFiles[0]),
+            [],
+            time()
+        );
+    }
 
     wp_enqueue_script(
         'energ-dashboard-app',
@@ -101,7 +95,6 @@ add_action('wp_enqueue_scripts', function () {
         'before'
     );
 });
-
 
 /**
  * ===============================
