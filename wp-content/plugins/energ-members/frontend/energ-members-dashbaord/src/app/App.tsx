@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 // 🔐 Auth Components
 import { LoginPage } from "./components/auth/LoginPage";
@@ -34,67 +34,23 @@ type AppState =
 export default function App() {
   const [appState, setAppState] = useState<AppState>("login");
   const [activeSection, setActiveSection] = useState("dashboard");
-
-  // 🔑 Single source of truth
   const [identifier, setIdentifier] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
 
-  /* =======================
-     🔥 SESSION TIMEOUT (SAFE)
-  ======================= */
+  // ✅ SESSION TIMEOUT — SAFE WAY
+  useSessionTimeout(
+    appState === "dashboard"
+      ? {
+          timeoutMs: 5 * 60 * 1000,
+          onExpire: () => setAppState("login"),
+        }
+      : null
+  );
 
-  const sessionConfigRef = useRef<{
-    timeoutMs: number;
-    onExpire: () => void;
-  } | null>(null);
-
-  // ✅ CONTROL TIMER VIA EFFECT (NOT RENDER)
+  // 🧪 Debug (confirm render)
   useEffect(() => {
-    if (appState === "dashboard") {
-      sessionConfigRef.current = {
-        timeoutMs: 5 * 60 * 1000, // ⏱ 5 minutes
-        onExpire: () => {
-          setAppState("login");
-        },
-      };
-    } else {
-      sessionConfigRef.current = null;
-    }
+    console.log("✅ App rendered, state =", appState);
   }, [appState]);
-
-  // ✅ Hook always called once
-  useSessionTimeout(sessionConfigRef.current);
-
-  /* =======================
-     AUTH FLOW HANDLERS
-  ======================= */
-
-  const handleVerificationSent = (value: string) => {
-    setIdentifier(value);
-    setAppState("verification");
-  };
-
-  const handleVerified = (isNewUser: boolean) => {
-    setAppState(isNewUser ? "register" : "dashboard");
-  };
-
-  const handleResendVerification = async () => {
-    if (!identifier) return;
-    await AuthAPI.requestOtp(identifier);
-  };
-
-  const handleRegistrationComplete = () => {
-    setRequiresApproval(false);
-    setAppState("dashboard");
-  };
-
-  const handleContinueToDashboard = () => {
-    setAppState(requiresApproval ? "login" : "dashboard");
-  };
-
-  /* =======================
-     DASHBOARD CONTENT
-  ======================= */
 
   const renderDashboardContent = () => {
     switch (activeSection) {
@@ -119,7 +75,6 @@ export default function App() {
 
   return (
     <>
-      {/* ✅ SAFE TO MOUNT ALWAYS */}
       <SessionExpiredModal />
 
       {appState === "dashboard" ? (
@@ -134,28 +89,33 @@ export default function App() {
       ) : (
         <div className="size-full">
           {appState === "login" && (
-            <LoginPage onVerificationSent={handleVerificationSent} />
+            <LoginPage onVerificationSent={(v) => {
+              setIdentifier(v);
+              setAppState("verification");
+            }} />
           )}
 
           {appState === "verification" && (
             <VerificationPage
               identifier={identifier}
-              onVerified={handleVerified}
-              onResend={handleResendVerification}
+              onVerified={(isNew) =>
+                setAppState(isNew ? "register" : "dashboard")
+              }
+              onResend={() => AuthAPI.requestOtp(identifier)}
             />
           )}
 
           {appState === "register" && (
             <RegisterPage
               identifier={identifier}
-              onRegistrationComplete={handleRegistrationComplete}
+              onRegistrationComplete={() => setAppState("dashboard")}
             />
           )}
 
           {appState === "registration-success" && (
             <RegistrationSuccess
               requiresApproval={requiresApproval}
-              onContinue={handleContinueToDashboard}
+              onContinue={() => setAppState("dashboard")}
             />
           )}
         </div>
