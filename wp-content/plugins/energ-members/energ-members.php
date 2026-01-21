@@ -160,3 +160,6 @@ add_action('wp_enqueue_scripts', function () {
     }
 });
 
+add_shortcode('energ_test', function () {
+    return '<div style="padding:20px;background:#000;color:#fff;">ENERG SHORTCODE WORKING</div>';
+});
