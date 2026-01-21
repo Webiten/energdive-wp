@@ -68,7 +68,7 @@ add_action('energ_cleanup_cron', function () {
 
 /**
  * ===============================
- * FRONTEND ASSETS
+ * FRONTEND ASSETS (ELEMENTOR SAFE)
  * ===============================
  */
 add_action('wp_enqueue_scripts', function () {
@@ -76,66 +76,55 @@ add_action('wp_enqueue_scripts', function () {
     if (!is_singular()) return;
 
     global $post;
-    if (!$post || empty($post->post_content)) return;
-
-    $needs_dashboard = has_shortcode($post->post_content, 'energ_members_dashbaord');
-    $needs_auth      = has_shortcode($post->post_content, 'energ_members_auth');
-
-    if (!$needs_dashboard && !$needs_auth) return;
+    if (!$post) return;
 
     /**
-     * OLD AUTH UI (if needed)
+     * 🔥 IMPORTANT:
+     * Elementor me shortcode post_content me nahi hota,
+     * isliye slug / has_shortcode pe depend nahi karte
+     *
+     * Jab bhi dashboard page ho → React load
      */
-    if ($needs_auth) {
+
+    // 👉 CHANGE THIS IF PAGE SLUG IS DIFFERENT
+    if ($post->post_name !== 'dashbaord') return;
+
+    $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
+    $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
+
+    if (!file_exists($dist_path)) return;
+
+    $jsFiles  = glob($dist_path . 'assets/index-*.js');
+    $cssFiles = glob($dist_path . 'assets/index-*.css');
+
+    if (!empty($cssFiles)) {
         wp_enqueue_style(
-            'energ-members-ui',
-            plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
+            'energ-dashboard-style',
+            $dist_url . 'assets/' . basename($cssFiles[0]),
             [],
-            '1.0.0'
+            filemtime($cssFiles[0])
         );
     }
 
-    /**
-     * REACT DASHBOARD (VITE BUILD)
-     */
-    if ($needs_dashboard) {
+    if (!empty($jsFiles)) {
+        wp_enqueue_script(
+            'energ-dashboard-app',
+            $dist_url . 'assets/' . basename($jsFiles[0]),
+            [],
+            filemtime($jsFiles[0]),
+            true
+        );
 
-        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashboard/dist/';
-        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashboard/dist/';
-
-        if (!file_exists($dist_path)) return;
-
-        $jsFiles  = glob($dist_path . 'assets/index-*.js');
-        $cssFiles = glob($dist_path . 'assets/index-*.css');
-
-        if (!empty($cssFiles)) {
-            wp_enqueue_style(
-                'energ-dashboard-style',
-                $dist_url . 'assets/' . basename($cssFiles[0]),
-                [],
-                filemtime($cssFiles[0])
-            );
-        }
-
-        if (!empty($jsFiles)) {
-            wp_enqueue_script(
-                'energ-dashboard-app',
-                $dist_url . 'assets/' . basename($jsFiles[0]),
-                [],
-                filemtime($jsFiles[0]),
-                true
-            );
-
-            wp_add_inline_script(
-                'energ-dashboard-app',
-                'window.ENERG = ' . wp_json_encode([
-                    'api'   => rest_url('energ/v1'),
-                    'nonce' => wp_create_nonce('wp_rest'),
-                    'home'  => home_url('/'),
-                ]) . ';',
-                'before'
-            );
-        }
+        // 🔥 THIS IS CRITICAL (React config)
+        wp_add_inline_script(
+            'energ-dashboard-app',
+            'window.ENERG = ' . wp_json_encode([
+                'api'   => rest_url('energ/v1'),
+                'nonce' => wp_create_nonce('wp_rest'),
+                'home'  => home_url('/'),
+            ]) . ';',
+            'before'
+        );
     }
 });
 
