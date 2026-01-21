@@ -51,44 +51,12 @@ add_action('init', function () {
 
 /**
  * ===============================
- * CRON CLEANUP
- * ===============================
- */
-register_activation_hook(__FILE__, function () {
-    if (!wp_next_scheduled('energ_cleanup_cron')) {
-        wp_schedule_event(time(), 'hourly', 'energ_cleanup_cron');
-    }
-});
-
-add_action('energ_cleanup_cron', function () {
-    global $wpdb;
-    $wpdb->query("DELETE FROM {$wpdb->prefix}energ_otps WHERE expires_at < NOW()");
-    $wpdb->query("DELETE FROM {$wpdb->prefix}energ_refresh_tokens WHERE expires_at < NOW()");
-});
-
-/**
- * ===============================
- * FRONTEND ASSETS (ELEMENTOR SAFE)
+ * FRONTEND ASSETS (FORCE LOAD)
  * ===============================
  */
 add_action('wp_enqueue_scripts', function () {
 
-    if (!is_singular()) return;
-
-    global $post;
-    if (!$post) return;
-
-    /**
-     * 🔥 IMPORTANT:
-     * Elementor me shortcode post_content me nahi hota,
-     * isliye slug / has_shortcode pe depend nahi karte
-     *
-     * Jab bhi dashboard page ho → React load
-     */
-
-    // 👉 CHANGE THIS IF PAGE SLUG IS DIFFERENT
-    if ($post->post_name !== 'dashbaord') return;
-
+    // 🔥 NO CONDITIONS – TEMP SAFE MODE
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
@@ -115,7 +83,7 @@ add_action('wp_enqueue_scripts', function () {
             true
         );
 
-        // 🔥 THIS IS CRITICAL (React config)
+        // 🔥 NOW THIS WILL FINALLY EXECUTE
         wp_add_inline_script(
             'energ-dashboard-app',
             'window.ENERG = ' . wp_json_encode([
