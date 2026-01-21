@@ -57,45 +57,51 @@ add_action('init', function () {
  */
 add_action('wp_enqueue_scripts', function () {
 
-    // 🔥 NO CONDITIONS – TEMP SAFE MODE
+    echo '<!-- 🔥 ENERG ENQUEUE RUNNING -->';
+
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
-    if (!file_exists($dist_path)) return;
+    if (!is_dir($dist_path)) {
+        echo '<!-- ❌ DIST FOLDER NOT FOUND -->';
+        return;
+    }
 
     $jsFiles  = glob($dist_path . 'assets/index-*.js');
     $cssFiles = glob($dist_path . 'assets/index-*.css');
 
-    if (!empty($cssFiles)) {
-        wp_enqueue_style(
-            'energ-dashboard-style',
-            $dist_url . 'assets/' . basename($cssFiles[0]),
-            [],
-            filemtime($cssFiles[0])
-        );
+    if (empty($jsFiles)) {
+        echo '<!-- ❌ JS FILE NOT FOUND -->';
+        return;
     }
 
-    if (!empty($jsFiles)) {
-        wp_enqueue_script(
-            'energ-dashboard-app',
-            $dist_url . 'assets/' . basename($jsFiles[0]),
-            [],
-            filemtime($jsFiles[0]),
-            true
-        );
+    wp_enqueue_style(
+        'energ-dashboard-style',
+        $dist_url . 'assets/' . basename($cssFiles[0]),
+        [],
+        time()
+    );
 
-        // 🔥 NOW THIS WILL FINALLY EXECUTE
-        wp_add_inline_script(
-            'energ-dashboard-app',
-            'window.ENERG = ' . wp_json_encode([
-                'api'   => rest_url('energ/v1'),
-                'nonce' => wp_create_nonce('wp_rest'),
-                'home'  => home_url('/'),
-            ]) . ';',
-            'before'
-        );
-    }
+    wp_enqueue_script(
+        'energ-dashboard-app',
+        $dist_url . 'assets/' . basename($jsFiles[0]),
+        [],
+        time(),
+        true
+    );
+
+    wp_add_inline_script(
+        'energ-dashboard-app',
+        'window.ENERG = ' . wp_json_encode([
+            'api'   => rest_url('energ/v1'),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'home'  => home_url('/'),
+        ]) . ';
+        console.log("🔥 ENERG INLINE OK", window.ENERG);',
+        'before'
+    );
 });
+
 
 /**
  * ===============================
