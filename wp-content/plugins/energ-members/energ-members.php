@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: Energ Members (Stable)
  * Description: OTP login + JWT auth system
@@ -8,15 +7,13 @@
  */
 
 defined('ABSPATH') || exit;
-// die('ENERG MEMBERS PLUGIN LOADED');
-
 
 // ===============================
 // PSR-4 AUTOLOADER
 // ===============================
 spl_autoload_register(function ($class) {
 
-    $prefix = 'Energ\\';
+    $prefix   = 'Energ\\';
     $base_dir = __DIR__ . '/app/';
 
     if (strpos($class, $prefix) !== 0) {
@@ -24,40 +21,36 @@ spl_autoload_register(function ($class) {
     }
 
     $relative = substr($class, strlen($prefix));
-    $file = $base_dir . str_replace('\\', '/', $relative) . '.php';
+    $file     = $base_dir . str_replace('\\', '/', $relative) . '.php';
 
     if (file_exists($file)) {
         require_once $file;
     }
 });
 
-
 // ===============================
-// BOOT ROUTES (ONLY THIS)
+// BOOT REST ROUTES
 // ===============================
 add_action('rest_api_init', function () {
     require_once __DIR__ . '/app/Routes/AuthRoutes.php';
 });
 
 // ===============================
-// frontend SHORTCODES
+// FRONTEND SHORTCODES
 // ===============================
 add_action('init', function () {
-    // Shortcodes are lightweight and safe to register on init.
-    if (class_exists('Energ\\frontend\\Shortcodes')) {
+
+    $file = __DIR__ . '/app/frontend/Shortcodes.php';
+
+    if (file_exists($file)) {
+        require_once $file;
         \Energ\frontend\Shortcodes::register();
-    } else {
-        // File will be present in this plugin; keep require as a safe fallback.
-        $file = __DIR__ . '/app/frontend/Shortcodes.php';
-        if (file_exists($file)) {
-            require_once $file;
-            \Energ\frontend\Shortcodes::register();
-        }
     }
 });
 
-
-
+// ===============================
+// CRON SETUP
+// ===============================
 register_activation_hook(__FILE__, function () {
     if (!wp_next_scheduled('energ_cleanup_cron')) {
         wp_schedule_event(time(), 'hourly', 'energ_cleanup_cron');
@@ -67,17 +60,8 @@ register_activation_hook(__FILE__, function () {
 add_action('energ_cleanup_cron', function () {
     global $wpdb;
 
-    // 🧹 Expired OTPs
-    $wpdb->query(
-        "DELETE FROM {$wpdb->prefix}energ_otps
-         WHERE expires_at < NOW()"
-    );
-
-    // 🧹 Expired refresh tokens
-    $wpdb->query(
-        "DELETE FROM {$wpdb->prefix}energ_refresh_tokens
-         WHERE expires_at < NOW()"
-    );
+    $wpdb->query("DELETE FROM {$wpdb->prefix}energ_otps WHERE expires_at < NOW()");
+    $wpdb->query("DELETE FROM {$wpdb->prefix}energ_refresh_tokens WHERE expires_at < NOW()");
 });
 
 add_action('energ_cleanup_otp_limits', function () {
@@ -88,6 +72,9 @@ add_action('energ_cleanup_otp_limits', function () {
     );
 });
 
+// ===============================
+// ENQUEUE FRONTEND ASSETS
+// ===============================
 add_action('wp_enqueue_scripts', function () {
 
     if (!is_singular()) return;
@@ -104,6 +91,7 @@ add_action('wp_enqueue_scripts', function () {
     // 🔐 AUTH UI (OLD)
     // =========================
     if ($needs_auth) {
+
         wp_enqueue_style(
             'energ-members-ui',
             plugin_dir_url(__FILE__) . 'assets/css/energ-ui.css',
@@ -121,12 +109,14 @@ add_action('wp_enqueue_scripts', function () {
     }
 
     // =========================
-    // 📊 REACT DASHBOARD (NEW)
+    // 📊 REACT DASHBOARD (VITE BUILD)
     // =========================
     if ($needs_dashboard) {
 
-        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
-        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
+        $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashboard/dist/';
+        $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashboard/dist/';
+
+        if (!file_exists($dist_path)) return;
 
         $jsFiles  = glob($dist_path . 'assets/index-*.js');
         $cssFiles = glob($dist_path . 'assets/index-*.css');
@@ -162,9 +152,14 @@ add_action('wp_enqueue_scripts', function () {
     }
 });
 
+// ===============================
+// FORCE VITE MODULE SCRIPT
+// ===============================
 add_filter('script_loader_tag', function ($tag, $handle, $src) {
+
     if ($handle === 'energ-dashboard-app') {
         return '<script type="module" src="' . esc_url($src) . '"></script>';
     }
+
     return $tag;
 }, 10, 3);
