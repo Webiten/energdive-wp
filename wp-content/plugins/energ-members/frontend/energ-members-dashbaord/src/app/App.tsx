@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // 🔐 Auth Components
 import { LoginPage } from "./components/auth/LoginPage";
@@ -36,12 +36,11 @@ export default function App() {
   const [activeSection, setActiveSection] = useState("dashboard");
 
   // 🔑 Single source of truth
-  const [identifier, setIdentifier] = useState<string>("");
-
+  const [identifier, setIdentifier] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
 
   /* =======================
-     🔥 SESSION TIMEOUT (5 MIN) — FINAL FIX
+     🔥 SESSION TIMEOUT (SAFE)
   ======================= */
 
   const sessionConfigRef = useRef<{
@@ -49,21 +48,21 @@ export default function App() {
     onExpire: () => void;
   } | null>(null);
 
-  // Start timer ONLY once when dashboard loads
-  if (appState === "dashboard" && !sessionConfigRef.current) {
-    sessionConfigRef.current = {
-      timeoutMs: 5 * 60 * 1000, // ✅ 5 minutes
-      onExpire: () => {
-        setAppState("login");
-      },
-    };
-  }
+  // ✅ CONTROL TIMER VIA EFFECT (NOT RENDER)
+  useEffect(() => {
+    if (appState === "dashboard") {
+      sessionConfigRef.current = {
+        timeoutMs: 5 * 60 * 1000, // ⏱ 5 minutes
+        onExpire: () => {
+          setAppState("login");
+        },
+      };
+    } else {
+      sessionConfigRef.current = null;
+    }
+  }, [appState]);
 
-  // Clear timer config on logout
-  if (appState !== "dashboard") {
-    sessionConfigRef.current = null;
-  }
-
+  // ✅ Hook always called once
   useSessionTimeout(sessionConfigRef.current);
 
   /* =======================
@@ -120,7 +119,7 @@ export default function App() {
 
   return (
     <>
-      {/* 🚨 MUST ALWAYS BE MOUNTED */}
+      {/* ✅ SAFE TO MOUNT ALWAYS */}
       <SessionExpiredModal />
 
       {appState === "dashboard" ? (
