@@ -1,0 +1,582 @@
+@import url('https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --main-container: 1100px;
+  --gutter: 24px;
+
+  --sidebar-w: 360px;
+  --sticky-top: 110px;         /* header hai to 110 better */
+  --line: 1.45;
+  --space: 15px;
+  --body-color: #404040;
+}
+
+*{ box-sizing:border-box; }
+html, body{ max-width:100%; overflow-x:hidden; }
+body{
+  font-family:"Abhaya Libre", serif;
+  color: var(--body-color);
+}
+img{ max-width:100%; height:auto; display:block; }
+
+.container-widdthhh{
+  width: min(calc(var(--main-container) + var(--gutter)), calc(100% - 32px));
+  margin: 0 auto;
+  padding-left: calc(var(--gutter)/2);
+  padding-right: calc(var(--gutter)/2);
+}
+
+/* Sticky safe: avoid overflow/transform on parents */
+.single-news-page,
+.container-widdthhh,
+.article-layout{
+  overflow: visible !important;
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+}
+
+/* ==============================
+   HERO TOP (your .hero-banner title area)
+============================== */
+.hero-banner{
+  margin: 30px 0 0;
+  padding: 0;
+  text-align: center;
+}
+
+.news-title1{
+  font-family:"Playfair Display", serif;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.08;
+  margin: 0 0 10px;
+  text-align:center;
+}
+
+.news-subtitle{
+  font-family:"Abhaya Libre", serif;
+  font-size: clamp(16px, 2vw, 21px);
+  font-style: italic;
+  color:#444;
+  line-height:1.25;
+  margin: 0 0 14px;
+  text-align:center;
+}
+
+.news-metas{
+  margin-bottom: 25px;
+  text-align:center;
+}
+
+.meta-author{
+  font-size: clamp(15px, 1.8vw, 18px);
+  letter-spacing: 1.1px;
+  color:#000;
+  font-family:"Playfair Display", serif;
+  display:block;
+}
+
+.meta-author a{
+  text-decoration:none;
+  font-weight:600;
+  color:#000;
+}
+
+.meta-date{
+  margin-top: 2px;
+  font-size: clamp(14px, 1.7vw, 18px);
+  opacity:.85;
+  font-family:"Abhaya Libre", serif;
+  letter-spacing:1px;
+  display:block;
+}
+
+/* ==============================
+   HERO SPLIT (image + author bio)
+   Your markup: .news-hero-split > .hero-left + .hero-right
+============================== */
+/* =====================================
+   CASE STUDY HERO – FULL WIDTH IMAGE
+===================================== */
+
+/* Convert split layout to single column */
+.news-hero-split {
+    display: block;
+    margin: 22px auto 20px;
+    padding: 0;
+}
+
+/* Hide right author bio section visually */
+.news-hero-split .hero-right {
+    display: none;
+}
+
+/* Full-width image container */
+.hero-left {
+    width: 100%;
+}
+
+/* Image wrapper behaviour */
+.hero-left img {
+    width: 100% !important;
+    height: auto !important;
+
+    /* Landscape ratio */
+    aspect-ratio: 21 / 9;
+
+    object-fit: cover;
+    object-position: center;
+
+    border-radius: 14px;
+    display: block;
+}
+
+/* =====================================
+   RESPONSIVE TUNING
+===================================== */
+
+@media (max-width: 992px) {
+    .hero-left img {
+        aspect-ratio: 16 / 9;
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 600px) {
+    .hero-left img {
+        aspect-ratio: 16 / 9;
+        border-radius: 10px;
+    }
+}
+
+
+
+
+/* ==============================
+   ARTICLE CONTENT + RIGHT SIDEBAR
+============================== */
+.article-layout{
+  width: min(var(--main-container), calc(100% - 40px));
+  margin: 34px auto;
+  padding: 0;
+
+  display: grid;
+  grid-template-columns: 7fr 3fr; /* ✅ 70 / 30 */
+  gap: 40px;
+  align-items: start;
+}
+
+
+.article-left{
+  min-width:0;
+  width:100%;
+}
+
+.article-right{
+  min-width:0;
+  position: -webkit-sticky;
+  position: sticky;
+  top: var(--sticky-top);
+  align-self: start;
+  height: fit-content;
+}
+
+@media (max-width: 992px){
+  .article-layout{
+    grid-template-columns: 1fr; /* stack */
+    gap: 28px;
+  }
+
+  .article-right{
+    position: static;
+  }
+}
+
+
+ .article-author-box{
+  border: 1px solid #e9e9e9;
+  border-radius: 12px;
+  padding: 18px;
+  background: #fff;
+
+  margin-top:30px;
+
+  box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+}
+
+/* Author text */
+.article-author-box p{
+  margin: 0 0 10px;
+  color:#555;
+  line-height: 1.65;
+  font-size: 15px;
+  font-family:"Abhaya Libre", serif;
+}
+
+/* Heading */
+.article-author-box h3{
+  font-family:"Playfair Display", serif;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+/* Link */
+.article-author-box .more-link{
+  display:inline-block;
+  font-size: 14px;
+  text-decoration: underline;
+  color:#000;
+}
+
+
+/* sidebar images */
+.article-third-image img{
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+/* ==============================
+   CONTENT BLOCKS
+============================== */
+.article-paragraph:first-of-type::first-letter{
+  float:left;
+  font-size:90px;
+  line-height:0.9;
+  padding-right:12px;
+  padding-top:6px;
+  color:#a8be73;
+  font-weight:bold;
+}
+
+.article-paragraph p,
+.article-paragraph li{
+  font-size: clamp(17px, 2vw, 22px);
+  line-height: var(--line);
+  margin-bottom: var(--space);
+  text-align:left;
+  font-family:"Abhaya Libre", serif;
+}
+
+.article-heading{
+  font-family:"Playfair Display", serif;
+  font-size: clamp(22px, 2.4vw, 33px);
+  margin: 25px 0 16px;
+  font-weight:600;
+  line-height:1.2;
+}
+
+.article-full-image img{
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.image-caption{
+  font-size:14px;
+  color:#777;
+  margin: 8px 0 0;
+}
+
+.article-quote{
+  padding: 18px 22px;
+  border-left: 4px solid #a8be73;
+  background: #faf7f3;
+  margin: 22px 0;
+  border-radius: 10px;
+}
+.article-quote p{
+  margin: 0 0 8px;
+  font-size: clamp(18px, 2.2vw, 26px);
+  font-style: italic;
+  color:#333;
+}
+
+/* ==============================
+   SUBSCRIBE BOX
+============================== */
+.subscribe-box{ margin: 40px 0; }
+
+.subscribe-title{
+  font-family:"Playfair Display", serif;
+  font-size: clamp(20px, 2.3vw, 28px);
+  margin:0;
+}
+
+.subscribe-desc{
+  margin: 6px 0 14px;
+  font-size: clamp(16px, 2vw, 20px);
+  width: 100%;
+  max-width: 560px;
+}
+
+.subscribe-form{
+  display:flex;
+  gap:10px;
+  width: 100%;
+  max-width: 700px;
+  border: 1px solid #dddddd;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.subscribe-form input{
+  flex:1;
+  border:none;
+  padding: 12px 12px;
+  font-size:14px;
+  outline:none;
+}
+
+.subscribe-form button{
+  background:#92ae55;
+  color:#fff;
+  padding: 12px 18px;
+  border:none;
+  cursor:pointer;
+  white-space: nowrap;
+}
+
+.subscribe-note{
+  width:100%;
+  max-width: 700px;
+  font-size:12px;
+}
+
+/* ==============================
+   PAYWALL
+============================== */
+.paywall-box{
+  background:#111;
+  color:#fff;
+  padding:24px;
+  border-radius:12px;
+  border:1px solid #333;
+  max-width: 520px;
+  margin: 26px 0;
+}
+.pw-subtitle{ font-size:16px; opacity:.85; margin-bottom:18px; }
+.pw-form{ display:flex; gap:10px; margin-bottom:10px; flex-wrap: wrap; }
+.pw-form input{
+  flex:1 1 220px;
+  padding:14px 12px;
+  background:#000;
+  border:1px solid #444;
+  border-radius:8px;
+  color:#fff;
+}
+.pw-btn{
+  background:#d8232a;
+  color:#fff;
+  padding:14px 18px;
+  border:none;
+  border-radius:8px;
+  font-weight:700;
+}
+.pw-small{ font-size:14px; opacity:.85; }
+.pw-small a{ color:#fff; font-weight:700; }
+.paywall-box p:first-of-type::first-letter{
+  float:none !important;
+  font-size:inherit !important;
+  padding:0 !important;
+}
+
+/* ==============================
+   RECOMMENDED
+============================== */
+.recommended-wrapper {
+    margin-top: 40px;
+    margin-bottom:50px;
+}
+
+/* Title */
+.recommended-title {
+    font-size: 30px;
+    font-family: "Playfair Display", serif;
+    margin-bottom: 22px;
+    padding-left: 5px;
+}
+
+/* GRID â€“ Bootstrap-like */
+.recommended-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 22px;
+}
+
+/* ================================
+   CARD
+================================ */
+
+.recommended-card {
+    background: #fff;
+    border: 1px solid #e2e2e2;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.recommended-card a {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-decoration: none;
+}
+
+.recommended-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ================================
+   IMAGE (LANDSCAPE â€“ NO STRETCH)
+================================ */
+
+/* Wrapper controls aspect */
+.recommended-thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;   /* Landscape */
+    overflow: hidden;
+}
+
+/* Neutralise WP width/height */
+.recommended-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+/* ================================
+   CONTENT
+================================ */
+
+.recommended-content {
+    padding: 6px 8px 10px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.recommended-heading {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+    font-family: "Playfair Display", serif;
+    margin-bottom: 8px;
+    margin-top:0;
+    color: #000;
+}
+
+.recommended-meta {
+    font-size: 13px;
+    color: #666;
+    font-family: "Abhaya Libre", serif;
+    margin-top: auto;
+    margin-bottom: 0;
+        line-height: 1.2;
+}
+
+/* ================================
+   RESPONSIVE BREAKPOINTS
+================================ */
+
+/* Tablets */
+@media (max-width: 1200px) {
+    .recommended-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Small tablets */
+@media (max-width: 992px) {
+    .recommended-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .recommended-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recommended-title {
+        font-size: 22px;
+    }
+}
+
+/* ==============================
+   TAGS
+============================== */
+.post-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:25px 0;
+}
+.single-tag{
+  padding: 6px 14px;
+  border-radius:10px;
+  font-size:14px;
+  background:#f2f2f3;
+  color:#000;
+  text-decoration:none;
+  transition:.2s ease;
+}
+.single-tag:hover{
+  background:#a8be73;
+  color:#fff;
+  text-decoration:none;
+}
+
+/* ==============================
+   RESPONSIVE
+============================== */
+@media (max-width: 992px){
+  .news-hero-split{
+    grid-template-columns: 1fr;
+  }
+  .author-bio-box{
+    position: relative;
+    top: auto;
+  }
+
+  .article-layout{
+    grid-template-columns: 1fr;
+    gap: 22px;
+    width: 100%;
+    margin: 22px auto;
+  }
+  .article-layout .article-right{
+    position: relative;
+    top: auto;
+  }
+  
+ 
+
+  .recommended-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .recommended-thumb img{
+    height: 200px !important;
+  }
+}
+
+@media (max-width: 600px){
+  .container-widdthhh{
+    width: calc(100% - 24px);
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .hero-banner{ margin-top: 18px; }
+  .news-hero-split{ margin: 16px auto; }
+  .recommended-grid{ grid-template-columns: 1fr; }
+
+  .subscribe-form{ flex-direction: column; }
+  .subscribe-form button{ width: 100%; }
+}
