@@ -50,20 +50,16 @@ add_action('wp_enqueue_scripts', function () {
 // 🔥 MAIN FIX — DISABLE THEME / ELEMENTOR CSS ON REACT DASHBOARD
 // =============================================================
 add_action('wp_enqueue_scripts', function () {
+    if (is_page('dashboard')) {
+        wp_dequeue_style('iten-style');
+        wp_dequeue_style('iten-app-css');
+        wp_dequeue_style('slick-css');
+        wp_dequeue_style('swiper-css');
 
-    if (!is_page('dashboard')) return;
-
-    // Theme CSS
-    wp_dequeue_style('iten-style');
-    wp_dequeue_style('iten-app-css');
-
-    // Elementor / block CSS
-    wp_dequeue_style('hello-elementor');
-    wp_dequeue_style('elementor-frontend');
-    wp_dequeue_style('wp-block-library');
-    wp_dequeue_style('wp-block-library-theme');
-
-}, 100);
+        wp_dequeue_script('iten-app');
+        wp_dequeue_script('iten-main');
+    }
+}, 99);
 
 
 
