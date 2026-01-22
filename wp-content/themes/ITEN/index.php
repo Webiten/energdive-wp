@@ -1,12 +1,17 @@
-<?php get_header(); ?>
+<?php
+get_header();
+?>
 
 <main id="primary" class="site-main">
     <?php
-    while ( have_posts() ) :
-        the_post();
-        the_content();   // 🔥 YAHI SHORTCODE RENDER KAREGA
-    endwhile;
+    if ( have_posts() ) :
+        while ( have_posts() ) :
+            the_post();
+            the_content(); // 🔥 THIS IS MUST FOR ELEMENTOR
+        endwhile;
+    endif;
     ?>
 </main>
 
-<?php get_footer(); ?>
+<?php
+get_footer();
