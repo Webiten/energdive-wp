@@ -172,7 +172,7 @@ add_filter('admin_url', function ($url) {
 // =============================
 // TAXONOMY FILTER HANDLER
 // =============================
-require get_template_directory() . '/energ-filters/taxonomy-filters.php';
+
 
 add_action('wp_enqueue_scripts', function () {
     wp_enqueue_script(
