@@ -28,11 +28,12 @@ spl_autoload_register(function ($class) {
     }
 });
 
-$intelligenceRoute = __DIR__ . '/app/Routes/IntelligenceRoutes.php';
+require_once __DIR__ . '/app/Routes/IntelligenceRoutes.php';
 
-if (file_exists($intelligenceRoute)) {
-    require_once $intelligenceRoute;
-}
+add_action('rest_api_init', function () {
+    \Energ\Routes\IntelligenceRoutes::register();
+});
+
 
 /**
  * ===============================
@@ -43,9 +44,6 @@ add_action('rest_api_init', function () {
     require_once __DIR__ . '/app/Routes/AuthRoutes.php';
 });
 
-add_action('rest_api_init', function () {
-    \Energ\Routes\IntelligenceRoutes::register();
-});
 
 /**
  * ===============================

@@ -4,21 +4,23 @@ namespace Energ\Routes;
 
 use WP_Query;
 
-class IntelligenceRoutes {
+class IntelligenceRoutes
+{
 
-    public static function register() {
+    public static function register()
+    {
 
         register_rest_route('energ/v1', '/intelligence', [
             'methods'  => 'GET',
             'callback' => [self::class, 'handle'],
             'permission_callback' => function () {
-                return is_user_logged_in();
+                return JwtAuth::validate();
             }
         ]);
-
     }
 
-    public static function handle() {
+    public static function handle()
+    {
 
         $user = wp_get_current_user();
 
@@ -72,7 +74,8 @@ class IntelligenceRoutes {
         return rest_ensure_response($items);
     }
 
-    private static function get_sector_name($post_id) {
+    private static function get_sector_name($post_id)
+    {
         $terms = get_the_terms($post_id, 'sector');
         return $terms && !is_wp_error($terms) ? $terms[0]->name : '';
     }
