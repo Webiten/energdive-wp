@@ -37,6 +37,10 @@ add_action('rest_api_init', function () {
     require_once __DIR__ . '/app/Routes/AuthRoutes.php';
 });
 
+add_action('rest_api_init', function () {
+    \Energ\Routes\IntelligenceRoutes::register();
+});
+
 /**
  * ===============================
  * SHORTCODES
