@@ -3,6 +3,7 @@
 namespace Energ\Routes;
 
 use WP_Query;
+use Energ\Middleware\JwtAuth;
 
 class IntelligenceRoutes
 {
@@ -13,9 +14,7 @@ class IntelligenceRoutes
         register_rest_route('energ/v1', '/intelligence', [
             'methods'  => 'GET',
             'callback' => [self::class, 'handle'],
-            'permission_callback' => function () {
-                return JwtAuth::validate();
-            }
+            'permission_callback' => [JwtAuth::class, 'allow'],
         ]);
     }
 
