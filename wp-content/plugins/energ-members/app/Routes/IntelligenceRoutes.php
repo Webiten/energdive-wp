@@ -7,10 +7,8 @@ use Energ\Middleware\JwtAuth;
 
 class IntelligenceRoutes
 {
-
     public static function register()
     {
-
         register_rest_route('energ/v1', '/intelligence', [
             'methods'  => 'GET',
             'callback' => [self::class, 'handle'],
@@ -18,24 +16,53 @@ class IntelligenceRoutes
         ]);
     }
 
-    public static function handle()
+    public static function handle($request)
     {
+        global $wpdb;
 
-        $user = wp_get_current_user();
+        /**
+         * 🔐 USER IDENTIFIER FROM JWT
+         * (JwtAuth::allow already verified token)
+         */
+        $identifier = $request->get_param('auth_identifier');
 
-        // ACF user field: sector (community)
-        $sectors = get_field('sector', 'user_' . $user->ID);
-
-        if (!$sectors) {
+        if (!$identifier) {
             return rest_ensure_response([]);
         }
 
-        if (!is_array($sectors)) {
-            $sectors = [$sectors];
+        /**
+         * 📦 FETCH USER FROM energ_members TABLE
+         * community = sector term IDs (CSV: "1,3,5")
+         */
+        $table = $wpdb->prefix . 'energ_members';
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT community FROM {$table} WHERE identifier = %s LIMIT 1",
+                $identifier
+            ),
+            ARRAY_A
+        );
+
+        if (!$row || empty($row['community'])) {
+            return rest_ensure_response([]);
         }
 
-        $sector_ids = array_map(fn($t) => (int) $t->term_id, $sectors);
+        /**
+         * 🧠 PARSE SECTOR IDS
+         */
+        $sector_ids = array_map(
+            'intval',
+            array_filter(explode(',', $row['community']))
+        );
 
+        if (empty($sector_ids)) {
+            return rest_ensure_response([]);
+        }
+
+        /**
+         * 📰 FETCH ARTICLES BASED ON SECTOR
+         */
         $query = new WP_Query([
             'post_type'      => 'articles',
             'post_status'    => 'publish',
@@ -76,6 +103,6 @@ class IntelligenceRoutes
     private static function get_sector_name($post_id)
     {
         $terms = get_the_terms($post_id, 'sector');
-        return $terms && !is_wp_error($terms) ? $terms[0]->name : '';
+        return ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
     }
 }
