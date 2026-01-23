@@ -38,7 +38,7 @@ class IntelligenceRoutes
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT community FROM {$table} WHERE identifier = %s LIMIT 1",
+                "SELECT community FROM {$table} WHERE email = %s LIMIT 1",
                 $identifier
             ),
             ARRAY_A
