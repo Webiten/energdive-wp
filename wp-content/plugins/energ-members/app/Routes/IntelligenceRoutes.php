@@ -20,26 +20,22 @@ class IntelligenceRoutes
     {
         global $wpdb;
 
-        /**
-         * 🔐 USER IDENTIFIER FROM JWT
-         * (JwtAuth::allow already verified token)
-         */
-        $identifier = $request->get_param('auth_identifier');
+        // 🔐 JWT se email (identifier)
+        $email = $request->get_param('auth_identifier');
 
-        if (!$identifier) {
+        if (!$email) {
             return rest_ensure_response([]);
         }
 
         /**
-         * 📦 FETCH USER FROM energ_members TABLE
-         * community = sector term IDs (CSV: "1,3,5")
+         * 1️⃣ Get community from energ_members table
          */
         $table = $wpdb->prefix . 'energ_members';
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT community FROM {$table} WHERE email = %s LIMIT 1",
-                $identifier
+                $email
             ),
             ARRAY_A
         );
@@ -49,19 +45,23 @@ class IntelligenceRoutes
         }
 
         /**
-         * 🧠 PARSE SECTOR IDS
+         * 2️⃣ Convert community slug(s) → sector term IDs
+         * Example: "oil-gas"
          */
-        $sector_ids = array_map(
-            'intval',
-            array_filter(explode(',', $row['community']))
-        );
+        $community_slugs = array_map('trim', explode(',', $row['community']));
 
-        if (empty($sector_ids)) {
+        $sector_ids = get_terms([
+            'taxonomy' => 'sector',
+            'slug'     => $community_slugs,
+            'fields'   => 'ids',
+        ]);
+
+        if (empty($sector_ids) || is_wp_error($sector_ids)) {
             return rest_ensure_response([]);
         }
 
         /**
-         * 📰 FETCH ARTICLES BASED ON SECTOR
+         * 3️⃣ Fetch latest articles for those sectors
          */
         $query = new WP_Query([
             'post_type'      => 'articles',
@@ -103,6 +103,6 @@ class IntelligenceRoutes
     private static function get_sector_name($post_id)
     {
         $terms = get_the_terms($post_id, 'sector');
-        return ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
+        return $terms && !is_wp_error($terms) ? $terms[0]->name : '';
     }
 }
