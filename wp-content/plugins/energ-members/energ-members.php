@@ -29,9 +29,11 @@ spl_autoload_register(function ($class) {
 });
 
 require_once __DIR__ . '/app/Routes/IntelligenceRoutes.php';
+error_log('🔥 IntelligenceRoutes loaded');
 
 add_action('rest_api_init', function () {
     \Energ\Routes\IntelligenceRoutes::register();
+    error_log('🔥 IntelligenceRoutes registered');
 });
 
 
