@@ -64,60 +64,54 @@ add_action('init', function () {
  * FRONTEND ASSETS (REACT DASHBOARD)
  * ===============================
  */
+
 add_action('wp_enqueue_scripts', function () {
 
-    if (!is_page()) return;
-
-    // 🔥 ONLY LOAD ON DASHBOARD URL
-    if (!str_contains($_SERVER['REQUEST_URI'], '/dashboard')) return;
+    // 🔥 FORCE LOAD ON DASHBOARD PAGE
+    if (!is_page() || !str_contains($_SERVER['REQUEST_URI'], '/dashboard')) {
+        return;
+    }
 
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
-    if (!is_dir($dist_path)) {
-        error_log('❌ ENERG: dist folder not found');
+    // 🔥 HARD FAIL LOG
+    error_log('🔥 ENERG DIST PATH = ' . $dist_path);
+
+    if (!file_exists($dist_path . 'index.html')) {
+        error_log('❌ ENERG: index.html missing in dist');
         return;
     }
 
-    $jsFiles  = glob($dist_path . 'assets/*.js');
-    $cssFiles = glob($dist_path . 'assets/*.css');
+    // 🔥 DO NOT USE glob (rsync breaks timestamps)
+    $css = $dist_url . 'assets/index.css';
+    $js  = $dist_url . 'assets/index.js';
 
-    error_log('🔥 ENERG JS FILES: ' . print_r($jsFiles, true));
-    error_log('🔥 ENERG CSS FILES: ' . print_r($cssFiles, true));
-
-    if (!empty($cssFiles)) {
-        wp_enqueue_style(
-            'energ-dashboard-style',
-            $dist_url . 'assets/' . basename($cssFiles[0]),
-            [],
-            filemtime($cssFiles[0])
-        );
+    // 🔥 AUTO-DETECT REAL FILES
+    foreach (scandir($dist_path . 'assets/') as $file) {
+        if (str_ends_with($file, '.css')) {
+            $css = $dist_url . 'assets/' . $file;
+        }
+        if (str_ends_with($file, '.js')) {
+            $js = $dist_url . 'assets/' . $file;
+        }
     }
 
-    if (!empty($jsFiles)) {
-        wp_enqueue_script(
-            'energ-dashboard-app',
-            $dist_url . 'assets/' . basename($jsFiles[0]),
-            [],
-            filemtime($jsFiles[0]),
-            true
-        );
-    }
+    error_log('🔥 ENERG CSS = ' . $css);
+    error_log('🔥 ENERG JS = ' . $js);
+
+    wp_enqueue_style('energ-dashboard-style', $css, [], null);
+    wp_enqueue_script('energ-dashboard-app', $js, [], null, true);
 
     wp_add_inline_script(
         'energ-dashboard-app',
-        'window.ENERG = ' . wp_json_encode([
-            "api"   => rest_url("energ/v1"),
-            "nonce" => wp_create_nonce("wp_rest"),
-            "home"  => home_url("/")
-        ]) . ';
-        console.log("🔥 ENERG INLINE OK", window.ENERG);',
+        'window.ENERG=' . wp_json_encode([
+            'api' => rest_url('energ/v1'),
+            'home' => home_url('/')
+        ]) . ';console.log("🔥 ENERG LOADED", window.ENERG);',
         'before'
     );
 });
-
-
-
 
 
 /**
