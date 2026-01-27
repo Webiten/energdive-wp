@@ -66,12 +66,10 @@ add_action('init', function () {
  */
 add_action('wp_enqueue_scripts', function () {
 
-    if (!is_singular()) return;
+    if (!is_page()) return;
 
-    global $post;
-    if (!$post || empty($post->post_content)) return;
-
-    if (!has_shortcode($post->post_content, 'energ_members_dashboard')) return;
+    // 🔥 ONLY LOAD ON DASHBOARD URL
+    if (!str_contains($_SERVER['REQUEST_URI'], '/dashboard')) return;
 
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
@@ -81,7 +79,6 @@ add_action('wp_enqueue_scripts', function () {
         return;
     }
 
-    // 🔥 DEBUG PATTERN
     $jsFiles  = glob($dist_path . 'assets/*.js');
     $cssFiles = glob($dist_path . 'assets/*.css');
 
@@ -118,6 +115,7 @@ add_action('wp_enqueue_scripts', function () {
         'before'
     );
 });
+
 
 
 
