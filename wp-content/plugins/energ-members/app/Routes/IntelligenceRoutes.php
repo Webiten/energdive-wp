@@ -20,14 +20,10 @@ class IntelligenceRoutes
     {
         global $wpdb;
 
-        // 🔐 Email from JWT
         $email = $request->get_param('auth_identifier');
+        if (!$email) return [];
 
-        if (!$email) {
-            return [];
-        }
-
-        // 1️⃣ Get community slug from energ_members
+        // 1️⃣ Get community slug
         $row = $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT community FROM {$wpdb->prefix}energ_members WHERE email = %s LIMIT 1",
@@ -36,26 +32,12 @@ class IntelligenceRoutes
             ARRAY_A
         );
 
-        if (!$row || empty($row['community'])) {
-            return [];
-        }
+        if (!$row || empty($row['community'])) return [];
 
-        // 2️⃣ Community slug → sector term IDs
+        // 2️⃣ Community slug(s)
         $community_slugs = array_map('trim', explode(',', $row['community']));
 
-        $sector_terms = get_terms([
-            'taxonomy'   => 'sector',
-            'slug'       => $community_slugs,
-            'hide_empty' => false,
-        ]);
-
-        if (empty($sector_terms) || is_wp_error($sector_terms)) {
-            return [];
-        }
-
-        $sector_ids = wp_list_pluck($sector_terms, 'term_id');
-
-        // 3️⃣ Fetch articles (🔥 filters OFF)
+        // 3️⃣ Fetch articles (🔥 slug based)
         $query = new WP_Query([
             'post_type'           => 'articles',
             'post_status'         => 'publish',
@@ -64,12 +46,12 @@ class IntelligenceRoutes
             'order'               => 'DESC',
             'ignore_sticky_posts' => true,
             'no_found_rows'       => true,
-            'suppress_filters'    => true, // 🔥 MOST IMPORTANT
+            'suppress_filters'    => true,
             'tax_query' => [
                 [
                     'taxonomy' => 'sector',
-                    'field'    => 'term_id',
-                    'terms'    => $sector_ids,
+                    'field'    => 'slug',   // 🔥 FIX
+                    'terms'    => $community_slugs,
                 ]
             ],
         ]);
