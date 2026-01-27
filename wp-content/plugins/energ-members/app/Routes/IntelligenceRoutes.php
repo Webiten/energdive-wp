@@ -20,15 +20,14 @@ class IntelligenceRoutes
     {
         global $wpdb;
 
-        // 🔐 Email from JWT (set by JwtAuth middleware)
+        // 🔐 Email from JWT
         $email = $request->get_param('auth_identifier');
-
         if (!$email) {
             return rest_ensure_response([]);
         }
 
         /**
-         * 1️⃣ Get community from energ_members table
+         * 1️⃣ Get community slug from energ_members
          */
         $table = $wpdb->prefix . 'energ_members';
 
@@ -44,24 +43,13 @@ class IntelligenceRoutes
         }
 
         /**
-         * 2️⃣ Convert community slug(s) → sector term IDs
+         * 2️⃣ Community slug(s)
+         * Example: oil-gas
          */
         $community_slugs = array_map('trim', explode(',', $community));
 
-        $sector_ids = get_terms([
-            'taxonomy'   => 'sector',
-            'slug'       => $community_slugs,
-            'fields'     => 'ids',
-            'hide_empty' => false,
-        ]);
-
-        if (empty($sector_ids) || is_wp_error($sector_ids)) {
-            return rest_ensure_response([]);
-        }
-
         /**
-         * 3️⃣ Fetch latest articles
-         * ✅ include_children = true (THIS WAS THE BUG)
+         * 3️⃣ Fetch articles (SLUG BASED — SAME AS CLI)
          */
         $query = new WP_Query([
             'post_type'      => 'articles',
@@ -72,8 +60,8 @@ class IntelligenceRoutes
             'tax_query'      => [
                 [
                     'taxonomy'         => 'sector',
-                    'field'            => 'term_id',
-                    'terms'            => $sector_ids,
+                    'field'            => 'slug',
+                    'terms'            => $community_slugs,
                     'include_children' => true,
                 ]
             ]
