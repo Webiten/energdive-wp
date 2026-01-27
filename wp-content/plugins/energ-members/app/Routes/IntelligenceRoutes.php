@@ -20,43 +20,42 @@ class IntelligenceRoutes
     {
         global $wpdb;
 
-        // 🔐 JWT se email
+        // 🔐 Email from JWT
         $email = $request->get_param('auth_identifier');
+
         if (!$email) {
             return [];
         }
 
         // 1️⃣ Get community slug from energ_members
-        $table = $wpdb->prefix . 'energ_members';
-
-        $community = $wpdb->get_var(
+        $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT community FROM {$table} WHERE email = %s LIMIT 1",
+                "SELECT community FROM {$wpdb->prefix}energ_members WHERE email = %s LIMIT 1",
                 $email
-            )
+            ),
+            ARRAY_A
         );
 
-        if (!$community) {
+        if (!$row || empty($row['community'])) {
             return [];
         }
 
-        // 2️⃣ community → sector term IDs
-        $community_slugs = array_map('trim', explode(',', $community));
+        // 2️⃣ Community slug → sector term IDs
+        $community_slugs = array_map('trim', explode(',', $row['community']));
 
-        $sector_ids = get_terms([
+        $sector_terms = get_terms([
             'taxonomy'   => 'sector',
             'slug'       => $community_slugs,
-            'fields'     => 'ids',
-            'hide_empty' => false, // 🔥 MOST IMPORTANT FIX
+            'hide_empty' => false,
         ]);
 
-        if (empty($sector_ids) || is_wp_error($sector_ids)) {
+        if (empty($sector_terms) || is_wp_error($sector_terms)) {
             return [];
         }
 
-        $sector_ids = array_map('intval', (array) $sector_ids);
+        $sector_ids = wp_list_pluck($sector_terms, 'term_id');
 
-        // 3️⃣ Fetch articles
+        // 3️⃣ Fetch articles (🔥 filters OFF)
         $query = new WP_Query([
             'post_type'           => 'articles',
             'post_status'         => 'publish',
@@ -64,16 +63,16 @@ class IntelligenceRoutes
             'orderby'             => 'date',
             'order'               => 'DESC',
             'ignore_sticky_posts' => true,
-            'suppress_filters'    => true, // 🔥 THIS FIXES EMPTY RESULT
-            'tax_query'           => [
+            'no_found_rows'       => true,
+            'suppress_filters'    => true, // 🔥 MOST IMPORTANT
+            'tax_query' => [
                 [
                     'taxonomy' => 'sector',
                     'field'    => 'term_id',
                     'terms'    => $sector_ids,
                 ]
-            ]
+            ],
         ]);
-
 
         $items = [];
 
@@ -81,25 +80,24 @@ class IntelligenceRoutes
             $query->the_post();
 
             $items[] = [
-                'id'        => get_the_ID(),
-                'title'     => get_the_title(),
-                'excerpt'   => get_the_excerpt(),
-                'url'       => get_permalink(),
-                'date'      => get_the_date('M d, Y'),
-                'read_time' => get_field('read_time') ?: '5 min read',
-                'author'    => get_the_author(),
-                'category'  => self::get_sector_name(get_the_ID()),
+                'id'       => get_the_ID(),
+                'title'    => get_the_title(),
+                'excerpt'  => get_the_excerpt(),
+                'url'      => get_permalink(),
+                'date'     => get_the_date('M d, Y'),
+                'author'   => get_the_author(),
+                'category' => self::get_sector_name(get_the_ID()),
             ];
         }
 
         wp_reset_postdata();
 
-        return rest_ensure_response($items);
+        return $items;
     }
 
     private static function get_sector_name($post_id)
     {
         $terms = get_the_terms($post_id, 'sector');
-        return (!empty($terms) && !is_wp_error($terms)) ? $terms[0]->name : '';
+        return ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
     }
 }
