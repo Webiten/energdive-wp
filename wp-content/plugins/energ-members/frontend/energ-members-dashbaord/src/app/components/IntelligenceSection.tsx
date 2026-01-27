@@ -1,3 +1,4 @@
+console.log("🔥 REAL IntelligenceSection loaded");
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
