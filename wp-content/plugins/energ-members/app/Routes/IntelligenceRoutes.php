@@ -22,34 +22,41 @@ class IntelligenceRoutes
 
         // 🔐 JWT se email
         $email = $request->get_param('auth_identifier');
-
         if (!$email) {
-            return rest_ensure_response([]);
+            return [];
         }
 
-        /**
-         * 1️⃣ Get community slug from energ_members
-         */
-        $row = $wpdb->get_row(
+        // 1️⃣ Get community slug from energ_members
+        $table = $wpdb->prefix . 'energ_members';
+
+        $community = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT community FROM {$wpdb->prefix}energ_members WHERE email = %s LIMIT 1",
+                "SELECT community FROM {$table} WHERE email = %s LIMIT 1",
                 $email
-            ),
-            ARRAY_A
+            )
         );
 
-        if (!$row || empty($row['community'])) {
-            return rest_ensure_response([]);
+        if (!$community) {
+            return [];
         }
 
-        /**
-         * 2️⃣ Community slugs (oil-gas, renewables, etc)
-         */
-        $community_slugs = array_map('trim', explode(',', $row['community']));
+        // 2️⃣ community → sector term IDs
+        $community_slugs = array_map('trim', explode(',', $community));
 
-        /**
-         * 3️⃣ Fetch articles using SLUG (🔥 reliable)
-         */
+        $sector_ids = get_terms([
+            'taxonomy'   => 'sector',
+            'slug'       => $community_slugs,
+            'fields'     => 'ids',
+            'hide_empty' => false, // 🔥 MOST IMPORTANT FIX
+        ]);
+
+        if (empty($sector_ids) || is_wp_error($sector_ids)) {
+            return [];
+        }
+
+        $sector_ids = array_map('intval', (array) $sector_ids);
+
+        // 3️⃣ Fetch articles
         $query = new WP_Query([
             'post_type'      => 'articles',
             'post_status'    => 'publish',
@@ -59,8 +66,8 @@ class IntelligenceRoutes
             'tax_query'      => [
                 [
                     'taxonomy' => 'sector',
-                    'field'    => 'slug',
-                    'terms'    => $community_slugs,
+                    'field'    => 'term_id',
+                    'terms'    => $sector_ids,
                 ]
             ]
         ]);
@@ -90,6 +97,6 @@ class IntelligenceRoutes
     private static function get_sector_name($post_id)
     {
         $terms = get_the_terms($post_id, 'sector');
-        return ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
+        return (!empty($terms) && !is_wp_error($terms)) ? $terms[0]->name : '';
     }
 }
