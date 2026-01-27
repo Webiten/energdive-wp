@@ -66,55 +66,52 @@ add_action('init', function () {
  */
 add_action('wp_enqueue_scripts', function () {
 
-    if (!is_singular()) return;
-
     global $post;
-    if (!$post || empty($post->post_content)) return;
 
+    // ✅ Shortcode check ONLY (no is_singular trap)
+    if (!$post || empty($post->post_content)) return;
     if (!has_shortcode($post->post_content, 'energ_members_dashboard')) return;
 
-    // 🔥 MATCHING ACTUAL FOLDER NAME
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
     $dist_url  = plugin_dir_url(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
 
     if (!is_dir($dist_path)) {
-        error_log('ENERG: dist folder not found');
+        error_log('❌ ENERG: dist folder not found');
         return;
     }
 
-    $jsFiles  = glob($dist_path . 'assets/index-*.js');
-    $cssFiles = glob($dist_path . 'assets/index-*.css');
-
-    if (empty($jsFiles)) return;
-
-    if (!empty($cssFiles)) {
+    // 🔥 Load ALL CSS
+    foreach (glob($dist_path . 'assets/*.css') as $css) {
         wp_enqueue_style(
-            'energ-dashboard-style',
-            $dist_url . 'assets/' . basename($cssFiles[0]),
+            'energ-dashboard-' . md5($css),
+            $dist_url . 'assets/' . basename($css),
             [],
-            filemtime($cssFiles[0])
+            filemtime($css)
         );
     }
 
-    wp_enqueue_script(
-        'energ-dashboard-app',
-        $dist_url . 'assets/' . basename($jsFiles[0]),
-        [],
-        filemtime($jsFiles[0]),
-        true
-    );
+    // 🔥 Load ALL JS
+    foreach (glob($dist_path . 'assets/*.js') as $js) {
+        wp_enqueue_script(
+            'energ-dashboard-' . md5($js),
+            $dist_url . 'assets/' . basename($js),
+            [],
+            filemtime($js),
+            true
+        );
+    }
 
+    // 🔥 Global config for React
     wp_add_inline_script(
-        'energ-dashboard-app',
+        'energ-dashboard-' . md5(glob($dist_path . 'assets/*.js')[0]),
         'window.ENERG = ' . wp_json_encode([
-            "api"   => rest_url("energ/v1"),
-            "nonce" => wp_create_nonce("wp_rest"),
-            "home"  => home_url("/")
-        ]) . ';
-        console.log("🔥 ENERG INLINE OK", window.ENERG);',
+            'api'   => rest_url('energ/v1'),
+            'home'  => home_url('/'),
+        ]) . '; console.log("🔥 ENERG CONFIG LOADED", window.ENERG);',
         'before'
     );
 });
+
 
 
 /**
