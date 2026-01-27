@@ -66,10 +66,11 @@ add_action('init', function () {
  */
 add_action('wp_enqueue_scripts', function () {
 
-    global $post;
+    if (!is_singular()) return;
 
-    // ✅ Shortcode check ONLY (no is_singular trap)
+    global $post;
     if (!$post || empty($post->post_content)) return;
+
     if (!has_shortcode($post->post_content, 'energ_members_dashboard')) return;
 
     $dist_path = plugin_dir_path(__FILE__) . 'frontend/energ-members-dashbaord/dist/';
@@ -80,37 +81,44 @@ add_action('wp_enqueue_scripts', function () {
         return;
     }
 
-    // 🔥 Load ALL CSS
-    foreach (glob($dist_path . 'assets/*.css') as $css) {
+    // 🔥 DEBUG PATTERN
+    $jsFiles  = glob($dist_path . 'assets/*.js');
+    $cssFiles = glob($dist_path . 'assets/*.css');
+
+    error_log('🔥 ENERG JS FILES: ' . print_r($jsFiles, true));
+    error_log('🔥 ENERG CSS FILES: ' . print_r($cssFiles, true));
+
+    if (!empty($cssFiles)) {
         wp_enqueue_style(
-            'energ-dashboard-' . md5($css),
-            $dist_url . 'assets/' . basename($css),
+            'energ-dashboard-style',
+            $dist_url . 'assets/' . basename($cssFiles[0]),
             [],
-            filemtime($css)
+            filemtime($cssFiles[0])
         );
     }
 
-    // 🔥 Load ALL JS
-    foreach (glob($dist_path . 'assets/*.js') as $js) {
+    if (!empty($jsFiles)) {
         wp_enqueue_script(
-            'energ-dashboard-' . md5($js),
-            $dist_url . 'assets/' . basename($js),
+            'energ-dashboard-app',
+            $dist_url . 'assets/' . basename($jsFiles[0]),
             [],
-            filemtime($js),
+            filemtime($jsFiles[0]),
             true
         );
     }
 
-    // 🔥 Global config for React
     wp_add_inline_script(
-        'energ-dashboard-' . md5(glob($dist_path . 'assets/*.js')[0]),
+        'energ-dashboard-app',
         'window.ENERG = ' . wp_json_encode([
-            'api'   => rest_url('energ/v1'),
-            'home'  => home_url('/'),
-        ]) . '; console.log("🔥 ENERG CONFIG LOADED", window.ENERG);',
+            "api"   => rest_url("energ/v1"),
+            "nonce" => wp_create_nonce("wp_rest"),
+            "home"  => home_url("/")
+        ]) . ';
+        console.log("🔥 ENERG INLINE OK", window.ENERG);',
         'before'
     );
 });
+
 
 
 
