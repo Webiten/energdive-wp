@@ -20,36 +20,47 @@ class IntelligenceRoutes
     {
         global $wpdb;
 
-        // 🔐 Email from JWT
+        // 🔐 JWT se email
         $email = $request->get_param('auth_identifier');
+
         if (!$email) {
             return rest_ensure_response([]);
         }
 
         /**
-         * 1️⃣ Get community slug from energ_members
+         * 1️⃣ User community from energ_members
          */
-        $table = $wpdb->prefix . 'energ_members';
-
-        $community = $wpdb->get_var(
+        $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT community FROM {$table} WHERE email = %s LIMIT 1",
+                "SELECT community FROM {$wpdb->prefix}energ_members WHERE email = %s LIMIT 1",
                 $email
-            )
+            ),
+            ARRAY_A
         );
 
-        if (!$community) {
+        if (!$row || empty($row['community'])) {
             return rest_ensure_response([]);
         }
 
         /**
-         * 2️⃣ Community slug(s)
-         * Example: oil-gas
+         * 2️⃣ Community slug → sector term IDs (SAFE METHOD)
          */
-        $community_slugs = array_map('trim', explode(',', $community));
+        $community_slugs = array_map('trim', explode(',', $row['community']));
+        $sector_ids = [];
+
+        foreach ($community_slugs as $slug) {
+            $term = get_term_by('slug', $slug, 'sector');
+            if ($term && !is_wp_error($term)) {
+                $sector_ids[] = (int) $term->term_id;
+            }
+        }
+
+        if (empty($sector_ids)) {
+            return rest_ensure_response([]);
+        }
 
         /**
-         * 3️⃣ Fetch articles (SLUG BASED — SAME AS CLI)
+         * 3️⃣ Fetch articles
          */
         $query = new WP_Query([
             'post_type'      => 'articles',
@@ -59,10 +70,9 @@ class IntelligenceRoutes
             'order'          => 'DESC',
             'tax_query'      => [
                 [
-                    'taxonomy'         => 'sector',
-                    'field'            => 'slug',
-                    'terms'            => $community_slugs,
-                    'include_children' => true,
+                    'taxonomy' => 'sector',
+                    'field'    => 'term_id',
+                    'terms'    => $sector_ids,
                 ]
             ]
         ]);
