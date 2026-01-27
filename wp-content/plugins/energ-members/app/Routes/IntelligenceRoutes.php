@@ -28,7 +28,7 @@ class IntelligenceRoutes
         }
 
         /**
-         * 1️⃣ User community from energ_members
+         * 1️⃣ Get community slug from energ_members
          */
         $row = $wpdb->get_row(
             $wpdb->prepare(
@@ -43,24 +43,12 @@ class IntelligenceRoutes
         }
 
         /**
-         * 2️⃣ Community slug → sector term IDs (SAFE METHOD)
+         * 2️⃣ Community slugs (oil-gas, renewables, etc)
          */
         $community_slugs = array_map('trim', explode(',', $row['community']));
-        $sector_ids = [];
-
-        foreach ($community_slugs as $slug) {
-            $term = get_term_by('slug', $slug, 'sector');
-            if ($term && !is_wp_error($term)) {
-                $sector_ids[] = (int) $term->term_id;
-            }
-        }
-
-        if (empty($sector_ids)) {
-            return rest_ensure_response([]);
-        }
 
         /**
-         * 3️⃣ Fetch articles
+         * 3️⃣ Fetch articles using SLUG (🔥 reliable)
          */
         $query = new WP_Query([
             'post_type'      => 'articles',
@@ -71,8 +59,8 @@ class IntelligenceRoutes
             'tax_query'      => [
                 [
                     'taxonomy' => 'sector',
-                    'field'    => 'term_id',
-                    'terms'    => $sector_ids,
+                    'field'    => 'slug',
+                    'terms'    => $community_slugs,
                 ]
             ]
         ]);
