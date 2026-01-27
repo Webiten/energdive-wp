@@ -58,12 +58,14 @@ class IntelligenceRoutes
 
         // 3️⃣ Fetch articles
         $query = new WP_Query([
-            'post_type'      => 'articles',
-            'post_status'    => 'publish',
-            'posts_per_page' => 10,
-            'orderby'        => 'date',
-            'order'          => 'DESC',
-            'tax_query'      => [
+            'post_type'           => 'articles',
+            'post_status'         => 'publish',
+            'posts_per_page'      => 10,
+            'orderby'             => 'date',
+            'order'               => 'DESC',
+            'ignore_sticky_posts' => true,
+            'suppress_filters'    => true, // 🔥 THIS FIXES EMPTY RESULT
+            'tax_query'           => [
                 [
                     'taxonomy' => 'sector',
                     'field'    => 'term_id',
@@ -71,6 +73,7 @@ class IntelligenceRoutes
                 ]
             ]
         ]);
+
 
         $items = [];
 
