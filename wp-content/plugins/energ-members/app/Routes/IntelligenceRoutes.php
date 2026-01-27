@@ -45,23 +45,13 @@ class IntelligenceRoutes
         }
 
         /**
-         * 2️⃣ Convert community slug(s) → sector term IDs
-         * Example: "oil-gas"
+         * 2️⃣ Community slug(s)
+         * Example stored: "oil-gas" OR "oil-gas,renewables"
          */
         $community_slugs = array_map('trim', explode(',', $row['community']));
 
-        $sector_ids = get_terms([
-            'taxonomy' => 'sector',
-            'slug'     => $community_slugs,
-            'fields'   => 'ids',
-        ]);
-
-        if (empty($sector_ids) || is_wp_error($sector_ids)) {
-            return rest_ensure_response([]);
-        }
-
         /**
-         * 3️⃣ Fetch latest articles for those sectors
+         * 3️⃣ Fetch latest articles using sector SLUGS (✅ correct way)
          */
         $query = new WP_Query([
             'post_type'      => 'articles',
@@ -72,8 +62,8 @@ class IntelligenceRoutes
             'tax_query'      => [
                 [
                     'taxonomy' => 'sector',
-                    'field'    => 'term_id',
-                    'terms'    => $sector_ids,
+                    'field'    => 'slug',
+                    'terms'    => $community_slugs,
                 ]
             ]
         ]);
