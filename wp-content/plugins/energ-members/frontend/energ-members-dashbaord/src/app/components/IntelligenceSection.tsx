@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { FileText } from "lucide-react";
 
-interface Article {
+type Article = {
   id: number;
   title: string;
   excerpt: string;
-  author: string;
+  url: string;
   date: string;
   read_time: string;
+  author: string;
   category: string;
-  url: string;
-}
+};
 
 export function IntelligenceSection() {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -27,18 +29,26 @@ export function IntelligenceSection() {
     })
       .then((res) => res.json())
       .then((data) => {
-        setArticles(data || []);
-        setLoading(false);
+        setArticles(Array.isArray(data) ? data : []);
       })
-      .catch(() => setLoading(false));
+      .finally(() => setLoading(false));
   }, []);
 
+  const grouped = articles.reduce<Record<string, Article[]>>((acc, item) => {
+    const key = item.category || "General";
+    acc[key] = acc[key] || [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const categories = Object.keys(grouped);
+
   if (loading) {
-    return <div className="p-6">Loading intelligence...</div>;
+    return <div className="p-6">Loading intelligence…</div>;
   }
 
   if (!articles.length) {
-    return <div className="p-6">No intelligence available</div>;
+    return <div className="p-6">No intelligence available.</div>;
   }
 
   return (
@@ -49,35 +59,45 @@ export function IntelligenceSection() {
           Expert analysis, insights, and industry deep dives
         </p>
 
-        <div className="grid gap-6">
-          {articles.map((article) => (
-            <Card
-              key={article.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => window.open(article.url, "_blank")}
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary">{article.category}</Badge>
-                  <span className="text-sm text-gray-500">
-                    {article.read_time}
-                  </span>
-                </div>
-                <CardTitle className="text-2xl hover:text-emerald-600">
-                  {article.title}
-                </CardTitle>
-              </CardHeader>
+        <Tabs defaultValue={categories[0]}>
+          <TabsList className="mb-6 flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <TabsTrigger key={cat} value={cat}>
+                <FileText className="w-4 h-4 mr-2" />
+                {cat}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-              <CardContent>
-                <p className="text-gray-600 mb-4">{article.excerpt}</p>
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>{article.author}</span>
-                  <span>{article.date}</span>
-                </div>
-              </CardContent>
-            </Card>
+          {categories.map((cat) => (
+            <TabsContent key={cat} value={cat}>
+              <div className="space-y-6">
+                {grouped[cat].map((a) => (
+                  <Card key={a.id} onClick={() => window.open(a.url, "_blank")}>
+                    <CardHeader>
+                      <div className="flex justify-between mb-2">
+                        <Badge variant="secondary">{cat}</Badge>
+                        <span className="text-sm text-gray-500">
+                          {a.read_time}
+                        </span>
+                      </div>
+                      <CardTitle className="text-xl hover:text-emerald-600">
+                        {a.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600 mb-3">{a.excerpt}</p>
+                      <div className="flex justify-between text-sm text-gray-500">
+                        <span>{a.author}</span>
+                        <span>{a.date}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
           ))}
-        </div>
+        </Tabs>
       </div>
     </div>
   );
