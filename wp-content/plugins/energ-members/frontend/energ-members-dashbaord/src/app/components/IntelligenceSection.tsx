@@ -1,122 +1,83 @@
-console.log("🔥 REAL IntelligenceSection loaded");
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { FileText } from "lucide-react";
 
-type IntelligenceItem = {
+interface Article {
   id: number;
   title: string;
   excerpt: string;
-  url: string;
+  author: string;
   date: string;
   read_time: string;
-  author: string;
   category: string;
-};
+  url: string;
+}
 
 export function IntelligenceSection() {
-  const [articles, setArticles] = useState<IntelligenceItem[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchIntelligence = async () => {
-      try {
-        const token = localStorage.getItem("energ_token");
-        if (!token) {
-          setLoading(false);
-          return;
-        }
+    const token = localStorage.getItem("access_token");
 
-        const res = await fetch(
-          `${(window as any).ENERG?.api}/intelligence`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = await res.json();
-        setArticles(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Failed to load intelligence", err);
-        setArticles([]);
-      } finally {
+    fetch("/wp-json/energ/v1/intelligence", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setArticles(data || []);
         setLoading(false);
-      }
-    };
-
-    fetchIntelligence();
+      })
+      .catch(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return <div className="p-6">Loading intelligence...</div>;
+  }
+
+  if (!articles.length) {
+    return <div className="p-6">No intelligence available</div>;
+  }
 
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 md:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-            Intelligence
-          </h1>
-          <p className="text-gray-600">
-            Latest insights based on your selected community
-          </p>
+        <h1 className="text-3xl font-semibold mb-2">Intelligence</h1>
+        <p className="text-gray-600 mb-6">
+          Expert analysis, insights, and industry deep dives
+        </p>
+
+        <div className="grid gap-6">
+          {articles.map((article) => (
+            <Card
+              key={article.id}
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => window.open(article.url, "_blank")}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="secondary">{article.category}</Badge>
+                  <span className="text-sm text-gray-500">
+                    {article.read_time}
+                  </span>
+                </div>
+                <CardTitle className="text-2xl hover:text-emerald-600">
+                  {article.title}
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <p className="text-gray-600 mb-4">{article.excerpt}</p>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>{article.author}</span>
+                  <span>{article.date}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              All
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all">
-            {loading && (
-              <p className="text-gray-500">Loading intelligence…</p>
-            )}
-
-            {!loading && articles.length === 0 && (
-              <p className="text-gray-500">
-                No intelligence available for your community.
-              </p>
-            )}
-
-            <div className="grid gap-6">
-              {articles.map((article) => (
-                <Card
-                  key={article.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => window.open(article.url, "_blank")}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <Badge variant="secondary">
-                        {article.category || "Intelligence"}
-                      </Badge>
-                      <span className="text-sm text-gray-500">
-                        {article.read_time}
-                      </span>
-                    </div>
-                    <CardTitle className="text-2xl hover:text-emerald-600 transition-colors">
-                      {article.title}
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent>
-                    <p className="text-gray-600 mb-4">
-                      {article.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span className="font-medium">{article.author}</span>
-                      <span>{article.date}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   );
