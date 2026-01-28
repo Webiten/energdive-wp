@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* custom styles AFTER tailwind */
+@import "./fonts.css";
+@import "./theme.css";
+
 #energ-members-root {
   font-family: Inter, system-ui, sans-serif;
 }
