@@ -6,12 +6,7 @@
 @import './fonts.css';
 @import './theme.css';
 
-/* 🔥 React root — MUST match main.tsx */
+/* React root — MUST match main.tsx */
 #energ-members-root {
   font-family: Inter, system-ui, sans-serif;
-}
-
-/* Optional but recommended: global defaults */
-body {
-  @apply bg-gray-50 text-gray-900;
 }
