@@ -2,11 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom imports AFTER tailwind */
-@import './fonts.css';
-@import './theme.css';
-
-/* React root — MUST match main.tsx */
-#energ-members-root {
+/* Optional custom styles */
+#energ-dashboard-root {
   font-family: Inter, system-ui, sans-serif;
 }
