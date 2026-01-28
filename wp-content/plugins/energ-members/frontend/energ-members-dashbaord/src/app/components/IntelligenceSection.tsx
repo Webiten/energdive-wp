@@ -1,30 +1,26 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { FileText } from "lucide-react";
 
-/* ---------------- TYPES ---------------- */
-
-type IntelligenceArticle = {
-  id: number;
-  title: string;
-  url: string;
-};
-
-type IntelligenceItem = {
+type Article = {
   id: number;
   title: string;
   excerpt: string;
   read_time: string;
-  sector: string;
-  articles: IntelligenceArticle[];
+  articles: {
+    id: number;
+    title: string;
+    url: string;
+  }[];
 };
 
-/* ---------------- COMPONENT ---------------- */
+type IntelligenceGroup = {
+  sector: string;
+  items: Article[];
+};
 
 export function IntelligenceSection() {
-  const [data, setData] = useState<IntelligenceItem[]>([]);
+  const [groups, setGroups] = useState<IntelligenceGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,8 +32,8 @@ export function IntelligenceSection() {
       },
     })
       .then((res) => res.json())
-      .then((res) => {
-        setData(Array.isArray(res) ? res : []);
+      .then((data) => {
+        setGroups(Array.isArray(data) ? data : []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -46,77 +42,61 @@ export function IntelligenceSection() {
     return <div className="p-6">Loading intelligence…</div>;
   }
 
-  if (!data.length) {
+  if (!groups.length) {
     return <div className="p-6">No intelligence available.</div>;
   }
 
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
-      <div className="max-w-7xl mx-auto p-6 md:p-8">
-        {/* Header */}
-        <div className="mb-8">
+      <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-10">
+        <div>
           <h1 className="text-3xl font-semibold mb-2">Intelligence</h1>
           <p className="text-gray-600">
             Expert analysis, insights, and industry deep dives
           </p>
         </div>
 
-        {/* Tabs by Sector */}
-        <Tabs defaultValue={String(data[0].id)}>
-          <TabsList className="mb-6 flex flex-wrap gap-2">
-            {data.map((item) => (
-              <TabsTrigger key={item.id} value={String(item.id)}>
-                <FileText className="w-4 h-4 mr-2" />
-                {item.sector}
-              </TabsTrigger>
+        {groups.map((group) => (
+          <div key={group.sector} className="space-y-4">
+            <Badge variant="outline" className="text-sm">
+              {group.sector}
+            </Badge>
+
+            {group.items.length === 0 && (
+              <p className="text-sm text-gray-500">
+                No intelligence available for this sector.
+              </p>
+            )}
+
+            {group.items.map((item) => (
+              <Card key={item.id}>
+                <CardHeader>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-500">
+                      {item.read_time}
+                    </span>
+                  </div>
+                  <CardTitle className="text-xl">
+                    {item.title}
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="space-y-2">
+                  {item.articles.map((a) => (
+                    <a
+                      key={a.id}
+                      href={a.url}
+                      target="_blank"
+                      className="block text-emerald-600 hover:underline text-sm"
+                    >
+                      {a.title}
+                    </a>
+                  ))}
+                </CardContent>
+              </Card>
             ))}
-          </TabsList>
-
-          {data.map((item) => (
-            <TabsContent key={item.id} value={String(item.id)}>
-              <div className="space-y-6">
-                {/* Intelligence Card */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex justify-between mb-2">
-                      <Badge variant="secondary">{item.sector}</Badge>
-                      <span className="text-sm text-gray-500">
-                        {item.read_time}
-                      </span>
-                    </div>
-                    <CardTitle className="text-2xl">
-                      {item.title}
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent>
-                    {/* Articles List */}
-                    {item.articles.length ? (
-                      <ul className="space-y-3">
-                        {item.articles.map((a) => (
-                          <li key={a.id}>
-                            <a
-                              href={a.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-emerald-600 hover:underline font-medium"
-                            >
-                              {a.title}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-gray-500">
-                        No articles mapped yet.
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+          </div>
+        ))}
       </div>
     </div>
   );
