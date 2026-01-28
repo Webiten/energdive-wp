@@ -2,7 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Optional custom styles */
-#energ-dashboard-root {
+/* Scope Tailwind ONLY to dashboard */
+#energ-members-root {
   font-family: Inter, system-ui, sans-serif;
+}
+
+/* Optional safety */
+#energ-members-root * {
+  box-sizing: border-box;
 }

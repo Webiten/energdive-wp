@@ -8,7 +8,9 @@ const root = document.getElementById('energ-members-root')
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <App />
+      <div id="energ-dashboard-root" className="min-h-screen bg-gray-50">
+        <App />
+      </div>
     </React.StrictMode>
   )
 }
