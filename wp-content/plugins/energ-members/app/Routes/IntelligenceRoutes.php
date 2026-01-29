@@ -51,10 +51,14 @@ class IntelligenceRoutes
         }
 
         // ✅ normalize to taxonomy slugs
-        $sectorSlugs = array_map(
-            fn($c) => sanitize_title($c),
-            $communities
-        );
+        $sectorSlugs = array_map('sanitize_title', $communities);
+
+        // Fallback: also try legacy labels
+        $sectorSlugs = array_unique(array_merge(
+            $sectorSlugs,
+            array_map(fn($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
+        ));
+
 
         // ✅ fetch sector terms
         $sectors = get_terms([
