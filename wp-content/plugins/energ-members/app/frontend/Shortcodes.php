@@ -12,12 +12,37 @@ class Shortcodes
 
     public static function dashboard()
     {
-        // ✅ React mounts here
-        return '<div id="energ-members-root"></div>';
+        return '
+        <div
+          id="energ-dashboard-shell"
+          style="
+            all: initial;
+            display: block;
+            width: 100%;
+            min-height: 100vh;
+            background: #ffffff;
+            isolation: isolate;
+          "
+        >
+          <div id="energ-members-root"></div>
+        </div>';
     }
 
     public static function auth()
     {
-        return '<div id="energ-auth-root"></div>';
+        return '
+        <div
+          id="energ-auth-shell"
+          style="
+            all: initial;
+            display: block;
+            width: 100%;
+            min-height: 100vh;
+            background: #ffffff;
+            isolation: isolate;
+          "
+        >
+          <div id="energ-auth-root"></div>
+        </div>';
     }
 }
