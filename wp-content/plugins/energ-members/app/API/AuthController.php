@@ -9,14 +9,21 @@ use WP_Error;
 
 class AuthController
 {
-    public static function requestOtp($request)
-    {
-        return (new RequestOtp)->handle($request);
-    }
+    /* =====================================================
+     * HELPERS
+     * ===================================================== */
 
-    public static function verifyOtp($request)
+    private static function resolveWhereClause($wpdb, $identifier)
     {
-        return (new VerifyOtp)->handle($request);
+        if (is_numeric($identifier)) {
+            return $wpdb->prepare('user_id = %d', (int) $identifier);
+        }
+
+        if (is_email($identifier)) {
+            return $wpdb->prepare('email = %s', $identifier);
+        }
+
+        return $wpdb->prepare('phone = %s', $identifier);
     }
 
     private static function decodeJsonArray($value)
@@ -29,60 +36,90 @@ class AuthController
         if (json_last_error() !== JSON_ERROR_NONE) return [];
         if (!is_array($decoded)) return [];
 
-        // keep only strings
-        return array_values(array_filter($decoded, fn($x) => is_string($x) && trim($x) !== ''));
+        return array_values(array_filter($decoded, fn ($x) => is_string($x) && trim($x) !== ''));
     }
 
     private static function normalizeStringArray($value)
     {
         if (!$value) return [];
-        if (is_array($value)) return array_values(array_filter($value, fn($x) => is_string($x) && trim($x) !== ''));
+        if (is_array($value)) {
+            return array_values(array_filter($value, fn ($x) => is_string($x) && trim($x) !== ''));
+        }
         if (is_string($value)) {
             return array_values(array_filter(array_map('trim', explode(',', $value))));
         }
         return [];
     }
 
+    /* =====================================================
+     * AUTH ENDPOINTS
+     * ===================================================== */
+
+    public static function requestOtp($request)
+    {
+        return (new RequestOtp)->handle($request);
+    }
+
+    public static function verifyOtp($request)
+    {
+        return (new VerifyOtp)->handle($request);
+    }
+
+    public static function refreshToken($request)
+    {
+        return (new RefreshToken)->handle($request);
+    }
+
+    public static function logout($request)
+    {
+        return (new \Energ\Auth\Logout)->handle($request);
+    }
+
+    public static function completeRegistration($request)
+    {
+        return (new \Energ\Auth\CompleteRegistration)->handle($request);
+    }
+
+    /* =====================================================
+     * GET /me
+     * ===================================================== */
+
     public static function me($request)
     {
         global $wpdb;
 
         $identifier = $request->get_param('auth_user') ?: $request->get_param('auth_identifier');
-
         if (!$identifier) {
             return new WP_Error('unauthorized', 'Invalid or missing token', ['status' => 401]);
         }
 
         $table = $wpdb->prefix . 'energ_members';
+        $where = self::resolveWhereClause($wpdb, $identifier);
 
         $user = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT
-                    id,
-                    user_id,
-                    email,
-                    phone,
-                    first_name,
-                    last_name,
-                    job_title,
-                    organization,
-                    country,
-                    state,
-                    industry,
-                    sub_industry,
-                    community,
-                    sub_community,
-                    communities_json,
-                    sub_communities_json,
-                    status,
-                    signup_mode,
-                    created_at
-                 FROM {$table}
-                 WHERE email = %s OR phone = %s
-                 LIMIT 1",
-                $identifier,
-                $identifier
-            ),
+            "SELECT
+                id,
+                user_id,
+                email,
+                phone,
+                first_name,
+                last_name,
+                job_title,
+                organization,
+                country,
+                state,
+                industry,
+                sub_industry,
+                community,
+                sub_community,
+                communities_json,
+                sub_communities_json,
+                status,
+                signup_mode,
+                created_at
+             FROM {$table}
+             WHERE {$where}
+             LIMIT 1",
             ARRAY_A
         );
 
@@ -90,11 +127,11 @@ class AuthController
             return new WP_Error('user_not_found', 'User not found', ['status' => 404]);
         }
 
-        // ✅ Decode arrays from JSON columns
+        // ✅ Resolve communities (source of truth first)
         $communities = self::decodeJsonArray($user['communities_json'] ?? null);
         $subCommunities = self::decodeJsonArray($user['sub_communities_json'] ?? null);
 
-        // Backward compatibility: if JSON empty but old single columns exist
+        // Legacy fallback
         if (empty($communities) && !empty($user['community'])) {
             $communities = self::normalizeStringArray($user['community']);
         }
@@ -105,16 +142,24 @@ class AuthController
         $user['communities'] = $communities;
         $user['sub_communities'] = $subCommunities;
 
+        // ✅ Hide internal columns
+        unset(
+            $user['communities_json'],
+            $user['sub_communities_json'],
+            $user['community'],
+            $user['sub_community']
+        );
+
         return [
             'success' => true,
             'user'    => $user,
         ];
     }
 
-    /**
-     * ✅ POST /me
-     * Updates profile + communities/sub communities (persisted in wp_energ_members)
-     */
+    /* =====================================================
+     * POST /me (UPDATE PROFILE)
+     * ===================================================== */
+
     public static function updateMe($request)
     {
         global $wpdb;
@@ -125,13 +170,10 @@ class AuthController
         }
 
         $table = $wpdb->prefix . 'energ_members';
+        $where = self::resolveWhereClause($wpdb, $identifier);
 
         $member = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT id, email, phone FROM {$table} WHERE email = %s OR phone = %s LIMIT 1",
-                $identifier,
-                $identifier
-            ),
+            "SELECT id FROM {$table} WHERE {$where} LIMIT 1",
             ARRAY_A
         );
 
@@ -141,87 +183,59 @@ class AuthController
 
         $params = (array) $request->get_json_params();
 
-        $first_name   = isset($params['firstName']) ? sanitize_text_field($params['firstName']) : null;
-        $last_name    = isset($params['lastName']) ? sanitize_text_field($params['lastName']) : null;
-        $job_title    = isset($params['jobTitle']) ? sanitize_text_field($params['jobTitle']) : null;
-        $organization = isset($params['organization']) ? sanitize_text_field($params['organization']) : null;
-        $country      = isset($params['country']) ? sanitize_text_field($params['country']) : null;
-        // Industry / sub-industry can be string OR array (multi-select from UI)
-        $industry = null;
-        if (array_key_exists('industry', $params)) {
-            $val = $params['industry'];
-            if (is_array($val)) {
-                $industry = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $val)))));
-            } else {
-                $industry = sanitize_text_field((string) $val);
-            }
-        }
-
-        $sub_industry = null;
-        if (isset($params['sub_industry']) || isset($params['subIndustry'])) {
-            $val = $params['subIndustry'] ?? $params['sub_industry'] ?? '';
-            if (is_array($val)) {
-                $sub_industry = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $val)))));
-            } else {
-                $sub_industry = sanitize_text_field((string) $val);
-            }
-        }
-
-        $communities = $params['communities'] ?? $params['community'] ?? null;
-
-        $subCommunities = $params['sub_communities']
-            ?? $params['subCommunities']
-            ?? $params['sub_community']
-            ?? null;
-
-
         $update = [];
         $format = [];
 
-        if ($first_name !== null) {
-            $update['first_name'] = $first_name;
-            $format[] = '%s';
+        $map = [
+            'firstName'    => 'first_name',
+            'lastName'     => 'last_name',
+            'jobTitle'     => 'job_title',
+            'organization' => 'organization',
+            'country'      => 'country',
+        ];
+
+        foreach ($map as $input => $column) {
+            if (isset($params[$input])) {
+                $update[$column] = sanitize_text_field($params[$input]);
+                $format[] = '%s';
+            }
         }
-        if ($last_name !== null) {
-            $update['last_name'] = $last_name;
-            $format[] = '%s';
-        }
-        if ($job_title !== null) {
-            $update['job_title'] = $job_title;
-            $format[] = '%s';
-        }
-        if ($organization !== null) {
-            $update['organization'] = $organization;
-            $format[] = '%s';
-        }
-        if ($country !== null) {
-            $update['country'] = $country;
-            $format[] = '%s';
-        }
-        if ($industry !== null) {
-            $update['industry'] = $industry;
-            $format[] = '%s';
-        }
-        if ($sub_industry !== null) {
-            $update['sub_industry'] = $sub_industry;
+
+        // Industry
+        if (array_key_exists('industry', $params)) {
+            $val = $params['industry'];
+            $update['industry'] = is_array($val)
+                ? implode(', ', array_map('sanitize_text_field', $val))
+                : sanitize_text_field((string) $val);
             $format[] = '%s';
         }
 
+        // Sub-industry
+        if (isset($params['subIndustry']) || isset($params['sub_industry'])) {
+            $val = $params['subIndustry'] ?? $params['sub_industry'];
+            $update['sub_industry'] = is_array($val)
+                ? implode(', ', array_map('sanitize_text_field', $val))
+                : sanitize_text_field((string) $val);
+            $format[] = '%s';
+        }
+
+        // Communities
+        $communities = $params['communities'] ?? null;
         if (is_array($communities)) {
-            $clean = array_values(array_unique(array_filter(array_map('sanitize_text_field', $communities))));
+            $clean = array_values(array_unique(array_map('sanitize_text_field', $communities)));
             $update['communities_json'] = wp_json_encode($clean);
+            $update['community'] = sanitize_text_field($clean[0] ?? '');
             $format[] = '%s';
-            // backward compat
-            $update['community'] = $clean[0] ?? '';
             $format[] = '%s';
         }
 
+        // Sub-communities
+        $subCommunities = $params['sub_communities'] ?? $params['subCommunities'] ?? null;
         if (is_array($subCommunities)) {
-            $clean = array_values(array_unique(array_filter(array_map('sanitize_text_field', $subCommunities))));
+            $clean = array_values(array_unique(array_map('sanitize_text_field', $subCommunities)));
             $update['sub_communities_json'] = wp_json_encode($clean);
+            $update['sub_community'] = sanitize_text_field($clean[0] ?? '');
             $format[] = '%s';
-            // backward compat
-            $update['sub_community'] = $clean[0] ?? '';
             $format[] = '%s';
         }
 
@@ -240,26 +254,10 @@ class AuthController
             ['%d']
         );
 
-        // Return fresh /me style response
+        // Return fresh profile
         $req = new \WP_REST_Request('GET', '/energ/v1/me');
-        $req->set_param('auth_identifier', $identifier);
         $req->set_param('auth_user', $identifier);
 
         return self::me($req);
-    }
-
-    public static function refreshToken($request)
-    {
-        return (new RefreshToken)->handle($request);
-    }
-
-    public static function logout($request)
-    {
-        return (new \Energ\Auth\Logout)->handle($request);
-    }
-
-    public static function completeRegistration($request)
-    {
-        return (new \Energ\Auth\CompleteRegistration)->handle($request);
     }
 }
