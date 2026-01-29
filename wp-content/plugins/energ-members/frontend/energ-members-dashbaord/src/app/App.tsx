@@ -21,6 +21,9 @@ import { EventsSection } from "./components/EventsSection";
 import { BookmarksSection } from "./components/BookmarksSection";
 import { AccountSettingsSection } from "./components/AccountSettingsSection";
 
+// 🛡️ Error Boundary
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
 // 🌐 API
 import { AuthAPI } from "./lib/api";
 
@@ -48,11 +51,10 @@ export default function App() {
     onExpire: () => void;
   } | null>(null);
 
-  // ✅ CONTROL TIMER VIA EFFECT (NOT RENDER)
   useEffect(() => {
     if (appState === "dashboard") {
       sessionConfigRef.current = {
-        timeoutMs: 5 * 60 * 1000, // ⏱ 5 minutes
+        timeoutMs: 5 * 60 * 1000, // 5 min
         onExpire: () => {
           setAppState("login");
         },
@@ -62,7 +64,6 @@ export default function App() {
     }
   }, [appState]);
 
-  // ✅ Hook always called once
   useSessionTimeout(sessionConfigRef.current);
 
   /* =======================
@@ -124,11 +125,16 @@ export default function App() {
       {appState === "dashboard" ? (
         <div className="min-h-screen w-full bg-gray-50">
           <TopBar onLogout={() => setAppState("login")} />
+
           <SecondHeader
             activeSection={activeSection}
             onSectionChange={setActiveSection}
           />
-          {renderDashboardContent()}
+
+          {/* 🛡️ DASHBOARD ERROR BOUNDARY */}
+          <ErrorBoundary>
+            {renderDashboardContent()}
+          </ErrorBoundary>
         </div>
       ) : (
         <div className="min-h-screen w-full">
@@ -161,5 +167,4 @@ export default function App() {
       )}
     </>
   );
-
 }
