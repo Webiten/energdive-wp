@@ -53,10 +53,9 @@ class IntelligenceRoutes
 
         /* ================= SECTOR TERMS ================= */
 
-        // normalize to slugs + legacy safety
         $sectorSlugs = array_unique(array_merge(
             array_map('sanitize_title', $communities),
-            array_map(fn($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
+            array_map(fn ($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
         ));
 
         $sectors = get_terms([
@@ -75,7 +74,7 @@ class IntelligenceRoutes
 
         foreach ($sectors as $sector) {
 
-            // collect community + child sectors
+            // include sector + child sectors
             $termIds = [$sector->term_id];
 
             $children = get_terms([
@@ -116,22 +115,16 @@ class IntelligenceRoutes
             while ($intelQuery->have_posts()) {
                 $intelQuery->the_post();
 
-                // 🔥 ACF Relationship field
+                // 🔒 SAFE ACF ACCESS
                 $relatedArticles = function_exists('get_field')
                     ? get_field('related_articles')
                     : [];
-
-
-                if (!is_array($relatedArticles)) {
-                    continue;
-                }
 
                 if (!is_array($relatedArticles)) {
                     continue;
                 }
 
                 foreach ($relatedArticles as $post) {
-
                     if (!isset($post->ID) || isset($seen[$post->ID])) {
                         continue;
                     }
@@ -139,7 +132,7 @@ class IntelligenceRoutes
                     $seen[$post->ID] = true;
 
                     $items[] = [
-                        'id'    => $post->ID,
+                        'id'    => (int) $post->ID,
                         'title' => get_the_title($post->ID),
                         'url'   => get_permalink($post->ID),
                     ];

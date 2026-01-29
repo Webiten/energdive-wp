@@ -128,3 +128,15 @@ add_filter('script_loader_tag', function ($tag, $handle, $src) {
     }
     return $tag;
 }, 10, 3);
+
+
+
+
+
+add_action('wp_enqueue_scripts', function () {
+    if (is_page('dashboard') || str_contains($_SERVER['REQUEST_URI'], '/dashboard')) {
+        wp_dequeue_script('elementor-frontend');
+        wp_dequeue_script('elementor-common');
+        wp_dequeue_script('frontend-modules');
+    }
+}, 100);
