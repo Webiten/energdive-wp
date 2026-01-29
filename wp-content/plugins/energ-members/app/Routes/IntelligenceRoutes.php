@@ -20,22 +20,23 @@ class IntelligenceRoutes
     {
         global $wpdb;
 
-        // ✅ correct JWT param
+        /* ================= AUTH ================= */
+
         $authUser = $request->get_param('auth_user');
         if (!$authUser) {
             return rest_ensure_response([]);
         }
 
-        // ✅ resolve member safely
         if (is_numeric($authUser)) {
-            $where = $wpdb->prepare("user_id = %d", (int) $authUser);
+            $where = $wpdb->prepare('user_id = %d', (int) $authUser);
         } elseif (is_email($authUser)) {
-            $where = $wpdb->prepare("email = %s", $authUser);
+            $where = $wpdb->prepare('email = %s', $authUser);
         } else {
-            $where = $wpdb->prepare("phone = %s", $authUser);
+            $where = $wpdb->prepare('phone = %s', $authUser);
         }
 
-        // ✅ read SOURCE OF TRUTH
+        /* ================= USER COMMUNITIES ================= */
+
         $row = $wpdb->get_row(
             "SELECT communities_json FROM {$wpdb->prefix}energ_members WHERE {$where} LIMIT 1",
             ARRAY_A
@@ -50,17 +51,14 @@ class IntelligenceRoutes
             return rest_ensure_response([]);
         }
 
-        // ✅ normalize to taxonomy slugs
-        $sectorSlugs = array_map('sanitize_title', $communities);
+        /* ================= SECTOR TERMS ================= */
 
-        // Fallback: also try legacy labels
+        // normalize to slugs + legacy safety
         $sectorSlugs = array_unique(array_merge(
-            $sectorSlugs,
-            array_map(fn($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
+            array_map('sanitize_title', $communities),
+            array_map(fn ($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
         ));
 
-
-        // ✅ fetch sector terms
         $sectors = get_terms([
             'taxonomy'   => 'sector',
             'slug'       => $sectorSlugs,
@@ -73,28 +71,31 @@ class IntelligenceRoutes
 
         $response = [];
 
+        /* ================= MAIN LOOP ================= */
+
         foreach ($sectors as $sector) {
 
-            // get child sectors of the selected community
-            $childTerms = get_terms([
+            // collect community + child sectors
+            $termIds = [$sector->term_id];
+
+            $children = get_terms([
                 'taxonomy'   => 'sector',
                 'parent'     => $sector->term_id,
                 'hide_empty' => false,
             ]);
 
-            $termIds = [$sector->term_id];
-
-            // include child sectors
-            if (!is_wp_error($childTerms)) {
-                foreach ($childTerms as $child) {
+            if (!is_wp_error($children)) {
+                foreach ($children as $child) {
                     $termIds[] = $child->term_id;
                 }
             }
 
-            $articles = new WP_Query([
-                'post_type'      => 'articles',
+            /* ================= INTELLIGENCE CPT ================= */
+
+            $intelQuery = new WP_Query([
+                'post_type'      => 'intelligence',
                 'post_status'    => 'publish',
-                'posts_per_page' => 5,
+                'posts_per_page' => 10,
                 'tax_query'      => [
                     [
                         'taxonomy' => 'sector',
@@ -104,16 +105,37 @@ class IntelligenceRoutes
                 ]
             ]);
 
+            if (!$intelQuery->have_posts()) {
+                wp_reset_postdata();
+                continue;
+            }
 
             $items = [];
+            $seen  = [];
 
-            while ($articles->have_posts()) {
-                $articles->the_post();
-                $items[] = [
-                    'id'    => get_the_ID(),
-                    'title' => get_the_title(),
-                    'url'   => get_permalink(),
-                ];
+            while ($intelQuery->have_posts()) {
+                $intelQuery->the_post();
+
+                // 🔥 ACF Relationship field
+                $relatedArticles = get_field('related_articles');
+
+                if (!is_array($relatedArticles)) {
+                    continue;
+                }
+
+                foreach ($relatedArticles as $post) {
+                    if (!isset($post->ID) || isset($seen[$post->ID])) {
+                        continue;
+                    }
+
+                    $seen[$post->ID] = true;
+
+                    $items[] = [
+                        'id'    => $post->ID,
+                        'title' => get_the_title($post->ID),
+                        'url'   => get_permalink($post->ID),
+                    ];
+                }
             }
 
             wp_reset_postdata();
@@ -121,7 +143,7 @@ class IntelligenceRoutes
             if (!empty($items)) {
                 $response[] = [
                     'sector'   => $sector->name,
-                    'articles' => $items,
+                    'articles' => array_values($items),
                 ];
             }
         }
