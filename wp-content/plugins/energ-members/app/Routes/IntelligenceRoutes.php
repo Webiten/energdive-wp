@@ -75,6 +75,22 @@ class IntelligenceRoutes
 
         foreach ($sectors as $sector) {
 
+            // get child sectors of the selected community
+            $childTerms = get_terms([
+                'taxonomy'   => 'sector',
+                'parent'     => $sector->term_id,
+                'hide_empty' => false,
+            ]);
+
+            $termIds = [$sector->term_id];
+
+            // include child sectors
+            if (!is_wp_error($childTerms)) {
+                foreach ($childTerms as $child) {
+                    $termIds[] = $child->term_id;
+                }
+            }
+
             $articles = new WP_Query([
                 'post_type'      => 'articles',
                 'post_status'    => 'publish',
@@ -82,11 +98,12 @@ class IntelligenceRoutes
                 'tax_query'      => [
                     [
                         'taxonomy' => 'sector',
-                        'terms'    => [$sector->term_id],
                         'field'    => 'term_id',
+                        'terms'    => $termIds,
                     ]
                 ]
             ]);
+
 
             $items = [];
 
