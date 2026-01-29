@@ -9,9 +9,7 @@ if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <div
-        id="energ-dashboard-root"
-        className="min-h-screen w-full bg-white text-gray-900"
-      >
+        className="min-h-screen w-full bg-white text-gray-900">
         <App />
       </div>
     </React.StrictMode>

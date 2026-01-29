@@ -11,22 +11,19 @@ class Shortcodes
     }
 
     public static function dashboard()
-    {
-        return '
-        <div
-          id="energ-dashboard-shell"
-          style="
-            all: initial;
-            display: block;
-            width: 100%;
-            min-height: 100vh;
-            background: #ffffff;
-            isolation: isolate;
-          "
-        >
-          <div id="energ-members-root"></div>
-        </div>';
-    }
+{
+    return '
+    <div
+      id="energ-members-root"
+      style="
+        width:100%;
+        min-height:100vh;
+        background:#ffffff;
+        isolation:isolate;
+      "
+    ></div>';
+}
+
 
     public static function auth()
     {
