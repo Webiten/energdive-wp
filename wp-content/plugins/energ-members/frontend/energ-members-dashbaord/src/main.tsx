@@ -1,16 +1,16 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './app/App'
-import './styles/index.css'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./app/App";
+import "./styles/index.css";
 
-const root = document.getElementById('energ-members-root')
+const root = document.getElementById("energ-members-root");
 
-if (root) {
-  ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      <div id="energ-dashboard-root" className="min-h-screen bg-gray-50">
-        <App />
-      </div>
-    </React.StrictMode>
-  )
+if (!root) {
+  throw new Error("Root container #energ-members-root not found");
 }
+
+ReactDOM.createRoot(root).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
