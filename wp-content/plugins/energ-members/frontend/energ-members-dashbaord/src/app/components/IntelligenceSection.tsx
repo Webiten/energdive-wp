@@ -5,18 +5,12 @@ import { Badge } from "./ui/badge";
 type Article = {
   id: number;
   title: string;
-  excerpt: string;
-  read_time: string;
-  articles: {
-    id: number;
-    title: string;
-    url: string;
-  }[];
+  url: string;
 };
 
 type IntelligenceGroup = {
-  sector: string;
-  items: Article[];
+  sector?: string;
+  articles?: Article[];
 };
 
 export function IntelligenceSection() {
@@ -24,16 +18,25 @@ export function IntelligenceSection() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token");
 
     fetch("/wp-json/energ/v1/intelligence", {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: token ? `Bearer ${token}` : "",
       },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Unauthorized / API failed");
+        return res.json();
+      })
       .then((data) => {
         setGroups(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error("Intelligence fetch failed:", err);
+        setGroups([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -42,7 +45,7 @@ export function IntelligenceSection() {
     return <div className="p-6">Loading intelligence…</div>;
   }
 
-  if (!groups.length) {
+  if (!Array.isArray(groups) || groups.length === 0) {
     return <div className="p-6">No intelligence available.</div>;
   }
 
@@ -56,47 +59,46 @@ export function IntelligenceSection() {
           </p>
         </div>
 
-        {groups.map((group) => (
-          <div key={group.sector} className="space-y-4">
-            <Badge variant="outline" className="text-sm">
-              {group.sector}
-            </Badge>
+        {groups.map((group, idx) => {
+          const articles = Array.isArray(group.articles)
+            ? group.articles
+            : [];
 
-            {group.items.length === 0 && (
-              <p className="text-sm text-gray-500">
-                No intelligence available for this sector.
-              </p>
-            )}
+          return (
+            <div key={idx} className="space-y-4">
+              <Badge variant="outline" className="text-sm">
+                {group.sector || "Intelligence"}
+              </Badge>
 
-            {group.items.map((item) => (
-              <Card key={item.id}>
-                <CardHeader>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-gray-500">
-                      {item.read_time}
-                    </span>
-                  </div>
-                  <CardTitle className="text-xl">
-                    {item.title}
-                  </CardTitle>
-                </CardHeader>
+              {articles.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No intelligence available for this sector.
+                </p>
+              ) : (
+                articles.map((article) => (
+                  <Card key={article.id}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        {article.title}
+                      </CardTitle>
+                    </CardHeader>
 
-                <CardContent className="space-y-2">
-                  {item.articles.map((a) => (
-                    <a
-                      key={a.id}
-                      href={a.url}
-                      target="_blank"
-                      className="block text-emerald-600 hover:underline text-sm"
-                    >
-                      {a.title}
-                    </a>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ))}
+                    <CardContent>
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-600 hover:underline text-sm"
+                      >
+                        Read article →
+                      </a>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
