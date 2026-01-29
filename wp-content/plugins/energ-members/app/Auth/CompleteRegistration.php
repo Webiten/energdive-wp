@@ -39,7 +39,9 @@ class CompleteRegistration
             }
         }
 
-        if ($params['privacy_accepted'] !== true) {
+        // ✅ normalize privacy boolean
+        $privacyAccepted = filter_var($params['privacy_accepted'], FILTER_VALIDATE_BOOLEAN);
+        if ($privacyAccepted !== true) {
             return new WP_Error('privacy_required', 'Privacy policy must be accepted', ['status' => 400]);
         }
 
@@ -47,35 +49,26 @@ class CompleteRegistration
 
         $state = isset($params['state']) ? sanitize_text_field($params['state']) : '';
 
-        // Industry / sub-industry (string OR array)
-        $industryVal = $params['industry'] ?? '';
-        if (is_array($industryVal)) {
-            $industryVal = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $industryVal)))));
-        } else {
-            $industryVal = sanitize_text_field((string) $industryVal);
-        }
+        // Industry / sub-industry
+        $industryVal = $params['industry'];
+        $industryVal = is_array($industryVal)
+            ? implode(', ', array_map('sanitize_text_field', $industryVal))
+            : sanitize_text_field((string) $industryVal);
 
         $subIndustryVal = $params['sub_industry'] ?? '';
-        if (is_array($subIndustryVal)) {
-            $subIndustryVal = implode(', ', array_values(array_unique(array_filter(array_map('sanitize_text_field', $subIndustryVal)))));
-        } else {
-            $subIndustryVal = sanitize_text_field((string) $subIndustryVal);
-        }
+        $subIndustryVal = is_array($subIndustryVal)
+            ? implode(', ', array_map('sanitize_text_field', $subIndustryVal))
+            : sanitize_text_field((string) $subIndustryVal);
 
         /* ================= COMMUNITIES ================= */
 
-        // New: communities (array)
         $communities = [];
-        if (isset($params['communities']) && is_array($params['communities'])) {
-            $communities = array_values(array_unique(array_filter(array_map('sanitize_text_field', $params['communities']))));
+        if (!empty($params['communities']) && is_array($params['communities'])) {
+            $communities = array_values(array_unique(array_map('sanitize_text_field', $params['communities'])));
         }
 
-        // Old fallback: community (string)
-        if (empty($communities)) {
-            $singleCommunity = isset($params['community'] ) ? sanitize_text_field($params['community']) : '';
-            if ($singleCommunity !== '') {
-                $communities = [$singleCommunity];
-            }
+        if (empty($communities) && !empty($params['community'])) {
+            $communities = [sanitize_text_field($params['community'])];
         }
 
         if (empty($communities)) {
@@ -85,46 +78,47 @@ class CompleteRegistration
         /* ================= SUB-COMMUNITIES ================= */
 
         $subCommunities = [];
-        if (isset($params['sub_communities']) && is_array($params['sub_communities'])) {
-            $subCommunities = array_values(array_unique(array_filter(array_map('sanitize_text_field', $params['sub_communities']))));
+        if (!empty($params['sub_communities']) && is_array($params['sub_communities'])) {
+            $subCommunities = array_values(array_unique(array_map('sanitize_text_field', $params['sub_communities'])));
         }
 
-        // Old fallback
-        if (empty($subCommunities)) {
-            $singleSub = isset($params['sub_community']) ? sanitize_text_field($params['sub_community']) : '';
-            if ($singleSub !== '') {
-                $subCommunities = [$singleSub];
-            }
+        if (empty($subCommunities) && !empty($params['sub_community'])) {
+            $subCommunities = [sanitize_text_field($params['sub_community'])];
         }
 
         /* ================= VALIDATION ================= */
 
-        if (!empty($subCommunities)) {
-            foreach ($subCommunities as $sub) {
-                $valid = false;
-                foreach ($communities as $community) {
-                    if (CommunityValidator::isValid($community, $sub)) {
-                        $valid = true;
-                        break;
-                    }
+        foreach ($subCommunities as $sub) {
+            $valid = false;
+            foreach ($communities as $community) {
+                if (CommunityValidator::isValid($community, $sub)) {
+                    $valid = true;
+                    break;
                 }
-                if (!$valid) {
-                    return new WP_Error(
-                        'invalid_community',
-                        'Invalid community or sub-community',
-                        ['status' => 400]
-                    );
-                }
+            }
+            if (!$valid) {
+                return new WP_Error(
+                    'invalid_community',
+                    'Invalid community or sub-community',
+                    ['status' => 400]
+                );
             }
         }
 
         /* ================= DATABASE UPDATE ================= */
 
-        $primaryCommunity = $communities[0] ?? '';
-
         $table = $wpdb->prefix . 'energ_members';
 
-        $dataToUpdate = [
+        // ✅ resolve WHERE condition safely
+        if (is_numeric($user)) {
+            $where = ['user_id' => (int) $user];
+        } elseif (is_email($user)) {
+            $where = ['email' => sanitize_email($user)];
+        } else {
+            $where = ['phone' => sanitize_text_field($user)];
+        }
+
+        $data = [
             'first_name'           => sanitize_text_field($params['first_name']),
             'last_name'            => sanitize_text_field($params['last_name']),
             'job_title'            => sanitize_text_field($params['job_title']),
@@ -132,24 +126,24 @@ class CompleteRegistration
             'country'              => sanitize_text_field($params['country']),
             'state'                => $state,
 
-            // ✅ Legacy column (ONLY primary community)
-            'community'            => sanitize_text_field($primaryCommunity),
+            // legacy support
+            'community'            => sanitize_text_field($communities[0]),
 
-            // ❌ STOP using single sub_community (kills multi-select)
-            'sub_community'        => null,
+            // avoid NULL write issues
+            'sub_community'        => '',
 
             'industry'             => $industryVal,
             'sub_industry'         => $subIndustryVal,
             'status'               => 'active',
 
-            // ✅ SOURCE OF TRUTH
+            // source of truth
             'communities_json'     => wp_json_encode($communities),
             'sub_communities_json' => wp_json_encode($subCommunities),
         ];
 
-        $where = [ is_email($user) ? 'email' : 'phone' => $user ];
+        $formats = array_fill(0, count($data), '%s');
 
-        $updated = $wpdb->update($table, $dataToUpdate, $where);
+        $updated = $wpdb->update($table, $data, $where, $formats);
 
         if ($updated === false) {
             return new WP_Error('db_error', 'Could not complete registration', ['status' => 500]);

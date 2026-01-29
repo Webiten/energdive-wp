@@ -17,78 +17,94 @@ class IntelligenceRoutes
     }
 
     public static function handle($request)
-{
-    global $wpdb;
+    {
+        global $wpdb;
 
-    $email = $request->get_param('auth_identifier');
-    if (!$email) return [];
+        // ✅ correct JWT param
+        $authUser = $request->get_param('auth_user');
+        if (!$authUser) {
+            return rest_ensure_response([]);
+        }
 
-    // 1️⃣ Get user communities
-    $row = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT community FROM {$wpdb->prefix}energ_members WHERE email = %s",
-            $email
-        ),
-        ARRAY_A
-    );
+        // ✅ resolve member safely
+        if (is_numeric($authUser)) {
+            $where = $wpdb->prepare("user_id = %d", (int) $authUser);
+        } elseif (is_email($authUser)) {
+            $where = $wpdb->prepare("email = %s", $authUser);
+        } else {
+            $where = $wpdb->prepare("phone = %s", $authUser);
+        }
 
-    if (empty($row['community'])) return [];
+        // ✅ read SOURCE OF TRUTH
+        $row = $wpdb->get_row(
+            "SELECT communities_json FROM {$wpdb->prefix}energ_members WHERE {$where} LIMIT 1",
+            ARRAY_A
+        );
 
-    $sector_slugs = array_map('trim', explode(',', $row['community']));
+        if (empty($row['communities_json'])) {
+            return rest_ensure_response([]);
+        }
 
-    // 2️⃣ Resolve sector terms
-    $sectors = get_terms([
-        'taxonomy'   => 'sector',
-        'slug'       => $sector_slugs,
-        'hide_empty' => false,
-    ]);
+        $communities = json_decode($row['communities_json'], true);
+        if (!is_array($communities) || empty($communities)) {
+            return rest_ensure_response([]);
+        }
 
-    if (empty($sectors) || is_wp_error($sectors)) return [];
+        // ✅ normalize to taxonomy slugs
+        $sectorSlugs = array_map(
+            fn($c) => sanitize_title($c),
+            $communities
+        );
 
-    $response = [];
-
-    // 3️⃣ LOOP PER COMMUNITY 🔥
-    foreach ($sectors as $sector) {
-
-        $articles = new WP_Query([
-            'post_type'      => 'articles',
-            'post_status'    => 'publish',
-            'posts_per_page' => 5,
-            'tax_query'      => [
-                [
-                    'taxonomy' => 'sector',
-                    'terms'    => [$sector->term_id],
-                ]
-            ]
+        // ✅ fetch sector terms
+        $sectors = get_terms([
+            'taxonomy'   => 'sector',
+            'slug'       => $sectorSlugs,
+            'hide_empty' => false,
         ]);
 
-        $items = [];
-
-        while ($articles->have_posts()) {
-            $articles->the_post();
-            $items[] = [
-                'id'    => get_the_ID(),
-                'title' => get_the_title(),
-                'url'   => get_permalink(),
-            ];
+        if (empty($sectors) || is_wp_error($sectors)) {
+            return rest_ensure_response([]);
         }
 
-        wp_reset_postdata();
+        $response = [];
 
-        if (!empty($items)) {
-            $response[] = [
-                'sector'   => $sector->name,
-                'articles' => $items,
-            ];
+        foreach ($sectors as $sector) {
+
+            $articles = new WP_Query([
+                'post_type'      => 'articles',
+                'post_status'    => 'publish',
+                'posts_per_page' => 5,
+                'tax_query'      => [
+                    [
+                        'taxonomy' => 'sector',
+                        'terms'    => [$sector->term_id],
+                        'field'    => 'term_id',
+                    ]
+                ]
+            ]);
+
+            $items = [];
+
+            while ($articles->have_posts()) {
+                $articles->the_post();
+                $items[] = [
+                    'id'    => get_the_ID(),
+                    'title' => get_the_title(),
+                    'url'   => get_permalink(),
+                ];
+            }
+
+            wp_reset_postdata();
+
+            if (!empty($items)) {
+                $response[] = [
+                    'sector'   => $sector->name,
+                    'articles' => $items,
+                ];
+            }
         }
-    }
 
-    return rest_ensure_response($response);
-}
-
-    private static function get_sector_name($post_id)
-    {
-        $terms = get_the_terms($post_id, 'sector');
-        return $terms && !is_wp_error($terms) ? $terms[0]->name : '';
+        return rest_ensure_response($response);
     }
 }
