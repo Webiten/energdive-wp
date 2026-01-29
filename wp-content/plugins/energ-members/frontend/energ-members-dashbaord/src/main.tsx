@@ -5,12 +5,15 @@ import "./styles/index.css";
 
 const root = document.getElementById("energ-members-root");
 
-if (!root) {
-  throw new Error("Root container #energ-members-root not found");
+if (root) {
+  ReactDOM.createRoot(root).render(
+    <React.StrictMode>
+      <div
+        id="energ-dashboard-root"
+        className="min-h-screen w-full bg-white text-gray-900"
+      >
+        <App />
+      </div>
+    </React.StrictMode>
+  );
 }
-
-ReactDOM.createRoot(root).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);

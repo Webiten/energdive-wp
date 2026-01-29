@@ -17,3 +17,16 @@ body,
 #energ-members-root {
   font-family: Inter, system-ui, sans-serif;
 }
+
+/* 🔥 HARD RESET FOR WORDPRESS BLEED */
+#energ-members-root,
+#energ-dashboard-root {
+  background: white !important;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+/* prevent WP body styles */
+body {
+  background: white !important;
+}
