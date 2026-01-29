@@ -56,7 +56,7 @@ class IntelligenceRoutes
         // normalize to slugs + legacy safety
         $sectorSlugs = array_unique(array_merge(
             array_map('sanitize_title', $communities),
-            array_map(fn ($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
+            array_map(fn($c) => sanitize_title(str_replace('-', ' ', $c)), $communities)
         ));
 
         $sectors = get_terms([
@@ -117,13 +117,21 @@ class IntelligenceRoutes
                 $intelQuery->the_post();
 
                 // 🔥 ACF Relationship field
-                $relatedArticles = get_field('related_articles');
+                $relatedArticles = function_exists('get_field')
+                    ? get_field('related_articles')
+                    : [];
+
+
+                if (!is_array($relatedArticles)) {
+                    continue;
+                }
 
                 if (!is_array($relatedArticles)) {
                     continue;
                 }
 
                 foreach ($relatedArticles as $post) {
+
                     if (!isset($post->ID) || isset($seen[$post->ID])) {
                         continue;
                     }
