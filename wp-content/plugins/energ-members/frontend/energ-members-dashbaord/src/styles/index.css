@@ -1,39 +1,19 @@
-@import './fonts.css';
-@import './theme.css';
+@import "./fonts.css";
+@import "./theme.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ================================
-   FORCE WHITE BACKGROUND (FINAL)
-   ================================ */
-
+/* DO NOT USE @apply border-border HERE */
+/* background safety net */
 html,
 body {
-  background-color: #ffffff !important;
+  background-color: #ffffff;
   min-height: 100%;
 }
 
-/* React mount root */
 #energ-members-root {
-  background-color: #ffffff !important;
+  background-color: #ffffff;
   min-height: 100vh;
-  width: 100%;
-}
-
-/* React app wrapper */
-#energ-members-root > div {
-  background-color: #ffffff !important;
-  min-height: 100vh;
-}
-
-/* Kill Elementor / WP interference */
-.site,
-.site-main,
-#primary,
-.elementor,
-.elementor-section,
-.elementor-container {
-  background: transparent !important;
 }
