@@ -5,103 +5,67 @@ import { TrendingUp, Users, FileText, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { useMe, getMeDisplayName } from "../hooks/useMe";
 
-const mockArticles = [
-  {
-    id: 1,
-    title: "The Future of Renewable Energy: Policy Shifts in 2026",
-    category: "Policy & Regulation",
-    author: "Dr. Sarah Mitchell",
-    date: "Jan 8, 2026",
-    readTime: "8 min read",
-    excerpt:
-      "An in-depth analysis of the latest regulatory changes affecting renewable energy adoption across global markets.",
-  },
-  {
-    id: 2,
-    title: "Battery Storage Technologies: Market Analysis Q1 2026",
-    category: "Technology & Innovation",
-    author: "James Chen",
-    date: "Jan 7, 2026",
-    readTime: "12 min read",
-    excerpt:
-      "Comprehensive market overview of emerging battery storage solutions and their impact on grid infrastructure.",
-  },
-  {
-    id: 3,
-    title: "Carbon Markets: Trading Dynamics and Price Forecasts",
-    category: "Market & Industry",
-    author: "Maria Rodriguez",
-    date: "Jan 6, 2026",
-    readTime: "10 min read",
-    excerpt:
-      "Expert insights on carbon credit markets and projected pricing trends through 2027.",
-  },
-];
+import { useIntelligence } from "../hooks/useIntelligence";
 
-const mockTrending = [
-  { title: "Global LNG Market Outlook 2026", views: "12.4K", category: "Market Analysis" },
-  { title: "AI in Energy Grid Management", views: "8.9K", category: "Technology" },
-  { title: "EU Green Deal: Latest Updates", views: "7.2K", category: "Policy" },
-  { title: "Solar Panel Efficiency Breakthroughs", views: "6.8K", category: "Innovation" },
-];
+import { useTrendingNews } from "../hooks/useTrendingNews";
 
-const mockCommunity = [
-  {
-    contributor: "Dr. Emily Watson",
-    role: "Energy Policy Analyst",
-    contribution: "Shared insights on offshore wind farm regulations",
-    timestamp: "2 hours ago",
-    discussionTitle: "Grid flexibility: How are different markets solving intermittency?",
-    replies: 12,
-  },
-  {
-    contributor: "Michael Zhang",
-    role: "Senior Consultant",
-    contribution: "Published analysis on hydrogen infrastructure development",
-    timestamp: "5 hours ago",
-    discussionTitle: "Green hydrogen adoption timeline in heavy industry",
-    replies: 8,
-  },
-  {
-    contributor: "Lisa Anderson",
-    role: "Industry Practitioner",
-    contribution: "Comment on nuclear energy investment trends",
-    timestamp: "1 day ago",
-    discussionTitle: "Nuclear vs Renewables: Can we have both?",
-    replies: 15,
-  },
-];
+// const mockCommunity = [
+//   {
+//     contributor: "Dr. Emily Watson",
+//     role: "Energy Policy Analyst",
+//     contribution: "Shared insights on offshore wind farm regulations",
+//     timestamp: "2 hours ago",
+//     discussionTitle: "Grid flexibility: How are different markets solving intermittency?",
+//     replies: 12,
+//   },
+//   {
+//     contributor: "Michael Zhang",
+//     role: "Senior Consultant",
+//     contribution: "Published analysis on hydrogen infrastructure development",
+//     timestamp: "5 hours ago",
+//     discussionTitle: "Green hydrogen adoption timeline in heavy industry",
+//     replies: 8,
+//   },
+//   {
+//     contributor: "Lisa Anderson",
+//     role: "Industry Practitioner",
+//     contribution: "Comment on nuclear energy investment trends",
+//     timestamp: "1 day ago",
+//     discussionTitle: "Nuclear vs Renewables: Can we have both?",
+//     replies: 15,
+//   },
+// ];
 
-const activeDiscussions = [
-  {
-    title: "What's the realistic timeline for green hydrogen adoption?",
-    category: "Technology",
-    replies: 128,
-    participants: 45,
-    trending: true,
-  },
-  {
-    title: "Carbon offset verification: Current challenges",
-    category: "Policy",
-    replies: 91,
-    participants: 32,
-    trending: false,
-  },
-  {
-    title: "Grid modernization best practices",
-    category: "Infrastructure",
-    replies: 145,
-    participants: 56,
-    trending: true,
-  },
-  {
-    title: "EV charging infrastructure business models",
-    category: "Market",
-    replies: 112,
-    participants: 38,
-    trending: false,
-  },
-];
+// const activeDiscussions = [
+//   {
+//     title: "What's the realistic timeline for green hydrogen adoption?",
+//     category: "Technology",
+//     replies: 128,
+//     participants: 45,
+//     trending: true,
+//   },
+//   {
+//     title: "Carbon offset verification: Current challenges",
+//     category: "Policy",
+//     replies: 91,
+//     participants: 32,
+//     trending: false,
+//   },
+//   {
+//     title: "Grid modernization best practices",
+//     category: "Infrastructure",
+//     replies: 145,
+//     participants: 56,
+//     trending: true,
+//   },
+//   {
+//     title: "EV charging infrastructure business models",
+//     category: "Market",
+//     replies: 112,
+//     participants: 38,
+//     trending: false,
+//   },
+// ];
 
 export function DashboardHome() {
   const { me, loading } = useMe();
@@ -189,18 +153,27 @@ export function DashboardHome() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {mockArticles.map((article) => (
+                {loading && <p className="text-sm text-gray-500">Loading...</p>}
+
+                {intelligenceFeed.map((article) => (
                   <div key={article.id} className="pb-6 border-b last:border-b-0 last:pb-0">
                     <div className="flex items-start gap-3 mb-3">
                       <Badge variant="secondary" className="text-xs">
                         {article.category}
                       </Badge>
-                      <span className="text-xs text-gray-500">{article.readTime}</span>
+                      <span className="text-xs text-gray-500">
+                        {article.readTime}
+                      </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-emerald-600 cursor-pointer">
+
+                    <h3 className="text-lg font-semibold text-gray-900 hover:text-emerald-600 cursor-pointer">
                       {article.title}
                     </h3>
-                    <p className="text-sm text-gray-600 mb-3">{article.excerpt}</p>
+
+                    <p className="text-sm text-gray-600 mb-3">
+                      {article.excerpt}
+                    </p>
+
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <span>{article.author}</span>
                       <span>{article.date}</span>
@@ -208,10 +181,11 @@ export function DashboardHome() {
                   </div>
                 ))}
               </CardContent>
+
             </Card>
 
             {/* Community Highlights */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Community Highlights</span>
@@ -248,7 +222,7 @@ export function DashboardHome() {
                   </div>
                 ))}
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Active Discussions */}
             {/* <Card>
@@ -296,20 +270,31 @@ export function DashboardHome() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockTrending.map((item, index) => (
-                  <div key={index} className="pb-4 border-b last:border-b-0 last:pb-0">
+                {trendingLoading && (
+                  <p className="text-sm text-gray-500">Loading trending news...</p>
+                )}
+
+                {trendingNews.map((item) => (
+                  <div
+                    key={item.id}
+                    className="pb-4 border-b last:border-b-0 last:pb-0"
+                  >
                     <h4 className="text-sm font-medium text-gray-900 mb-2 hover:text-emerald-600 cursor-pointer">
                       {item.title}
                     </h4>
+
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <Badge variant="outline" className="text-xs">
-                        {item.category}
-                      </Badge>
-                      <span>{item.views} views</span>
+                      <Badge variant="outline">{item.category}</Badge>
+                      {item.views ? (
+                        <span>{item.views} views</span>
+                      ) : (
+                        <span>Trending</span>
+                      )}
                     </div>
                   </div>
                 ))}
               </CardContent>
+
             </Card>
 
             {/* Placeholder for future content */}
