@@ -10,7 +10,10 @@ const authRoot = document.getElementById("energ-auth-root");
 if (dashboardRoot) {
   ReactDOM.createRoot(dashboardRoot).render(
     <React.StrictMode>
-      <div className="min-h-screen w-full bg-white text-gray-900">
+      {/* Added 'relative' and 'isolate' 
+          'isolate' creates a new CSS stacking context so elements don't overlap 
+      */}
+      <div className="min-h-screen w-full bg-white text-gray-900 relative isolate">
         <App />
       </div>
     </React.StrictMode>

@@ -1,21 +1,18 @@
-@import "./fonts.css";
-@import "./theme.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ===============================
-   AUTH (LOGIN PAGE)
-   =============================== */
+#energ-members-root, 
 #energ-auth-root {
-  min-height: 100vh;
+    background-color: #ffffff !important;
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1; /* Forces it above any legacy WP background resets */
 }
 
-/* ===============================
-   DASHBOARD ONLY
-   =============================== */
-#energ-members-root {
-  background-color: #ffffff;
-  min-height: 100vh;
+/* Fix for overlapping elements - ensure all divs inside your root behave */
+#energ-members-root div {
+    box-sizing: border-box;
 }
