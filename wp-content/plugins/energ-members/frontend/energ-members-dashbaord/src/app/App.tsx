@@ -123,7 +123,7 @@ export default function App() {
       <SessionExpiredModal />
 
       {appState === "dashboard" ? (
-        <div className="min-h-screen w-full bg-gray-50">
+        <div className="min-h-screen w-full bg-white">
           <TopBar onLogout={() => setAppState("login")} />
 
           <SecondHeader

@@ -5,40 +5,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* =====================================================
-   🔒 WORDPRESS + REACT BACKGROUND SAFETY NET
-   ===================================================== */
+/* ===============================
+   GLOBAL WHITE BACKGROUND FIX
+   =============================== */
 
-/*
-  ⚠️ DO NOT use:
-  @apply border-border
-  @apply outline-ring
-  (this was breaking the build)
-*/
-
-/* Ensure full height chain */
 html,
 body {
+  background-color: #ffffff !important;
   min-height: 100%;
-  background-color: #ffffff;
 }
 
-/* React mount root (inside WP shortcode) */
-#energ-members-root {
+/* React mount root */
+#energ-members-root,
+#energ-members-root > div {
+  background-color: #ffffff !important;
   min-height: 100vh;
-  width: 100%;
-  background-color: #ffffff;
-}
-
-/* Actual React App wrapper (from main.tsx) */
-.energ-react-root {
-  min-height: 100vh;
-  width: 100%;
-  background-color: #ffffff;
-}
-
-/* Optional: smooth text rendering */
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
