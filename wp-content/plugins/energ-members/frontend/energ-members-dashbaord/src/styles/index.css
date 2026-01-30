@@ -21,3 +21,17 @@ body {
   background-color: #ffffff !important;
   min-height: 100vh;
 }
+
+/* ===============================
+   FINAL WORDPRESS OVERRIDE
+   =============================== */
+
+#energ-dashboard-root,
+#energ-dashboard-root * {
+  background-color: initial;
+}
+
+#energ-dashboard-root {
+  background-color: #ffffff !important;
+  min-height: 100vh;
+}
