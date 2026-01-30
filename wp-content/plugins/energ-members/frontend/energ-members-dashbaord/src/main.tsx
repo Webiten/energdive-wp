@@ -3,22 +3,25 @@ import ReactDOM from "react-dom/client";
 import App from "./app/App";
 import "./styles/index.css";
 
-const root = document.getElementById("energ-members-root");
+const dashboardRoot = document.getElementById("energ-members-root");
+const authRoot = document.getElementById("energ-auth-root");
 
-if (root) {
-  ReactDOM.createRoot(root).render(
+/* DASHBOARD */
+if (dashboardRoot) {
+  ReactDOM.createRoot(dashboardRoot).render(
     <React.StrictMode>
-      {/* WordPress-safe shell */}
-      <div
-        id="energ-dashboard-root"
-        className="min-h-screen w-full bg-white text-gray-900"
-        style={{
-          backgroundColor: "#ffffff",
-          isolation: "isolate",
-        }}
-      >
+      <div className="min-h-screen w-full bg-white text-gray-900">
         <App />
       </div>
+    </React.StrictMode>
+  );
+}
+
+/* AUTH / LOGIN */
+if (authRoot) {
+  ReactDOM.createRoot(authRoot).render(
+    <React.StrictMode>
+      <App />
     </React.StrictMode>
   );
 }

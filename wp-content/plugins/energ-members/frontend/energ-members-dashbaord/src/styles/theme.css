@@ -45,7 +45,7 @@
 
   body {
     background-color: #ffffff !important;
-    color: var(--foreground);
+    color: hsl(var(--foreground));
     min-height: 100vh;
   }
 }

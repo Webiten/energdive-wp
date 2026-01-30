@@ -6,32 +6,16 @@
 @tailwind utilities;
 
 /* ===============================
-   GLOBAL WHITE BACKGROUND FIX
+   AUTH (LOGIN PAGE)
    =============================== */
-
-html,
-body {
-  background-color: #ffffff !important;
-  min-height: 100%;
-}
-
-/* React mount root */
-#energ-members-root,
-#energ-members-root > div {
-  background-color: #ffffff !important;
+#energ-auth-root {
   min-height: 100vh;
 }
 
 /* ===============================
-   FINAL WORDPRESS OVERRIDE
+   DASHBOARD ONLY
    =============================== */
-
-#energ-dashboard-root,
-#energ-dashboard-root * {
-  background-color: initial;
-}
-
-#energ-dashboard-root {
-  background-color: #ffffff !important;
+#energ-members-root {
+  background-color: #ffffff;
   min-height: 100vh;
 }
