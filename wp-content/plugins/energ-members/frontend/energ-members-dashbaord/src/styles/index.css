@@ -5,28 +5,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 🔥 GLOBAL WHITE CANVAS FIX */
+/* ================================
+   FORCE WHITE BACKGROUND (FINAL)
+   ================================ */
+
 html,
-body,
-#energ-members-root {
-  width: 100%;
-  height: 100%;
-  background-color: #ffffff;
-}
-
-#energ-members-root {
-  font-family: Inter, system-ui, sans-serif;
-}
-
-/* 🔥 HARD RESET FOR WORDPRESS BLEED */
-#energ-members-root,
-#energ-dashboard-root {
-  background: white !important;
-  min-height: 100vh;
-  isolation: isolate;
-}
-
-/* prevent WP body styles */
 body {
-  background: white !important;
+  background-color: #ffffff !important;
+  min-height: 100%;
+}
+
+/* React mount root */
+#energ-members-root {
+  background-color: #ffffff !important;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* React app wrapper */
+#energ-members-root > div {
+  background-color: #ffffff !important;
+  min-height: 100vh;
+}
+
+/* Kill Elementor / WP interference */
+.site,
+.site-main,
+#primary,
+.elementor,
+.elementor-section,
+.elementor-container {
+  background: transparent !important;
 }
