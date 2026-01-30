@@ -1,16 +1,16 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './app/App'
-import './styles/index.css'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./app/App";
+import "./styles/index.css";
 
-const root = document.getElementById('energ-members-root')
+const root = document.getElementById("energ-members-root");
 
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <div className="min-h-screen w-full bg-white text-gray-900">
+      <div className="energ-react-root">
         <App />
       </div>
     </React.StrictMode>
-  )
+  );
 }

@@ -1,8 +1,8 @@
 @custom-variant dark (&:is(.dark *));
 
-/* ===============================
+/* =====================================================
    ROOT THEME VARIABLES (LIGHT)
-   =============================== */
+   ===================================================== */
 :root {
   --font-size: 16px;
 
@@ -12,11 +12,11 @@
   --card: #ffffff;
   --card-foreground: oklch(0.145 0 0);
 
-  --popover: oklch(1 0 0);
+  --popover: #ffffff;
   --popover-foreground: oklch(0.145 0 0);
 
   --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: #ffffff;
 
   --secondary: oklch(0.95 0.0058 264.53);
   --secondary-foreground: #030213;
@@ -34,7 +34,6 @@
 
   --input: transparent;
   --input-background: #f3f3f5;
-  --switch-background: #cbced4;
 
   --ring: oklch(0.708 0 0);
 
@@ -43,25 +42,19 @@
 
   --radius: 0.625rem;
 
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-
-  --sidebar: oklch(0.985 0 0);
+  --sidebar: #ffffff;
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f5;
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-border: rgba(0, 0, 0, 0.1);
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* ===============================
-   DARK MODE
-   =============================== */
+/* =====================================================
+   DARK MODE (SAFE)
+   ===================================================== */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -85,7 +78,7 @@
   --accent-foreground: oklch(0.985 0 0);
 
   --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --destructive-foreground: #ffffff;
 
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
@@ -101,9 +94,9 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-/* ===============================
-   TAILWIND THEME TOKENS
-   =============================== */
+/* =====================================================
+   TAILWIND TOKEN BRIDGE (NO @apply)
+   ===================================================== */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -126,31 +119,38 @@
   --color-ring: var(--ring);
 }
 
-/* ===============================
+/* =====================================================
    BASE STYLES (BUILD SAFE)
-   =============================== */
+   ===================================================== */
 @layer base {
   * {
-    border-color: hsl(var(--border));
-    outline-color: hsl(var(--ring) / 0.5);
+    border-color: var(--border);
+    outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
   }
 
   html {
     font-size: var(--font-size);
-    background: #ffffff;
+    background-color: #ffffff;
   }
 
   body {
     background-color: #ffffff !important;
-    color: hsl(var(--foreground));
+    color: var(--foreground);
     min-height: 100vh;
   }
 
-  h1, h2, h3, h4, label, button, input {
+  h1,
+  h2,
+  h3,
+  h4,
+  label,
+  button,
+  input {
     line-height: 1.5;
   }
 
-  label, button {
+  label,
+  button {
     font-weight: var(--font-weight-medium);
   }
 
@@ -159,11 +159,15 @@
   }
 }
 
-/* ===============================
-   WORDPRESS + REACT ROOT FIX
-   =============================== */
+/* =====================================================
+   WORDPRESS + REACT HARD ISOLATION
+   ===================================================== */
 #energ-members-root,
-#energ-members-root > div {
+#energ-members-root * {
+  background-color: transparent;
+}
+
+#energ-members-root {
   background-color: #ffffff !important;
   min-height: 100vh;
 }
