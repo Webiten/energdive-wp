@@ -1,90 +1,53 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { TrendingUp, Users, FileText, MessageSquare } from "lucide-react";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { TrendingUp, FileText } from "lucide-react";
 import { useMe, getMeDisplayName } from "../hooks/useMe";
-
-import { useIntelligence } from "../hooks/useIntelligence";
-
 import { useTrendingNews } from "../hooks/useTrendingNews";
 
-// const mockCommunity = [
-//   {
-//     contributor: "Dr. Emily Watson",
-//     role: "Energy Policy Analyst",
-//     contribution: "Shared insights on offshore wind farm regulations",
-//     timestamp: "2 hours ago",
-//     discussionTitle: "Grid flexibility: How are different markets solving intermittency?",
-//     replies: 12,
-//   },
-//   {
-//     contributor: "Michael Zhang",
-//     role: "Senior Consultant",
-//     contribution: "Published analysis on hydrogen infrastructure development",
-//     timestamp: "5 hours ago",
-//     discussionTitle: "Green hydrogen adoption timeline in heavy industry",
-//     replies: 8,
-//   },
-//   {
-//     contributor: "Lisa Anderson",
-//     role: "Industry Practitioner",
-//     contribution: "Comment on nuclear energy investment trends",
-//     timestamp: "1 day ago",
-//     discussionTitle: "Nuclear vs Renewables: Can we have both?",
-//     replies: 15,
-//   },
-// ];
+type Article = {
+  id: number;
+  title: string;
+  url: string;
+};
 
-// const activeDiscussions = [
-//   {
-//     title: "What's the realistic timeline for green hydrogen adoption?",
-//     category: "Technology",
-//     replies: 128,
-//     participants: 45,
-//     trending: true,
-//   },
-//   {
-//     title: "Carbon offset verification: Current challenges",
-//     category: "Policy",
-//     replies: 91,
-//     participants: 32,
-//     trending: false,
-//   },
-//   {
-//     title: "Grid modernization best practices",
-//     category: "Infrastructure",
-//     replies: 145,
-//     participants: 56,
-//     trending: true,
-//   },
-//   {
-//     title: "EV charging infrastructure business models",
-//     category: "Market",
-//     replies: 112,
-//     participants: 38,
-//     trending: false,
-//   },
-// ];
+type IntelligenceGroup = {
+  sector?: string;
+  articles?: Article[];
+};
 
 export function DashboardHome() {
   const { me, loading } = useMe();
 
-  // ✅ FIX: useIntelligence hook ko actually use karo
- const {
-  data: rawFeed,
-  loading: intelligenceLoading,
-} = useIntelligence();
+  // ====== INTELLIGENCE (SAME WAY AS IntelligenceSection.tsx) ======
+  const [groups, setGroups] = useState<IntelligenceGroup[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
 
-// GUARANTEED ARRAY
-const intelligenceFeed = Array.isArray(rawFeed)
-  ? rawFeed
-  : rawFeed?.items && Array.isArray(rawFeed.items)
-  ? rawFeed.items
-  : [];
+  useEffect(() => {
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token");
 
+    fetch("/wp-json/energ/v1/intelligence", {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Unauthorized / API failed");
+        return res.json();
+      })
+      .then((data) => {
+        setGroups(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error("Dashboard intelligence fetch failed:", err);
+        setGroups([]);
+      })
+      .finally(() => setFeedLoading(false));
+  }, []);
 
-  // ✅ FIX: trending hook ko use karo
+  // ====== TRENDING (keep your hook) ======
   const {
     data: trendingNews = [],
     loading: trendingLoading,
@@ -97,8 +60,7 @@ const intelligenceFeed = Array.isArray(rawFeed)
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
-
-        {/* Welcome Section */}
+        {/* Welcome */}
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">
             Welcome back, {welcomeName}
@@ -108,10 +70,8 @@ const intelligenceFeed = Array.isArray(rawFeed)
           </p>
         </div>
 
-        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Intelligence Feed */}
+          {/* ====== INTELLIGENCE FEED (DASHBOARD STYLE) ====== */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -122,49 +82,56 @@ const intelligenceFeed = Array.isArray(rawFeed)
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {intelligenceLoading && (
-                  <p className="text-sm text-gray-500">Loading feed...</p>
+                {feedLoading && (
+                  <p className="text-sm text-gray-500">
+                    Loading intelligence...
+                  </p>
                 )}
 
-                {intelligenceFeed.length === 0 && !intelligenceLoading && (
+                {!feedLoading && groups.length === 0 && (
                   <p className="text-sm text-gray-500">
                     No intelligence available yet.
                   </p>
                 )}
 
-                {intelligenceFeed.map((article: any) => (
-                  <div
-                    key={article.id}
-                    className="pb-6 border-b last:border-b-0 last:pb-0"
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <Badge variant="secondary" className="text-xs">
-                        {article.category || "General"}
+                {groups.map((group, idx) => {
+                  const articles = Array.isArray(group.articles)
+                    ? group.articles
+                    : [];
+
+                  return (
+                    <div key={idx} className="space-y-4">
+                      <Badge variant="outline" className="text-xs">
+                        {group.sector || "Intelligence"}
                       </Badge>
-                      <span className="text-xs text-gray-500">
-                        {article.readTime || ""}
-                      </span>
+
+                      {articles.map((article) => (
+                        <div
+                          key={article.id}
+                          className="pb-6 border-b last:border-b-0 last:pb-0"
+                        >
+                          <h3 className="text-lg font-semibold text-gray-900 hover:text-emerald-600 cursor-pointer">
+                            {article.title}
+                          </h3>
+
+                          <a
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-emerald-600 hover:underline"
+                          >
+                            Read article →
+                          </a>
+                        </div>
+                      ))}
                     </div>
-
-                    <h3 className="text-lg font-semibold text-gray-900 hover:text-emerald-600 cursor-pointer">
-                      {article.title}
-                    </h3>
-
-                    <p className="text-sm text-gray-600 mb-3">
-                      {article.excerpt}
-                    </p>
-
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{article.author}</span>
-                      <span>{article.date}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar - Trending */}
+          {/* ====== TRENDING SIDEBAR ====== */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -206,7 +173,7 @@ const intelligenceFeed = Array.isArray(rawFeed)
               </CardContent>
             </Card>
 
-            {/* Placeholder Card */}
+            {/* Placeholder */}
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
               <CardContent className="pt-6 text-center">
                 <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -226,4 +193,3 @@ const intelligenceFeed = Array.isArray(rawFeed)
     </div>
   );
 }
-
