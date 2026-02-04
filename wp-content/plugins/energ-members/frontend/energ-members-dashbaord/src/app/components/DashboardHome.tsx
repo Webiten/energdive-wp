@@ -70,6 +70,18 @@ import { useTrendingNews } from "../hooks/useTrendingNews";
 export function DashboardHome() {
   const { me, loading } = useMe();
 
+  // ✅ FIX: useIntelligence hook ko actually use karo
+  const {
+    data: intelligenceFeed = [],
+    loading: intelligenceLoading,
+  } = useIntelligence();
+
+  // ✅ FIX: trending hook ko use karo
+  const {
+    data: trendingNews = [],
+    loading: trendingLoading,
+  } = useTrendingNews();
+
   const welcomeName = useMemo(() => {
     return loading ? "…" : getMeDisplayName(me);
   }, [loading, me]);
@@ -77,73 +89,21 @@ export function DashboardHome() {
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
       <div className="max-w-7xl mx-auto p-6 md:p-8 space-y-8">
+
         {/* Welcome Section */}
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">
             Welcome back, {welcomeName}
           </h1>
-          <p className="text-gray-600">Your intelligence hub for energy industry insights</p>
+          <p className="text-gray-600">
+            Your intelligence hub for energy industry insights
+          </p>
         </div>
-
-        {/* Quick Stats */}
-        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <FileText className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">124</p>
-                  <p className="text-sm text-gray-600">Articles Published</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">18</p>
-                  <p className="text-sm text-gray-600">Trending Topics</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">2.3K</p>
-                  <p className="text-sm text-gray-600">Active Members</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <MessageSquare className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">89</p>
-                  <p className="text-sm text-gray-600">Discussions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div> */}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Intelligence Feed - Takes 2 columns */}
+
+          {/* Intelligence Feed */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -152,17 +112,29 @@ export function DashboardHome() {
                   <Badge variant="outline">Latest Updates</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {loading && <p className="text-sm text-gray-500">Loading...</p>}
 
-                {intelligenceFeed.map((article) => (
-                  <div key={article.id} className="pb-6 border-b last:border-b-0 last:pb-0">
+              <CardContent className="space-y-6">
+                {intelligenceLoading && (
+                  <p className="text-sm text-gray-500">Loading feed...</p>
+                )}
+
+                {intelligenceFeed.length === 0 && !intelligenceLoading && (
+                  <p className="text-sm text-gray-500">
+                    No intelligence available yet.
+                  </p>
+                )}
+
+                {intelligenceFeed.map((article: any) => (
+                  <div
+                    key={article.id}
+                    className="pb-6 border-b last:border-b-0 last:pb-0"
+                  >
                     <div className="flex items-start gap-3 mb-3">
                       <Badge variant="secondary" className="text-xs">
-                        {article.category}
+                        {article.category || "General"}
                       </Badge>
                       <span className="text-xs text-gray-500">
-                        {article.readTime}
+                        {article.readTime || ""}
                       </span>
                     </div>
 
@@ -181,86 +153,10 @@ export function DashboardHome() {
                   </div>
                 ))}
               </CardContent>
-
             </Card>
-
-            {/* Community Highlights */}
-            {/* <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Community Highlights</span>
-                  <Badge variant="outline" className="text-xs">
-                    Live Activity
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {mockCommunity.map((item, index) => (
-                  <div key={index} className="flex gap-4 pb-4 border-b last:border-b-0 last:pb-0">
-                    <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white">
-                        {item.contributor.split(" ").map((n) => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-gray-900">{item.contributor}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {item.role}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">{item.contribution}</p>
-                      <p className="text-xs text-gray-900 font-medium mb-1 hover:text-emerald-600 cursor-pointer">
-                        "{item.discussionTitle}"
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">{item.timestamp}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">{item.replies} replies</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card> */}
-
-            {/* Active Discussions */}
-            {/* <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-emerald-600" />
-                  Active Discussions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {activeDiscussions.map((discussion, index) => (
-                  <div key={index} className="pb-4 border-b last:border-b-0 last:pb-0">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h4 className="text-sm font-medium text-gray-900 hover:text-emerald-600 cursor-pointer flex-1">
-                        {discussion.title}
-                      </h4>
-                      {discussion.trending && (
-                        <Badge className="bg-orange-600 text-xs flex-shrink-0">
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          Hot
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <Badge variant="outline" className="text-xs">
-                        {discussion.category}
-                      </Badge>
-                      <span>{discussion.replies} replies</span>
-                      <span>•</span>
-                      <span>{discussion.participants} participants</span>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card> */}
           </div>
 
-          {/* Sidebar - Trending This Week */}
+          {/* Sidebar - Trending */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -269,12 +165,15 @@ export function DashboardHome() {
                   Trending This Week
                 </CardTitle>
               </CardHeader>
+
               <CardContent className="space-y-4">
                 {trendingLoading && (
-                  <p className="text-sm text-gray-500">Loading trending news...</p>
+                  <p className="text-sm text-gray-500">
+                    Loading trending news...
+                  </p>
                 )}
 
-                {trendingNews.map((item) => (
+                {trendingNews.map((item: any) => (
                   <div
                     key={item.id}
                     className="pb-4 border-b last:border-b-0 last:pb-0"
@@ -284,7 +183,10 @@ export function DashboardHome() {
                     </h4>
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <Badge variant="outline">{item.category}</Badge>
+                      <Badge variant="outline">
+                        {item.category || "General"}
+                      </Badge>
+
                       {item.views ? (
                         <span>{item.views} views</span>
                       ) : (
@@ -294,16 +196,17 @@ export function DashboardHome() {
                   </div>
                 ))}
               </CardContent>
-
             </Card>
 
-            {/* Placeholder for future content */}
+            {/* Placeholder Card */}
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
               <CardContent className="pt-6 text-center">
                 <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
-                <h4 className="font-semibold text-gray-900 mb-2">More Features Coming</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  More Features Coming
+                </h4>
                 <p className="text-sm text-gray-600">
                   Data tools, AI insights, and executive lounges will be added soon.
                 </p>
@@ -315,3 +218,4 @@ export function DashboardHome() {
     </div>
   );
 }
+
