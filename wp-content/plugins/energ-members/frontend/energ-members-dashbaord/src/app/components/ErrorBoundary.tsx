@@ -6,13 +6,14 @@ type Props = {
 
 type State = {
   hasError: boolean;
+  error?: any;
 };
 
 export class ErrorBoundary extends React.Component<Props, State> {
   state: State = { hasError: false };
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: any, info: any) {
@@ -26,9 +27,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <h2 className="text-lg font-semibold text-red-600">
             Something went wrong
           </h2>
-          <p className="text-sm text-gray-600 mt-2">
-            Please refresh the page. Our team has been notified.
-          </p>
+
+          <pre className="mt-4 text-xs bg-gray-100 p-3 text-left overflow-auto">
+            {String(this.state.error)}
+          </pre>
+
+          <button
+            className="mt-4 px-4 py-2 bg-green-600 text-white rounded"
+            onClick={() => window.location.reload()}
+          >
+            Refresh Page
+          </button>
         </div>
       );
     }
