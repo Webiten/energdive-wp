@@ -1,6 +1,7 @@
 <?php
 defined('ABSPATH') || exit;
 
+error_log('UserRoutes.php loaded');
 
 // // ####################### //
 // // ####################### // 
