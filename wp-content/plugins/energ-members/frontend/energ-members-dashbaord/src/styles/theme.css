@@ -49,3 +49,10 @@
     min-height: 100vh;
   }
 }
+
+/* React Select / custom dropdown safety layer */
+.react-select__menu,
+[role="listbox"] {
+  z-index: 999999 !important;
+  position: fixed !important;
+}

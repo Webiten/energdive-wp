@@ -16,3 +16,32 @@
 #energ-members-root div {
     box-sizing: border-box;
 }
+
+/* ===== REACT DROPDOWN FIX ===== */
+
+/* Allow clicks everywhere inside root */
+#energ-members-root,
+#energ-auth-root {
+  pointer-events: auto !important;
+}
+
+/* Agar Tailwind layer dropdown ko cover kar rahi ho */
+#energ-members-root *,
+#energ-auth-root * {
+  pointer-events: auto;
+}
+
+/* Common fix for native select + custom dropdown */
+select,
+button,
+[role="combobox"],
+[role="listbox"],
+[role="option"] {
+  pointer-events: auto !important;
+  z-index: 99999 !important;
+}
+
+/* Force all dropdown overlays above WordPress + Tailwind layers */
+body > div {
+  z-index: auto;
+}
