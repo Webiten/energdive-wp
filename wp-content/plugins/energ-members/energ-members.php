@@ -28,6 +28,13 @@ spl_autoload_register(function ($class) {
     }
 });
 
+/**
+ * ===============================
+ * ZOHO ROUTES
+ * ===============================
+ */
+require_once plugin_dir_path(__FILE__) . 'app/Routes/UserRoutes.php';
+
 require_once __DIR__ . '/app/Routes/IntelligenceRoutes.php';
 
 add_action('rest_api_init', function () {
