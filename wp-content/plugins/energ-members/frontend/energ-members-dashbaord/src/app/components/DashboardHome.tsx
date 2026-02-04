@@ -71,10 +71,18 @@ export function DashboardHome() {
   const { me, loading } = useMe();
 
   // ✅ FIX: useIntelligence hook ko actually use karo
-  const {
-    data: intelligenceFeed = [],
-    loading: intelligenceLoading,
-  } = useIntelligence();
+ const {
+  data: rawFeed,
+  loading: intelligenceLoading,
+} = useIntelligence();
+
+// GUARANTEED ARRAY
+const intelligenceFeed = Array.isArray(rawFeed)
+  ? rawFeed
+  : rawFeed?.items && Array.isArray(rawFeed.items)
+  ? rawFeed.items
+  : [];
+
 
   // ✅ FIX: trending hook ko use karo
   const {
