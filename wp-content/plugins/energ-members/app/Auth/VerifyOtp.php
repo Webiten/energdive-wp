@@ -172,6 +172,9 @@ class VerifyOtp
         if ($wp_user) {
             wp_set_current_user($wp_user->ID);
             wp_set_auth_cookie($wp_user->ID, true);
+
+            // 🔥 Save first name for Elementor header
+            update_user_meta($wp_user->ID, 'first_name', $username);
         }
 
         // -------------------------------------------------------
