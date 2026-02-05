@@ -143,3 +143,8 @@ add_action('wp_enqueue_scripts', function () {
         wp_dequeue_script('frontend-modules');
     }
 }, 100);
+
+
+add_shortcode('energ_members_dashboard', function(){
+    return '<div id="energ-members-root" data-energ-popup="true"></div>';
+});
