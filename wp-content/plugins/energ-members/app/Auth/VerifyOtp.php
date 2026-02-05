@@ -175,8 +175,11 @@ class VerifyOtp
         }
 
         if ($wp_user) {
-            wp_set_current_user($wp_user->ID);
-            wp_set_auth_cookie($wp_user->ID, true);
+            // ✅ FINAL: single source of truth for header name
+            update_user_meta($wp_user->ID, 'first_name', ucfirst($firstName));
+
+            // 👉 Flag so Elementor knows user is "logically logged in"
+            update_user_meta($wp_user->ID, 'energ_logged_in', '1');
 
             // ✅ Save First Name for Elementor header
             update_user_meta($wp_user->ID, 'first_name', ucfirst($firstName));
