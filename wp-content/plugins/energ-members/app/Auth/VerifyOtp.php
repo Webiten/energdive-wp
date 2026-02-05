@@ -142,6 +142,40 @@ class VerifyOtp
             15 * 60
         );
 
+        // -------------------------------------------------------
+        // 🔥🔥🔥 NEW PART — WORDPRESS LOGIN SYNC 🔥🔥🔥
+        // -------------------------------------------------------
+
+        // Find or create matching WP user
+        $wp_user = null;
+
+        if ($type === 'email') {
+            $wp_user = get_user_by('email', $identifier);
+        }
+
+        if (!$wp_user) {
+            $username = explode('@', $identifier)[0];
+
+            $user_id = wp_insert_user([
+                'user_login' => $username . '_' . wp_rand(100, 999),
+                'user_email' => $identifier,
+                'user_pass'  => wp_generate_password(),
+                'display_name' => $username,
+                'role' => 'subscriber',
+            ]);
+
+            if (!is_wp_error($user_id)) {
+                $wp_user = get_user_by('id', $user_id);
+            }
+        }
+
+        if ($wp_user) {
+            wp_set_current_user($wp_user->ID);
+            wp_set_auth_cookie($wp_user->ID, true);
+        }
+
+        // -------------------------------------------------------
+
         return [
             'success'       => true,
             'message'       => 'OTP verified',
@@ -150,6 +184,7 @@ class VerifyOtp
             'expires_in'    => $jwt['expires_in'],
             'is_new_user'   => $isNewUser,
             'sid'           => $sid,
+            'wp_user_id'    => $wp_user ? $wp_user->ID : null
         ];
     }
 }
