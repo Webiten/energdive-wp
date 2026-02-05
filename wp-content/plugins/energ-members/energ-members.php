@@ -148,3 +148,63 @@ add_action('wp_enqueue_scripts', function () {
 add_shortcode('energ_members_dashboard', function(){
     return '<div id="energ-members-root" data-energ-popup="true"></div>';
 });
+
+
+
+
+
+add_shortcode('activate_zoho_user', function () {
+
+    global $wpdb;
+
+    $token = $_GET['token'] ?? '';
+
+    if (!$token) {
+        return "<h3 style='text-align:center;margin:40px;'>Invalid activation link.</h3>";
+    }
+
+    $table = $wpdb->prefix . "energ_members";
+
+    $user = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM $table 
+             WHERE zoho_token = %s AND signup_mode = 'zoho'",
+            $token
+        )
+    );
+
+    if (!$user) {
+        return "<h3 style='text-align:center;margin:40px;'>Invalid or already used link.</h3>";
+    }
+
+    // Activate user
+    $wpdb->update(
+        $table,
+        ["status" => "active"],
+        ["id" => $user->id]
+    );
+
+    // Create WP user if not exists
+    if (!email_exists($user->email)) {
+        $wp_user_id = wp_create_user(
+            $user->email,
+            wp_generate_password(),
+            $user->email
+        );
+
+        $wpdb->update(
+            $table,
+            ["user_id" => $wp_user_id],
+            ["id" => $user->id]
+        );
+    } else {
+        $wp_user = get_user_by('email', $user->email);
+        $wp_user_id = $wp_user->ID;
+    }
+
+    wp_set_current_user($wp_user_id);
+    wp_set_auth_cookie($wp_user_id);
+
+    wp_redirect("https://stage.energdive.com/dashboard");
+    exit;
+});
