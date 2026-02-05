@@ -84,6 +84,7 @@ class VerifyOtp
         /** 📧/📱 LOGIN FLOW */
         $isNewUser = false;
 
+        // --- KEY FIX #1: New user ONLY when no record exists ---
         if (!$member) {
             $wpdb->insert(
                 $membersTable,
@@ -107,10 +108,10 @@ class VerifyOtp
             );
         }
 
-        // pending/blocked => treat as onboarding
-        if ($member && isset($member->status) && $member->status !== 'active') {
-            $isNewUser = true;
-        }
+        // ❌ REMOVE this old logic — it was wrongly marking existing users as new:
+        // if ($member && isset($member->status) && $member->status !== 'active') {
+        //     $isNewUser = true;
+        // }
 
         /**
          * ✅ Create refresh session first => get SID (session id)
@@ -143,25 +144,29 @@ class VerifyOtp
         );
 
         // -------------------------------------------------------
-        // 🔥🔥🔥 NEW PART — WORDPRESS LOGIN SYNC 🔥🔥🔥
+        // 🔥 WORDPRESS LOGIN SYNC (CLEAN VERSION)
         // -------------------------------------------------------
 
-        // Find or create matching WP user
         $wp_user = null;
 
         if ($type === 'email') {
             $wp_user = get_user_by('email', $identifier);
         }
 
+        // Derive first name safely
+        $firstName = $identifier;
+        if (strpos($identifier, '@') !== false) {
+            $firstName = explode('@', $identifier)[0];
+        }
+
         if (!$wp_user) {
-            $username = explode('@', $identifier)[0];
 
             $user_id = wp_insert_user([
-                'user_login' => $username . '_' . wp_rand(100, 999),
-                'user_email' => $identifier,
-                'user_pass'  => wp_generate_password(),
-                'display_name' => $username,
-                'role' => 'subscriber',
+                'user_login'   => $firstName . '_' . wp_rand(100, 999),
+                'user_email'   => $identifier,
+                'user_pass'    => wp_generate_password(),
+                'display_name' => ucfirst($firstName),
+                'role'         => 'subscriber',
             ]);
 
             if (!is_wp_error($user_id)) {
@@ -173,8 +178,8 @@ class VerifyOtp
             wp_set_current_user($wp_user->ID);
             wp_set_auth_cookie($wp_user->ID, true);
 
-            // 🔥 Save first name for Elementor header
-            update_user_meta($wp_user->ID, 'first_name', $username);
+            // ✅ Save First Name for Elementor header
+            update_user_meta($wp_user->ID, 'first_name', ucfirst($firstName));
         }
 
         // -------------------------------------------------------
@@ -185,7 +190,7 @@ class VerifyOtp
             'access_token'  => $jwt['token'],
             'refresh_token' => $refreshToken,
             'expires_in'    => $jwt['expires_in'],
-            'is_new_user'   => $isNewUser,
+            'is_new_user'   => $isNewUser,   // 👈 FRONTEND WILL DECIDE REDIRECT
             'sid'           => $sid,
             'wp_user_id'    => $wp_user ? $wp_user->ID : null
         ];

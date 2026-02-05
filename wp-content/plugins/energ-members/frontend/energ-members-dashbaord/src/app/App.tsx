@@ -30,41 +30,17 @@ import { AuthAPI } from "./lib/api";
 type AppState =
   | "login"
   | "verification"
-  | "register"
-  | "registration-success"
-  | "dashboard";
+  | "register";
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>("login");
+  const [identifier, setIdentifier] = useState("");
   const [activeSection, setActiveSection] = useState("dashboard");
 
-  // 🔑 Single source of truth
-  const [identifier, setIdentifier] = useState("");
-  const [requiresApproval, setRequiresApproval] = useState(false);
-
-  /* =======================
-     🔥 SESSION TIMEOUT (SAFE)
-  ======================= */
-
-  const sessionConfigRef = useRef<{
-    timeoutMs: number;
-    onExpire: () => void;
-  } | null>(null);
-
-  useEffect(() => {
-    if (appState === "dashboard") {
-      sessionConfigRef.current = {
-        timeoutMs: 5 * 60 * 1000, // 5 min
-        onExpire: () => {
-          setAppState("login");
-        },
-      };
-    } else {
-      sessionConfigRef.current = null;
-    }
-  }, [appState]);
-
-  useSessionTimeout(sessionConfigRef.current);
+  /* ======================================================
+     ❌ IMPORTANT CHANGE: remove "dashboard" from appState
+     Dashboard will ONLY render when user manually visits /dashboard
+  ====================================================== */
 
   /* =======================
      AUTH FLOW HANDLERS
@@ -75,8 +51,13 @@ export default function App() {
     setAppState("verification");
   };
 
+  // 🔥 KEY FIX: redirect decision based on backend flag
   const handleVerified = (isNewUser: boolean) => {
-    setAppState(isNewUser ? "register" : "dashboard");
+    if (isNewUser) {
+      window.location.href = "/thank-you";   // NEW USER
+    } else {
+      window.location.href = "/";            // EXISTING USER → HOME
+    }
   };
 
   const handleResendVerification = async () => {
@@ -85,16 +66,11 @@ export default function App() {
   };
 
   const handleRegistrationComplete = () => {
-    setRequiresApproval(false);
-    setAppState("dashboard");
-  };
-
-  const handleContinueToDashboard = () => {
-    setAppState(requiresApproval ? "login" : "dashboard");
+    window.location.href = "/thank-you";
   };
 
   /* =======================
-     DASHBOARD CONTENT
+     DASHBOARD (only renders if user is on /dashboard page)
   ======================= */
 
   const renderDashboardContent = () => {
@@ -118,20 +94,22 @@ export default function App() {
     }
   };
 
+  const isOnDashboardPage =
+    window.location.pathname.includes("/dashboard");
+
   return (
     <>
       <SessionExpiredModal />
 
-      {appState === "dashboard" ? (
+      {isOnDashboardPage ? (
         <div className="min-h-screen w-full bg-white">
-          <TopBar onLogout={() => setAppState("login")} />
+          <TopBar onLogout={() => (window.location.href = "/")} />
 
           <SecondHeader
             activeSection={activeSection}
             onSectionChange={setActiveSection}
           />
 
-          {/* 🛡️ DASHBOARD ERROR BOUNDARY */}
           <ErrorBoundary>
             {renderDashboardContent()}
           </ErrorBoundary>
@@ -154,13 +132,6 @@ export default function App() {
             <RegisterPage
               identifier={identifier}
               onRegistrationComplete={handleRegistrationComplete}
-            />
-          )}
-
-          {appState === "registration-success" && (
-            <RegistrationSuccess
-              requiresApproval={requiresApproval}
-              onContinue={handleContinueToDashboard}
             />
           )}
         </div>
