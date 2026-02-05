@@ -229,3 +229,34 @@ add_shortcode('energ_user_name', function() {
 
     return $name ? esc_html($name) : wp_get_current_user()->display_name;
 });
+
+
+
+add_action('init', function () {
+
+    if (isset($_GET['energ_logout']) && $_GET['energ_logout'] === '1') {
+
+        // Call your REST logout endpoint internally
+        $refresh = $_COOKIE['energ_refresh'] ?? '';
+
+        wp_remote_post(rest_url('energ/v1/logout'), [
+            'headers' => [
+                'Content-Type'  => 'application/json',
+            ],
+            'body' => wp_json_encode([
+                'refresh_token' => $refresh
+            ])
+        ]);
+
+        // Clear local tokens
+        setcookie('energ_access', '', time() - 3600, '/');
+        setcookie('energ_refresh', '', time() - 3600, '/');
+
+        // WP logout as backup
+        wp_logout();
+
+        // Redirect to homepage (or thank you page)
+        wp_safe_redirect(home_url('/'));
+        exit;
+    }
+});
