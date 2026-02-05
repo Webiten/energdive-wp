@@ -208,3 +208,24 @@ add_shortcode('activate_zoho_user', function () {
     wp_redirect("https://stage.energdive.com/dashboard");
     exit;
 });
+
+
+
+
+
+add_shortcode('energ_user_name', function() {
+
+    $user_id = get_current_user_id();
+    if (!$user_id) return "Login";
+
+    global $wpdb;
+
+    $name = $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT username FROM wp_energ_members WHERE user_id = %d",
+            $user_id
+        )
+    );
+
+    return $name ? esc_html($name) : wp_get_current_user()->display_name;
+});
