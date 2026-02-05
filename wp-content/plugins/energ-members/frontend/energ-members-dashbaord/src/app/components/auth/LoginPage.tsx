@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -14,6 +14,18 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
   const [identifier, setIdentifier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ✅ NEW: Auto-redirect if already logged in (WordPress + JWT)
+  useEffect(() => {
+    const wpLoggedIn = document.body.classList.contains("logged-in");
+    const hasToken =
+      !!localStorage.getItem("access_token") ||
+      !!localStorage.getItem("auth_token");
+
+    if (wpLoggedIn || hasToken) {
+      window.location.href = "/thank-you";
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +54,9 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
             </div>
             <div className="text-left">
               <h1 className="text-2xl font-bold text-gray-900">ENERGCLUB</h1>
-              <p className="text-sm text-gray-600">Energy Intelligence Platform</p>
+              <p className="text-sm text-gray-600">
+                Energy Intelligence Platform
+              </p>
             </div>
           </div>
         </div>
@@ -59,8 +73,10 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="identifier">Email or Phone</Label>
+
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+
                   <Input
                     id="identifier"
                     type="text"
@@ -105,12 +121,13 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
                 By continuing, you agree to our{" "}
                 <a className="text-emerald-600 hover:underline">Terms</a>{" "}
                 &{" "}
-                <a className="text-emerald-600 hover:underline">Privacy Policy</a>
+                <a className="text-emerald-600 hover:underline">
+                  Privacy Policy
+                </a>
               </p>
             </div>
           </CardContent>
         </Card>
-
       </div>
     </div>
   );
