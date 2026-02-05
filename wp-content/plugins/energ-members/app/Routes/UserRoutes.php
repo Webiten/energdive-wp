@@ -52,7 +52,7 @@ class UserRoutes {
         $first_name = $parts[0];
         $last_name = $parts[1] ?? '';
 
-        // Insert into your EXISTING table (no schema change)
+        // ✅ CORRECT INSERT (Zoho token separate column)
         $wpdb->insert(
             $table,
             [
@@ -61,7 +61,7 @@ class UserRoutes {
                 'first_name' => $first_name,
                 'last_name' => $last_name,
                 'signup_mode' => 'zoho',
-                'otp_code' => $token,
+                'zoho_token' => $token,   // ✅ RIGHT PLACE
                 'status' => 'pending',
                 'created_at' => current_time('mysql')
             ]
@@ -74,3 +74,7 @@ class UserRoutes {
         ];
     }
 }
+
+add_action('rest_api_init', function () {
+    \Energ\Routes\UserRoutes::register();
+});
