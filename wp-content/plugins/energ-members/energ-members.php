@@ -165,10 +165,10 @@ add_shortcode('activate_zoho_user', function () {
 
     $table = $wpdb->prefix . "energ_members";
 
-    // Find user by token
     $user = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT * FROM $table WHERE zoho_token = %s AND signup_mode = 'zoho'",
+            "SELECT * FROM $table 
+             WHERE zoho_token = %s AND signup_mode = 'zoho'",
             $token
         )
     );
@@ -184,52 +184,28 @@ add_shortcode('activate_zoho_user', function () {
         ["id" => $user->id]
     );
 
-    // Create or fetch WP user
+    // Create WP user if not exists
     if (!email_exists($user->email)) {
-
         $wp_user_id = wp_create_user(
             $user->email,
             wp_generate_password(),
             $user->email
         );
 
-        // ✅ Assign role
-        wp_update_user([
-            'ID' => $wp_user_id,
-            'role' => 'subscriber'
-        ]);
-
-        // Save wp user id
         $wpdb->update(
             $table,
             ["user_id" => $wp_user_id],
             ["id" => $user->id]
         );
-
     } else {
-
         $wp_user = get_user_by('email', $user->email);
         $wp_user_id = $wp_user->ID;
     }
 
-    // 🔐 FORCE CLEAN LOGIN SESSION
-    wp_clear_auth_cookie();
-
     wp_set_current_user($wp_user_id);
-    wp_set_auth_cookie($wp_user_id, true);
+    wp_set_auth_cookie($wp_user_id);
 
-    // 🔥 IMPORTANT: Notify WordPress properly
-    do_action('wp_login', $user->email, get_user_by('ID', $wp_user_id));
-
-    // 🔒 One-time token cleanup
-    $wpdb->update(
-        $table,
-        ["zoho_token" => null],
-        ["id" => $user->id]
-    );
-
-    // Redirect to dashboard / homepage
-    wp_safe_redirect("https://stage.energdive.com/");
+    wp_redirect("https://stage.energdive.com/dashboard");
     exit;
 });
 
