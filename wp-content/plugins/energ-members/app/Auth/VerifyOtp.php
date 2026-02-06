@@ -107,9 +107,10 @@ class VerifyOtp
             );
         }
 
-        // ❌ REMOVE old logic that forced "new user" for pending users
-        // (Tum chahte ho: existing user = home, new user = thank-you)
-        // Isliye isko hata diya.
+        // pending/blocked => treat as onboarding
+        if ($member && isset($member->status) && $member->status !== 'active') {
+            $isNewUser = true;
+        }
 
         /**
          * ✅ Create refresh session first => get SID (session id)
@@ -142,29 +143,25 @@ class VerifyOtp
         );
 
         // -------------------------------------------------------
-        // 🔥 WORDPRESS USER SYNC (HEADER-ONLY MODE)
+        // 🔥🔥🔥 NEW PART — WORDPRESS LOGIN SYNC 🔥🔥🔥
         // -------------------------------------------------------
 
+        // Find or create matching WP user
         $wp_user = null;
 
         if ($type === 'email') {
             $wp_user = get_user_by('email', $identifier);
         }
 
-        // Derive clean first name
-        $firstName = $identifier;
-        if (strpos($identifier, '@') !== false) {
-            $firstName = explode('@', $identifier)[0];
-        }
-
         if (!$wp_user) {
+            $username = explode('@', $identifier)[0];
 
             $user_id = wp_insert_user([
-                'user_login'   => $firstName . '_' . wp_rand(100, 999),
-                'user_email'   => $identifier,
-                'user_pass'    => wp_generate_password(),
-                'display_name' => ucfirst($firstName),
-                'role'         => 'subscriber',
+                'user_login' => $username . '_' . wp_rand(100, 999),
+                'user_email' => $identifier,
+                'user_pass'  => wp_generate_password(),
+                'display_name' => $username,
+                'role' => 'subscriber',
             ]);
 
             if (!is_wp_error($user_id)) {
