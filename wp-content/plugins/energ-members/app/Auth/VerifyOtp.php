@@ -174,21 +174,28 @@ class VerifyOtp
 
         if ($wp_user) {
 
-            // ---- 🔥 FORCE WORDPRESS LOGIN (THIS WAS MISSING BEFORE) ----
             wp_set_current_user($wp_user->ID);
             wp_set_auth_cookie($wp_user->ID, true);
-
-            // Make sure WP loads the user immediately
-            wp_set_auth_cookie($wp_user->ID, true, true);
             do_action('wp_login', $wp_user->user_login, $wp_user);
 
-            // ---- ✅ SAVE FIRST NAME FOR ELEMENTOR ----
+            // 🔥 ONLY FIRST NAME LOGIC
             $firstName = strpos($identifier, '@') !== false
                 ? explode('@', $identifier)[0]
                 : $identifier;
 
-            update_user_meta($wp_user->ID, 'first_name', ucfirst($firstName));
+            // Sirf pehla word rakho
+            $firstName = ucfirst(explode(' ', str_replace(['.', '_'], ' ', $firstName))[0]);
+
+            // Save for Elementor
+            update_user_meta($wp_user->ID, 'first_name', $firstName);
+
+            // Fix display name bhi
+            wp_update_user([
+                'ID' => $wp_user->ID,
+                'display_name' => $firstName
+            ]);
         }
+
 
 
         // -------------------------------------------------------
