@@ -107,10 +107,9 @@ class VerifyOtp
             );
         }
 
-        // pending/blocked => treat as onboarding
-        if ($member && isset($member->status) && $member->status !== 'active') {
-            $isNewUser = true;
-        }
+        // ❌ REMOVE old logic that forced "new user" for pending users
+        // (Tum chahte ho: existing user = home, new user = thank-you)
+        // Isliye isko hata diya.
 
         /**
          * ✅ Create refresh session first => get SID (session id)
@@ -143,25 +142,29 @@ class VerifyOtp
         );
 
         // -------------------------------------------------------
-        // 🔥🔥🔥 NEW PART — WORDPRESS LOGIN SYNC 🔥🔥🔥
+        // 🔥 WORDPRESS USER SYNC (HEADER-ONLY MODE)
         // -------------------------------------------------------
 
-        // Find or create matching WP user
         $wp_user = null;
 
         if ($type === 'email') {
             $wp_user = get_user_by('email', $identifier);
         }
 
+        // Derive clean first name
+        $firstName = $identifier;
+        if (strpos($identifier, '@') !== false) {
+            $firstName = explode('@', $identifier)[0];
+        }
+
         if (!$wp_user) {
-            $username = explode('@', $identifier)[0];
 
             $user_id = wp_insert_user([
-                'user_login' => $username . '_' . wp_rand(100, 999),
-                'user_email' => $identifier,
-                'user_pass'  => wp_generate_password(),
-                'display_name' => $username,
-                'role' => 'subscriber',
+                'user_login'   => $firstName . '_' . wp_rand(100, 999),
+                'user_email'   => $identifier,
+                'user_pass'    => wp_generate_password(),
+                'display_name' => ucfirst($firstName),
+                'role'         => 'subscriber',
             ]);
 
             if (!is_wp_error($user_id)) {
@@ -170,12 +173,30 @@ class VerifyOtp
         }
 
         if ($wp_user) {
+
             wp_set_current_user($wp_user->ID);
             wp_set_auth_cookie($wp_user->ID, true);
+            do_action('wp_login', $wp_user->user_login, $wp_user);
 
-            // 🔥 Save first name for Elementor header
-            update_user_meta($wp_user->ID, 'first_name', $username);
+            // 🔥 ONLY FIRST NAME LOGIC
+            $firstName = strpos($identifier, '@') !== false
+                ? explode('@', $identifier)[0]
+                : $identifier;
+
+            // Sirf pehla word rakho
+            $firstName = ucfirst(explode(' ', str_replace(['.', '_'], ' ', $firstName))[0]);
+
+            // Save for Elementor
+            update_user_meta($wp_user->ID, 'first_name', $firstName);
+
+            // Fix display name bhi
+            wp_update_user([
+                'ID' => $wp_user->ID,
+                'display_name' => $firstName
+            ]);
         }
+
+
 
         // -------------------------------------------------------
 
