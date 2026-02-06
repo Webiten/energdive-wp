@@ -184,7 +184,7 @@ add_shortcode('activate_zoho_user', function () {
         ["id" => $user->id]
     );
 
-    // Create WP user if not exists
+    // Create or fetch WP user
     if (!email_exists($user->email)) {
 
         $wp_user_id = wp_create_user(
@@ -193,12 +193,13 @@ add_shortcode('activate_zoho_user', function () {
             $user->email
         );
 
-        // ✅ Assign role (IMPORTANT)
+        // ✅ Assign role
         wp_update_user([
             'ID' => $wp_user_id,
             'role' => 'subscriber'
         ]);
 
+        // Save wp user id
         $wpdb->update(
             $table,
             ["user_id" => $wp_user_id],
@@ -211,19 +212,24 @@ add_shortcode('activate_zoho_user', function () {
         $wp_user_id = $wp_user->ID;
     }
 
-    // Login user
+    // 🔐 FORCE CLEAN LOGIN SESSION
+    wp_clear_auth_cookie();
+
     wp_set_current_user($wp_user_id);
-    wp_set_auth_cookie($wp_user_id);
+    wp_set_auth_cookie($wp_user_id, true);
+
+    // 🔥 IMPORTANT: Notify WordPress properly
     do_action('wp_login', $user->email, get_user_by('ID', $wp_user_id));
 
-    // 🔐 One-time token cleanup
+    // 🔒 One-time token cleanup
     $wpdb->update(
         $table,
         ["zoho_token" => null],
         ["id" => $user->id]
     );
 
-    wp_redirect("https://stage.energdive.com/dashboard");
+    // Redirect to dashboard / homepage
+    wp_safe_redirect("https://stage.energdive.com/");
     exit;
 });
 
