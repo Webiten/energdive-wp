@@ -49,9 +49,9 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center">
+            {/* <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xl">E</span>
-            </div>
+            </div> */}
             {/* <div className="text-left">
               <h1 className="text-2xl font-bold text-gray-900">ENERGCLUB</h1>
               <p className="text-sm text-gray-600">
