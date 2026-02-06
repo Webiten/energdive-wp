@@ -142,34 +142,36 @@ class VerifyOtp
         );
 
         // -------------------------------------------------------
-        // 🔥 WORDPRESS LOGIN SYNC (CLEAN + WORKING)
+        // 🔥 WORDPRESS LOGIN SYNC (USE DB FIRST NAME)
         // -------------------------------------------------------
 
         $wp_user = null;
 
+        // 1️⃣ Pehle WP user dhoondo
         if ($type === 'email') {
             $wp_user = get_user_by('email', $identifier);
         }
 
-        /* ---------- DERIVE CLEAN FIRST NAME ---------- */
-        if (strpos($identifier, '@') !== false) {
-            $rawName = explode('@', $identifier)[0];
-        } else {
-            $rawName = $identifier;
+        /* --------------------------------------------------
+   2️⃣ FIRST NAME = wp_energ_members TABLE SE LO
+-------------------------------------------------- */
+
+        $firstName = 'User'; // default
+
+        if ($member && !empty($member->first_name)) {
+            $firstName = ucfirst(trim($member->first_name));
         }
 
-        // Remove numbers, dots, underscores
-        $cleanName = preg_replace('/[^A-Za-z]/', ' ', $rawName);
-
-        // Take only first word
-        $parts = array_values(array_filter(explode(' ', trim($cleanName))));
-        $firstName = ucfirst($parts[0] ?? 'User');
-        /* -------------------------------------------- */
+        /* --------------------------------------------------
+   3️⃣ Agar WP user exist nahi karta → create karo
+-------------------------------------------------- */
 
         if (!$wp_user) {
 
+            $username = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($identifier));
+
             $user_id = wp_insert_user([
-                'user_login'   => $rawName . '_' . wp_rand(100, 999),
+                'user_login'   => $username . '_' . wp_rand(100, 999),
                 'user_email'   => $identifier,
                 'user_pass'    => wp_generate_password(),
                 'display_name' => $firstName,
@@ -181,21 +183,26 @@ class VerifyOtp
             }
         }
 
+        /* --------------------------------------------------
+   4️⃣ FINAL SYNC + SAVE FIRST NAME
+-------------------------------------------------- */
+
         if ($wp_user) {
 
             wp_set_current_user($wp_user->ID);
             wp_set_auth_cookie($wp_user->ID, true);
             do_action('wp_login', $wp_user->user_login, $wp_user);
 
-            // ✅ Save correct first name for Elementor
+            // ✅ IMPORTANT — Elementor yahin se uthayega
             update_user_meta($wp_user->ID, 'first_name', $firstName);
 
-            // ✅ Also fix display name
+            // ✅ Display name bhi same rakho
             wp_update_user([
                 'ID' => $wp_user->ID,
                 'display_name' => $firstName
             ]);
         }
+
 
 
 
