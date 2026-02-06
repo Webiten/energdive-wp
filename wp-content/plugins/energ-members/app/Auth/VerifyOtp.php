@@ -142,7 +142,7 @@ class VerifyOtp
         );
 
         // -------------------------------------------------------
-        // 🔥 WORDPRESS USER SYNC (HEADER-ONLY MODE)
+        // 🔥 WORDPRESS LOGIN SYNC (CLEAN + WORKING)
         // -------------------------------------------------------
 
         $wp_user = null;
@@ -151,19 +151,28 @@ class VerifyOtp
             $wp_user = get_user_by('email', $identifier);
         }
 
-        // Derive clean first name
-        $firstName = $identifier;
+        /* ---------- DERIVE CLEAN FIRST NAME ---------- */
         if (strpos($identifier, '@') !== false) {
-            $firstName = explode('@', $identifier)[0];
+            $rawName = explode('@', $identifier)[0];
+        } else {
+            $rawName = $identifier;
         }
+
+        // Remove numbers, dots, underscores
+        $cleanName = preg_replace('/[^A-Za-z]/', ' ', $rawName);
+
+        // Take only first word
+        $parts = array_values(array_filter(explode(' ', trim($cleanName))));
+        $firstName = ucfirst($parts[0] ?? 'User');
+        /* -------------------------------------------- */
 
         if (!$wp_user) {
 
             $user_id = wp_insert_user([
-                'user_login'   => $firstName . '_' . wp_rand(100, 999),
+                'user_login'   => $rawName . '_' . wp_rand(100, 999),
                 'user_email'   => $identifier,
                 'user_pass'    => wp_generate_password(),
-                'display_name' => ucfirst($firstName),
+                'display_name' => $firstName,
                 'role'         => 'subscriber',
             ]);
 
@@ -178,24 +187,15 @@ class VerifyOtp
             wp_set_auth_cookie($wp_user->ID, true);
             do_action('wp_login', $wp_user->user_login, $wp_user);
 
-            // 🔥 ONLY FIRST NAME LOGIC
-            $firstName = strpos($identifier, '@') !== false
-                ? explode('@', $identifier)[0]
-                : $identifier;
-
-            // Sirf pehla word rakho
-            $firstName = ucfirst(explode(' ', str_replace(['.', '_'], ' ', $firstName))[0]);
-
-            // Save for Elementor
+            // ✅ Save correct first name for Elementor
             update_user_meta($wp_user->ID, 'first_name', $firstName);
 
-            // Fix display name bhi
+            // ✅ Also fix display name
             wp_update_user([
                 'ID' => $wp_user->ID,
                 'display_name' => $firstName
             ]);
         }
-
 
 
 
