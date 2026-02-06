@@ -173,15 +173,23 @@ class VerifyOtp
         }
 
         if ($wp_user) {
-            // ✅ IMPORTANT: DO NOT login user to WordPress cookies
-            // (warna dashboard auto-open hoga)
 
-            // Store first name for Elementor header
+            // ---- 🔥 FORCE WORDPRESS LOGIN (THIS WAS MISSING BEFORE) ----
+            wp_set_current_user($wp_user->ID);
+            wp_set_auth_cookie($wp_user->ID, true);
+
+            // Make sure WP loads the user immediately
+            wp_set_auth_cookie($wp_user->ID, true, true);
+            do_action('wp_login', $wp_user->user_login, $wp_user);
+
+            // ---- ✅ SAVE FIRST NAME FOR ELEMENTOR ----
+            $firstName = strpos($identifier, '@') !== false
+                ? explode('@', $identifier)[0]
+                : $identifier;
+
             update_user_meta($wp_user->ID, 'first_name', ucfirst($firstName));
-
-            // Flag so Elementor knows user is "logically logged in"
-            update_user_meta($wp_user->ID, 'energ_logged_in', '1');
         }
+
 
         // -------------------------------------------------------
 
