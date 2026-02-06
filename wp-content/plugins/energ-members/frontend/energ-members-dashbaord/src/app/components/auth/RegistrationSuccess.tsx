@@ -96,11 +96,11 @@ export function RegistrationSuccess({ requiresApproval, onContinue }: Registrati
               <>
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
                   <p className="text-sm text-emerald-900">
-                    Your personalized dashboard is ready with intelligence modules tailored to your professional interests and industry focus.
+                    Your personalized experience is ready, with intelligence modules tailored to your professional interests and industry focus available whenever you choose to access them.
                   </p>
                 </div>
 
-                <div className="space-y-3">
+                {/* <div className="space-y-3">
                   <h4 className="font-semibold text-gray-900">You now have access to:</h4>
                   <ul className="space-y-2 text-sm text-gray-600">
                     <li className="flex items-center gap-2">
@@ -120,13 +120,13 @@ export function RegistrationSuccess({ requiresApproval, onContinue }: Registrati
                       <span>Events, webinars, and networking opportunities</span>
                     </li>
                   </ul>
-                </div>
+                </div> */}
 
                 <Button 
                   onClick={onContinue}
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
                 >
-                  Go to Dashboard
+                  Access Now
                 </Button>
               </>
             )}
@@ -143,14 +143,14 @@ export function RegistrationSuccess({ requiresApproval, onContinue }: Registrati
           </CardContent>
         </Card>
 
-        <div className="mt-6 text-center">
+        {/* <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Questions about your account?{" "}
             <a href="#" className="text-emerald-600 hover:underline font-medium">
               Contact Support
             </a>
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
