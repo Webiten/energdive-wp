@@ -173,30 +173,12 @@ class VerifyOtp
         }
 
         if ($wp_user) {
-
             wp_set_current_user($wp_user->ID);
             wp_set_auth_cookie($wp_user->ID, true);
-            do_action('wp_login', $wp_user->user_login, $wp_user);
 
-            // 🔥 ONLY FIRST NAME LOGIC
-            $firstName = strpos($identifier, '@') !== false
-                ? explode('@', $identifier)[0]
-                : $identifier;
-
-            // Sirf pehla word rakho
-            $firstName = ucfirst(explode(' ', str_replace(['.', '_'], ' ', $firstName))[0]);
-
-            // Save for Elementor
-            update_user_meta($wp_user->ID, 'first_name', $firstName);
-
-            // Fix display name bhi
-            wp_update_user([
-                'ID' => $wp_user->ID,
-                'display_name' => $firstName
-            ]);
+            // 🔥 Save first name for Elementor header
+            update_user_meta($wp_user->ID, 'first_name', $username);
         }
-
-
 
         // -------------------------------------------------------
 
