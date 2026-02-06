@@ -30,17 +30,16 @@ import { AuthAPI } from "./lib/api";
 type AppState =
   | "login"
   | "verification"
-  | "register";
+  | "register"
+  | "registration-success";
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>("login");
   const [identifier, setIdentifier] = useState("");
   const [activeSection, setActiveSection] = useState("dashboard");
 
-  /* ======================================================
-     ❌ IMPORTANT CHANGE: remove "dashboard" from appState
-     Dashboard will ONLY render when user manually visits /dashboard
-  ====================================================== */
+  const isOnDashboardPage =
+    window.location.pathname.includes("/dashboard");
 
   /* =======================
      AUTH FLOW HANDLERS
@@ -51,12 +50,13 @@ export default function App() {
     setAppState("verification");
   };
 
-  // 🔥 KEY FIX: redirect decision based on backend flag
+  // 🔥 VERY IMPORTANT FIX
   const handleVerified = (isNewUser: boolean) => {
     if (isNewUser) {
-      window.location.href = "/thank-you";   // NEW USER
+      setAppState("register");     // new user → profile completion
     } else {
-      window.location.href = "/";            // EXISTING USER → HOME
+      // existing user → HOME (NOT dashboard)
+      window.location.href = "/";
     }
   };
 
@@ -66,11 +66,11 @@ export default function App() {
   };
 
   const handleRegistrationComplete = () => {
-    window.location.href = "/thank-you";
+    setAppState("registration-success");
   };
 
   /* =======================
-     DASHBOARD (only renders if user is on /dashboard page)
+     DASHBOARD CONTENT
   ======================= */
 
   const renderDashboardContent = () => {
@@ -93,9 +93,6 @@ export default function App() {
         return <DashboardHome />;
     }
   };
-
-  const isOnDashboardPage =
-    window.location.pathname.includes("/dashboard");
 
   return (
     <>
@@ -132,6 +129,13 @@ export default function App() {
             <RegisterPage
               identifier={identifier}
               onRegistrationComplete={handleRegistrationComplete}
+            />
+          )}
+
+          {appState === "registration-success" && (
+            <RegistrationSuccess
+              requiresApproval={false}
+              onContinue={() => (window.location.href = "/")}
             />
           )}
         </div>
