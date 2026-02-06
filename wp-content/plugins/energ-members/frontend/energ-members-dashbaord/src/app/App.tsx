@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // 🔐 Auth Components
 import { LoginPage } from "./components/auth/LoginPage";
@@ -38,10 +38,16 @@ export default function App() {
   const isOnDashboardPage =
     window.location.pathname.includes("/dashboard");
 
-  // 🔐 Does user have a token?
-  const hasToken =
-    !!localStorage.getItem("access_token") ||
-    !!localStorage.getItem("auth_token");
+  // 🔐 Check token on mount (important)
+  const [hasToken, setHasToken] = useState<boolean>(false);
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("auth_token");
+
+    setHasToken(!!token);
+  }, []);
 
   /* =======================
      AUTH FLOW HANDLERS
@@ -52,7 +58,7 @@ export default function App() {
     setAppState("verification");
   };
 
-  // 🔥 CRITICAL LOGIC (your requirement)
+  // 🔥 YOUR EXACT REQUIREMENT IMPLEMENTED
   const handleVerified = (isNewUser: boolean) => {
     if (isNewUser) {
       setAppState("register");      // NEW USER → profile completion
@@ -99,7 +105,7 @@ export default function App() {
     <>
       <SessionExpiredModal />
 
-      {/* ========= DASHBOARD GATE ========= */}
+      {/* ========= DASHBOARD GATE (SAFE) ========= */}
       {isOnDashboardPage && hasToken ? (
         <div className="min-h-screen w-full bg-white">
           <TopBar onLogout={() => (window.location.href = "/")} />
