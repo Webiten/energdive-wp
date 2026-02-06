@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 // 🔐 Auth Components
 import { LoginPage } from "./components/auth/LoginPage";
@@ -6,9 +6,6 @@ import { VerificationPage } from "./components/auth/VerificationPage";
 import { RegisterPage } from "./components/auth/RegisterPage";
 import { RegistrationSuccess } from "./components/auth/RegistrationSuccess";
 import { SessionExpiredModal } from "./components/SessionExpiredModal";
-
-// ⏱ Session Hook
-import { useSessionTimeout } from "./hooks/useSessionTimeout";
 
 // 📊 Dashboard Components
 import { TopBar } from "./components/TopBar";
@@ -41,6 +38,11 @@ export default function App() {
   const isOnDashboardPage =
     window.location.pathname.includes("/dashboard");
 
+  // 🔐 Does user have a token?
+  const hasToken =
+    !!localStorage.getItem("access_token") ||
+    !!localStorage.getItem("auth_token");
+
   /* =======================
      AUTH FLOW HANDLERS
   ======================= */
@@ -50,13 +52,12 @@ export default function App() {
     setAppState("verification");
   };
 
-  // 🔥 VERY IMPORTANT FIX
+  // 🔥 CRITICAL LOGIC (your requirement)
   const handleVerified = (isNewUser: boolean) => {
     if (isNewUser) {
-      setAppState("register");     // new user → profile completion
+      setAppState("register");      // NEW USER → profile completion
     } else {
-      // existing user → HOME (NOT dashboard)
-      window.location.href = "/";
+      window.location.href = "/";   // EXISTING USER → HOME (NOT dashboard)
     }
   };
 
@@ -98,7 +99,8 @@ export default function App() {
     <>
       <SessionExpiredModal />
 
-      {isOnDashboardPage ? (
+      {/* ========= DASHBOARD GATE ========= */}
+      {isOnDashboardPage && hasToken ? (
         <div className="min-h-screen w-full bg-white">
           <TopBar onLogout={() => (window.location.href = "/")} />
 
@@ -112,6 +114,7 @@ export default function App() {
           </ErrorBoundary>
         </div>
       ) : (
+        /* ========= AUTH FLOW ========= */
         <div className="min-h-screen w-full">
           {appState === "login" && (
             <LoginPage onVerificationSent={handleVerificationSent} />
