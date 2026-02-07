@@ -16,16 +16,16 @@ export function LoginPage({ onVerificationSent }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   // ✅ NEW: Auto-redirect if already logged in (WordPress + JWT)
-  useEffect(() => {
-    const wpLoggedIn = document.body.classList.contains("logged-in");
-    const hasToken =
-      !!localStorage.getItem("access_token") ||
-      !!localStorage.getItem("auth_token");
+  // useEffect(() => {
+  //   const wpLoggedIn = document.body.classList.contains("logged-in");
+  //   const hasToken =
+  //     !!localStorage.getItem("access_token") ||
+  //     !!localStorage.getItem("auth_token");
 
-    if (wpLoggedIn || hasToken) {
-      window.location.href = "/thank-you";
-    }
-  }, []);
+  //   if (wpLoggedIn || hasToken) {
+  //     window.location.href = "/thank-you";
+  //   }
+  // }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -126,7 +126,7 @@ export function RegistrationSuccess({ requiresApproval, onContinue }: Registrati
                   onClick={onContinue}
                   className="w-full bg-emerald-600 hover:bg-emerald-700"
                 >
-                  Access Now
+                  Go to Dashboard
                 </Button>
               </>
             )}
