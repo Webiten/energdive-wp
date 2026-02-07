@@ -38,7 +38,6 @@ export default function App() {
   const isOnDashboardPage =
     window.location.pathname.includes("/dashboard");
 
-  // 🔐 Check token on mount (important)
   const [hasToken, setHasToken] = useState<boolean>(false);
 
   useEffect(() => {
@@ -58,12 +57,12 @@ export default function App() {
     setAppState("verification");
   };
 
-  // 🔥 YOUR EXACT REQUIREMENT IMPLEMENTED
+  // ✅ Corrected logic (no loop)
   const handleVerified = (isNewUser: boolean) => {
     if (isNewUser) {
-      setAppState("register");      // NEW USER → profile completion
+      setAppState("register");      // New user onboarding
     } else {
-      window.location.href = "/";   // EXISTING USER → HOME (NOT dashboard)
+      window.location.href = "/dashboard"; // Existing user → dashboard
     }
   };
 
@@ -72,8 +71,12 @@ export default function App() {
     await AuthAPI.requestOtp(identifier);
   };
 
+  // 🔥 CRITICAL FIX — breaks thankyou loop
   const handleRegistrationComplete = () => {
     setAppState("registration-success");
+
+    // Remove onboarding flag so dashboard doesn’t bounce back
+    localStorage.removeItem("pending_registration");
   };
 
   /* =======================
@@ -105,7 +108,7 @@ export default function App() {
     <>
       <SessionExpiredModal />
 
-      {/* ========= DASHBOARD GATE (SAFE) ========= */}
+      {/* ========= DASHBOARD GATE ========= */}
       {isOnDashboardPage && hasToken ? (
         <div className="min-h-screen w-full bg-white">
           <TopBar onLogout={() => (window.location.href = "/")} />
@@ -136,7 +139,7 @@ export default function App() {
 
           {appState === "register" && (
             <RegisterPage
-              identifier={identifier}
+              email={identifier}   // ✅ FIXED prop name
               onRegistrationComplete={handleRegistrationComplete}
             />
           )}
@@ -144,7 +147,7 @@ export default function App() {
           {appState === "registration-success" && (
             <RegistrationSuccess
               requiresApproval={false}
-              onContinue={() => (window.location.href = "/")}
+              onContinue={() => (window.location.href = "/dashboard")} // ✅ Direct dashboard
             />
           )}
         </div>
