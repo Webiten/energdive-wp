@@ -39,7 +39,7 @@ class CompleteRegistration
             }
         }
 
-        // ✅ normalize privacy boolean
+        // normalize privacy boolean
         $privacyAccepted = filter_var($params['privacy_accepted'], FILTER_VALIDATE_BOOLEAN);
         if ($privacyAccepted !== true) {
             return new WP_Error('privacy_required', 'Privacy policy must be accepted', ['status' => 400]);
@@ -109,13 +109,26 @@ class CompleteRegistration
 
         $table = $wpdb->prefix . 'energ_members';
 
-        // ✅ resolve WHERE condition safely
+        // Safer WHERE resolution
         if (is_numeric($user)) {
             $where = ['user_id' => (int) $user];
         } elseif (is_email($user)) {
             $where = ['email' => sanitize_email($user)];
         } else {
             $where = ['phone' => sanitize_text_field($user)];
+        }
+
+        // Fallback lookup if above misses the row
+        $existing = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE email = %s OR phone = %s LIMIT 1",
+                $params['email'] ?? '',
+                $params['phone'] ?? ''
+            )
+        );
+
+        if ($existing) {
+            $where = ['id' => (int) $existing->id];
         }
 
         $data = [
@@ -125,12 +138,11 @@ class CompleteRegistration
             'organization'         => sanitize_text_field($params['organization']),
             'country'              => sanitize_text_field($params['country']),
             'state'                => $state,
+            'phone'                => sanitize_text_field($params['phone'] ?? ''),
 
-            // legacy support
+            // legacy support (keep primary values)
             'community'            => sanitize_text_field($communities[0]),
-
-            // avoid NULL write issues
-            'sub_community'        => '',
+            'sub_community'        => sanitize_text_field($subCommunities[0] ?? ''),
 
             'industry'             => $industryVal,
             'sub_industry'         => $subIndustryVal,
@@ -151,6 +163,27 @@ class CompleteRegistration
 
         if ($updated === 0) {
             return new WP_Error('member_not_found', 'Member record not found for this user', ['status' => 404]);
+        }
+
+        /* ================= SYNC WITH WORDPRESS USER (HEADER FIX) ================= */
+
+        $wp_user = null;
+
+        if (is_email($user)) {
+            $wp_user = get_user_by('email', $user);
+        } elseif (is_numeric($user)) {
+            $wp_user = get_user_by('id', (int)$user);
+        }
+
+        if ($wp_user) {
+            update_user_meta($wp_user->ID, 'first_name', sanitize_text_field($params['first_name']));
+            update_user_meta($wp_user->ID, 'last_name', sanitize_text_field($params['last_name']));
+
+            wp_update_user([
+                'ID' => $wp_user->ID,
+                'display_name' =>
+                    sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
+            ]);
         }
 
         return [
