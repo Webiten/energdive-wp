@@ -78,26 +78,30 @@ export function TopBar({ onLogout }: TopBarProps) {
         </button>
 
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>   {/* 🔥 IMPORTANT FIX */}
-            <button className="focus:outline-none">
-              <div className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer">
-                <Avatar className="w-9 h-9">
-                  <AvatarFallback className="bg-emerald-600 text-white">
-                    {loading ? "…" : initials}
-                  </AvatarFallback>
-                </Avatar>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer focus:outline-none"
+            >
+              <Avatar className="w-9 h-9">
+                <AvatarFallback className="bg-emerald-600 text-white">
+                  {loading ? "…" : initials}
+                </AvatarFallback>
+              </Avatar>
 
-                <div className="text-left hidden md:block">
-                  <p className="text-sm font-medium text-gray-900">
-                    {loading ? "Loading…" : displayName}
-                  </p>
-                  <p className="text-xs text-gray-500">{loading ? "" : roleLabel}</p>
-                </div>
+              <div className="text-left hidden md:block">
+                <p className="text-sm font-medium text-gray-900">
+                  {loading ? "Loading…" : displayName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {loading ? "" : roleLabel}
+                </p>
               </div>
             </button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-56">
+
+          <DropdownMenuContent align="end" className="w-56 z-[9999]">
             <div className="px-2 py-2">
               <p className="text-sm font-medium">{loading ? "Loading…" : displayName}</p>
               <p className="text-xs text-gray-500">{loading ? "" : me?.email ?? ""}</p>
