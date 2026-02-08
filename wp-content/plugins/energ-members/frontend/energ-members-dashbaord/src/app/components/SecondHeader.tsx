@@ -18,8 +18,8 @@ interface SecondHeaderProps {
 const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "intelligence", label: "Intelligence", icon: Brain },
-  // { id: "community", label: "Community", icon: MessageSquare },
-  // { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
+  { id: "community", label: "Community", icon: MessageSquare },
+  { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
   { id: "events", label: "Events", icon: Calendar },
   // { id: "bookmarks", label: "Bookmarks", icon: Bookmark },
   { id: "settings", label: "Account Settings", icon: Settings },
