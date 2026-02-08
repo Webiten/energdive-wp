@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NewsAPI } from "./api";
+import { NewsAPI } from "../lib/api";
 
 export interface TrendingNewsItem {
   id: number;
