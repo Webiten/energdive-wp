@@ -132,3 +132,20 @@ export const VideoAPI = {
   },
 };
 
+export const AuthorAPI = {
+  async getAuthors() {
+    const res = await fetch("/wp-json/energ/v1/authors", {
+      headers: { Accept: "application/json" },
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw {
+        message: data?.message || "Failed to load authors",
+        status: res.status,
+      };
+    }
+    return data;
+  },
+};
+

@@ -42,6 +42,10 @@ add_action('rest_api_init', function () {
     \Energ\Routes\VideoRoutes::register();
 });
 
+add_action('rest_api_init', function () {
+    \Energ\Routes\AuthorRoutes::register();
+});
+
 
 add_action('rest_api_init', function () {
     \Energ\Routes\UserRoutes::register();

@@ -1,39 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { 
-  TrendingUp, 
-  Users, 
-  Award,
-  Clock,
-  Play
-} from "lucide-react";
+import { TrendingUp, Users, Award, Clock, Play } from "lucide-react";
 import { useVideos } from "../hooks/useVideos";
-
-/* ---------- Sidebar Data (unchanged) ---------- */
-const topContributors = [
-  {
-    name: "Dr. Emily Watson",
-    role: "Energy Policy Analyst",
-    contributions: 245,
-    reputation: 4890,
-    specialty: "Policy & Regulation"
-  },
-  {
-    name: "Michael Zhang",
-    role: "Senior Consultant",
-    contributions: 198,
-    reputation: 4320,
-    specialty: "Market Analysis"
-  },
-  {
-    name: "Dr. Sarah Mitchell",
-    role: "Technology Researcher",
-    contributions: 167,
-    reputation: 3950,
-    specialty: "Innovation"
-  },
-];
+import { useAuthors } from "../hooks/useAuthors";   // ✅ NEW
 
 const trendingTopics = [
   { topic: "Green Hydrogen", discussions: 45, growth: "+23%" },
@@ -44,8 +14,10 @@ const trendingTopics = [
 
 export function CommunitySection() {
 
-  // ======= REAL VIDEOS HOOK =======
-  const { data: videos = [], loading } = useVideos(12);
+  const { data: videos = [], loading: videoLoading } = useVideos(12);
+
+  // ✅ REAL AUTHORS FROM CPT
+  const { authors, loading: authorLoading } = useAuthors(5);
 
   return (
     <div className="flex-1 bg-gray-50 overflow-auto">
@@ -61,9 +33,8 @@ export function CommunitySection() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* ========== LEFT: VIDEO FEED (2 columns) ========== */}
+          {/* LEFT: VIDEO FEED */}
           <div className="lg:col-span-2 space-y-6">
-
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -73,40 +44,23 @@ export function CommunitySection() {
               </CardHeader>
 
               <CardContent>
+                {videoLoading && <p>Loading videos...</p>}
 
-                {loading && (
-                  <p className="text-sm text-gray-500 mb-4">
-                    Loading videos...
-                  </p>
-                )}
-
-                {/* VIDEO GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {videos.map((v: any) => (
-                    <Card key={v.id} className="hover:shadow-md transition-shadow">
+                    <Card key={v.id}>
                       <CardContent className="pt-4 space-y-3">
-
                         {v.thumbnail && (
-                          <img 
+                          <img
                             src={v.thumbnail}
-                            alt={v.title}
                             className="w-full rounded-lg aspect-video object-cover"
                           />
                         )}
 
-                        <h3 className="font-semibold text-gray-900">
-                          {v.title}
-                        </h3>
-
-                        {v.excerpt && (
-                          <p className="text-sm text-gray-600 line-clamp-2">
-                            {v.excerpt}
-                          </p>
-                        )}
+                        <h3 className="font-semibold">{v.title}</h3>
 
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <Badge variant="outline">Video</Badge>
-
                           {v.date && (
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
@@ -116,7 +70,7 @@ export function CommunitySection() {
                         </div>
 
                         {v.video_url && (
-                          <a 
+                          <a
                             href={v.video_url}
                             target="_blank"
                             className="text-emerald-600 text-sm font-medium"
@@ -124,49 +78,57 @@ export function CommunitySection() {
                             Watch Video →
                           </a>
                         )}
-
                       </CardContent>
                     </Card>
                   ))}
                 </div>
-
               </CardContent>
             </Card>
           </div>
 
-          {/* ========== RIGHT SIDEBAR (same as before) ========== */}
+          {/* RIGHT SIDEBAR */}
           <div className="space-y-6">
 
-            {/* Top Contributors */}
+            {/* ✅ AUTHORS INSTEAD OF TOP CONTRIBUTORS */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-emerald-600" />
-                  Top Contributors
+                  Featured Authors
                 </CardTitle>
               </CardHeader>
+
               <CardContent className="space-y-4">
-                {topContributors.map((c, index) => (
-                  <div key={index} className="flex items-start gap-3 pb-4 border-b last:border-b-0">
+                {authorLoading && <p>Loading authors...</p>}
+
+                {authors.map((a) => (
+                  <div key={a.id} className="flex items-start gap-3 pb-4 border-b last:border-b-0">
                     <Avatar className="w-10 h-10">
-                      <AvatarFallback className="bg-emerald-600 text-white text-sm">
-                        {c.name.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
+                      {a.avatar ? (
+                        <img src={a.avatar} className="w-full h-full rounded-full" />
+                      ) : (
+                        <AvatarFallback className="bg-emerald-600 text-white text-sm">
+                          {a.name.split(" ").map(n => n[0]).join("")}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
 
                     <div>
-                      <p className="font-medium text-sm">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.role}</p>
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        {c.specialty}
-                      </Badge>
+                      <p className="font-medium text-sm">{a.name}</p>
+                      <p className="text-xs text-gray-500">{a.role}</p>
+
+                      {a.specialty && (
+                        <Badge variant="outline" className="mt-1 text-xs">
+                          {a.specialty}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
 
-            {/* Trending Topics */}
+            {/* Trending Topics (same as before) */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
