@@ -1,32 +1,45 @@
 import { useEffect, useState } from "react";
+import { NewsAPI } from "./api";
 
 export interface TrendingNewsItem {
   id: number;
   title: string;
   category: string;
-  views?: number;
+  views: number;
 }
 
 export function useTrendingNews(limit = 4) {
-  const [news, setNews] = useState<TrendingNewsItem[]>([]);
+  const [data, setData] = useState<TrendingNewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/wp-json/wp/v2/news?per_page=${limit}&orderby=date&order=desc`)
-      .then((res) => res.json())
-      .then((data) => {
-        const formatted = data.map((item: any) => ({
-          id: item.id,
-          title: item.title.rendered,
-          category:
-            item._embedded?.["wp:term"]?.[0]?.[0]?.name || "News",
-          views: item.meta?.views || 0,
-        }));
+    async function fetchTrending() {
+      setLoading(true);
+      setError(null);
 
-        setNews(formatted);
-      })
-      .finally(() => setLoading(false));
+      try {
+        const res = await NewsAPI.getNews();
+
+        const formatted = (res.news || [])
+          .slice(0, limit)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            category: "News",
+            views: Math.floor(Math.random() * 5000) + 100, // temp mock views
+          }));
+
+        setData(formatted);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load trending news");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTrending();
   }, [limit]);
 
-  return { news, loading };
+  return { data, loading, error };
 }

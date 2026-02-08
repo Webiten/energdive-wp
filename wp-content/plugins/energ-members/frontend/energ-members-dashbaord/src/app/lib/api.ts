@@ -112,3 +112,14 @@ export const AuthAPI = {
     return { success: true };
   },
 };
+
+export const NewsAPI = {
+  async getNews() {
+    const res = await fetch(`${BASE}/news`, {
+      headers: { Accept: "application/json" },
+    });
+
+    return throwIfNotOk(res);
+  },
+};
+

@@ -35,6 +35,11 @@ add_action('rest_api_init', function () {
 });
 
 add_action('rest_api_init', function () {
+    \Energ\Routes\NewsRoutes::register();
+});
+
+
+add_action('rest_api_init', function () {
     \Energ\Routes\UserRoutes::register();
 });
 
