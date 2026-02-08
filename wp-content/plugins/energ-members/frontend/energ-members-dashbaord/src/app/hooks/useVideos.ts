@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { VideoAPI } from "./api";
+import { VideoAPI } from "../lib/api";
 
 export interface VideoItem {
   id: number;
