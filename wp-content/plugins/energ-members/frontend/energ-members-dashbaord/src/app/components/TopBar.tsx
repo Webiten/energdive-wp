@@ -78,20 +78,23 @@ export function TopBar({ onLogout }: TopBarProps) {
         </button>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="focus:outline-none">
-            <div className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer">
-              <Avatar className="w-9 h-9">
-                <AvatarFallback className="bg-emerald-600 text-white">
-                  {loading ? "…" : initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="text-left hidden md:block">
-                <p className="text-sm font-medium text-gray-900">
-                  {loading ? "Loading…" : displayName}
-                </p>
-                <p className="text-xs text-gray-500">{loading ? "" : roleLabel}</p>
+          <DropdownMenuTrigger asChild>   {/* 🔥 IMPORTANT FIX */}
+            <button className="focus:outline-none">
+              <div className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer">
+                <Avatar className="w-9 h-9">
+                  <AvatarFallback className="bg-emerald-600 text-white">
+                    {loading ? "…" : initials}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="text-left hidden md:block">
+                  <p className="text-sm font-medium text-gray-900">
+                    {loading ? "Loading…" : displayName}
+                  </p>
+                  <p className="text-xs text-gray-500">{loading ? "" : roleLabel}</p>
+                </div>
               </div>
-            </div>
+            </button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-56">
