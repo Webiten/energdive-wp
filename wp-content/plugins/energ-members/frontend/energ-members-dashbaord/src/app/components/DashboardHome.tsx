@@ -4,6 +4,7 @@ import { Badge } from "./ui/badge";
 import { TrendingUp, FileText } from "lucide-react";
 import { useMe, getMeDisplayName } from "../hooks/useMe";
 import { useTrendingNews } from "../hooks/useTrendingNews";
+import { useVideos } from "../hooks/useVideos";
 
 type Article = {
   id: number;
@@ -19,7 +20,7 @@ type IntelligenceGroup = {
 export function DashboardHome() {
   const { me, loading } = useMe();
 
-  // ====== INTELLIGENCE (SAME WAY AS IntelligenceSection.tsx) ======
+  // ====== INTELLIGENCE FEED ======
   const [groups, setGroups] = useState<IntelligenceGroup[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
@@ -47,11 +48,17 @@ export function DashboardHome() {
       .finally(() => setFeedLoading(false));
   }, []);
 
-  // ====== TRENDING (keep your hook) ======
+  // ====== TRENDING NEWS ======
   const {
     data: trendingNews = [],
     loading: trendingLoading,
   } = useTrendingNews();
+
+  // ====== VIDEOS (NEW) ======
+  const {
+    data: videos = [],
+    loading: videoLoading,
+  } = useVideos(4);
 
   const welcomeName = useMemo(() => {
     return loading ? "…" : getMeDisplayName(me);
@@ -71,7 +78,7 @@ export function DashboardHome() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ====== INTELLIGENCE FEED (DASHBOARD STYLE) ====== */}
+          {/* ====== INTELLIGENCE FEED (LEFT) ====== */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -131,8 +138,9 @@ export function DashboardHome() {
             </Card>
           </div>
 
-          {/* ====== TRENDING SIDEBAR ====== */}
+          {/* ====== RIGHT SIDEBAR ====== */}
           <div className="space-y-6">
+            {/* TRENDING NEWS */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -173,7 +181,51 @@ export function DashboardHome() {
               </CardContent>
             </Card>
 
-            {/* Placeholder */}
+            {/* ====== NEW: LATEST VIDEOS ====== */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Latest Videos</CardTitle>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {videoLoading && (
+                  <p className="text-sm text-gray-500">
+                    Loading videos...
+                  </p>
+                )}
+
+                {videos.map((v: any) => (
+                  <div
+                    key={v.id}
+                    className="pb-4 border-b last:border-b-0 last:pb-0"
+                  >
+                    {v.thumbnail && (
+                      <img
+                        src={v.thumbnail}
+                        alt={v.title}
+                        className="rounded mb-2 w-full"
+                      />
+                    )}
+
+                    <h4 className="text-sm font-medium mb-1">
+                      {v.title}
+                    </h4>
+
+                    {v.video_url && (
+                      <a
+                        href={v.video_url}
+                        target="_blank"
+                        className="text-emerald-600 text-xs"
+                      >
+                        Watch video →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Placeholder (unchanged) */}
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
               <CardContent className="pt-6 text-center">
                 <div className="w-12 h-12 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">

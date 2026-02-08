@@ -38,6 +38,10 @@ add_action('rest_api_init', function () {
     \Energ\Routes\NewsRoutes::register();
 });
 
+add_action('rest_api_init', function () {
+    \Energ\Routes\VideoRoutes::register();
+});
+
 
 add_action('rest_api_init', function () {
     \Energ\Routes\UserRoutes::register();

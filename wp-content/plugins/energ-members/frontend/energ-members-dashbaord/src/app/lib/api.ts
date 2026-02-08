@@ -123,3 +123,12 @@ export const NewsAPI = {
   },
 };
 
+export const VideoAPI = {
+  async getVideos() {
+    const res = await fetch(`${BASE}/videos`, {
+      headers: { Accept: "application/json" },
+    });
+    return throwIfNotOk(res);
+  },
+};
+
