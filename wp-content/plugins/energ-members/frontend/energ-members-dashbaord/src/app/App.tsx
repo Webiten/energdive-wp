@@ -38,14 +38,32 @@ export default function App() {
   const isOnDashboardPage =
     window.location.pathname.includes("/dashboard");
 
-  const [hasToken, setHasToken] = useState<boolean>(false);
-
-  useEffect(() => {
-    const token =
+  // 🔐 REAL auth state (not stale)
+  const [hasToken, setHasToken] = useState<boolean>(() => {
+    return !!(
       localStorage.getItem("access_token") ||
-      localStorage.getItem("auth_token");
+      localStorage.getItem("auth_token")
+    );
+  });
 
-    setHasToken(!!token);
+  // 🔄 Listen to token changes (logout / expiry)
+  useEffect(() => {
+    const syncAuthState = () => {
+      const token =
+        localStorage.getItem("access_token") ||
+        localStorage.getItem("auth_token");
+
+      const isLoggedIn = !!token;
+      setHasToken(isLoggedIn);
+
+      // If user is on dashboard but token vanished → force login page
+      if (!isLoggedIn && window.location.pathname.includes("/dashboard")) {
+        window.location.href = "/";
+      }
+    };
+
+    window.addEventListener("storage", syncAuthState);
+    return () => window.removeEventListener("storage", syncAuthState);
   }, []);
 
   /* =======================
@@ -57,7 +75,6 @@ export default function App() {
     setAppState("verification");
   };
 
-  // ✅ Corrected logic (no loop)
   const handleVerified = (isNewUser: boolean) => {
     if (isNewUser) {
       setAppState("register");      // New user onboarding
@@ -71,7 +88,6 @@ export default function App() {
     await AuthAPI.requestOtp(identifier);
   };
 
-  // 🔥 CRITICAL FIX — breaks thankyou loop
   const handleRegistrationComplete = () => {
     setAppState("registration-success");
 
@@ -108,7 +124,7 @@ export default function App() {
     <>
       <SessionExpiredModal />
 
-      {/* ========= DASHBOARD GATE ========= */}
+      {/* ========= DASHBOARD GATE (STRICT & SAFE) ========= */}
       {isOnDashboardPage && hasToken ? (
         <div className="min-h-screen w-full bg-white">
           <TopBar onLogout={() => (window.location.href = "/")} />
@@ -139,7 +155,7 @@ export default function App() {
 
           {appState === "register" && (
             <RegisterPage
-              email={identifier}   // ✅ FIXED prop name
+              email={identifier}
               onRegistrationComplete={handleRegistrationComplete}
             />
           )}
@@ -147,7 +163,7 @@ export default function App() {
           {appState === "registration-success" && (
             <RegistrationSuccess
               requiresApproval={false}
-              onContinue={() => (window.location.href = "/dashboard")} // ✅ Direct dashboard
+              onContinue={() => (window.location.href = "/dashboard")}
             />
           )}
         </div>
