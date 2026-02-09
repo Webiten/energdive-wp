@@ -64,7 +64,7 @@ export function SubscriptionsSection() {
           <p className="text-gray-600">Choose the plan that best fits your needs</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {plans.map((plan) => (
             <Card
               key={plan.name}
