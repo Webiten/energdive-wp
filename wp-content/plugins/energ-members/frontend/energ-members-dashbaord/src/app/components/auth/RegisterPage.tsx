@@ -547,25 +547,33 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   <Label htmlFor="mobile">Mobile Number *</Label>
 
                   <div className="flex gap-2">
-                    <Select
+                    <select
                       value={formData.countryCode}
-                      onValueChange={(value) => handleInputChange("countryCode", value)}
+                      onChange={(e) => handleInputChange("countryCode", e.target.value)}
                       disabled={otpState === "verified"}
+                      className={`
+    px-3 py-2.5 border border-gray-300 rounded-lg
+    focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+    bg-white cursor-pointer
+    disabled:bg-gray-50 disabled:cursor-not-allowed
+    appearance-none
+    shadow-sm hover:border-gray-400
+    transition-colors
+  `}
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 0.5rem center',
+                        backgroundSize: '1.5em 1.5em',
+                        paddingRight: '2.5rem'
+                      }}
                     >
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countryCodes.map((code) => (
-                          <SelectItem key={code.value} value={code.value}>
-                            <span className="flex items-center gap-2">
-                              <span>{code.flag}</span>
-                              <span>{code.value}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {countryCodes.map((code) => (
+                        <option key={code.value} value={code.value} className="py-2">
+                          {code.flag} {code.value}
+                        </option>
+                      ))}
+                    </select>
 
                     <div className="flex-1 flex gap-2">
                       <Input
@@ -710,7 +718,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
               {/* Professional Classification */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Professional Classification</h3>
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Choose Communities and Sub Communities</h3>
 
                 {/* Community Multi-Select */}
                 <div className="space-y-2">
@@ -784,12 +792,16 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                       onValueChange={(value) => handleInputChange("industry", value)}
                       disabled={!formData.communities.length}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white shadow-sm hover:border-gray-400 transition-colors">
                         <SelectValue placeholder={formData.communities.length ? "Select industry" : "Select community first"} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white shadow-lg border border-gray-200 rounded-lg max-h-[300px] overflow-y-auto">
                         {filteredIndustries.map((ind) => (
-                          <SelectItem key={ind.value} value={ind.value}>
+                          <SelectItem
+                            key={ind.value}
+                            value={ind.value}
+                            className="cursor-pointer hover:bg-gray-50 focus:bg-gray-100 py-2.5 px-3"
+                          >
                             {ind.label}
                           </SelectItem>
                         ))}
@@ -805,12 +817,16 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                       onValueChange={(value) => handleInputChange("subIndustry", value)}
                       disabled={!formData.industry}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white shadow-sm hover:border-gray-400 transition-colors">
                         <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white shadow-lg border border-gray-200 rounded-lg max-h-[300px] overflow-y-auto">
                         {subIndustryOptions.map((sub) => (
-                          <SelectItem key={sub.value} value={sub.value}>
+                          <SelectItem
+                            key={sub.value}
+                            value={sub.value}
+                            className="cursor-pointer hover:bg-gray-50 focus:bg-gray-100 py-2.5 px-3"
+                          >
                             {sub.label}
                           </SelectItem>
                         ))}
@@ -824,20 +840,6 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="areaOfIndustry">Area of Industry</Label>
-                  <Select
-                    value={formData.areaOfIndustry}
-                    onValueChange={(value) => handleInputChange("areaOfIndustry", value)}
-                    disabled={!formData.subCommunities.length}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={formData.subCommunities.length ? "Select area" : "Select sub-community first"} />
-                    </SelectTrigger>
-                    <SelectContent>{/* mapping later */}</SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">This will personalize your dashboard intelligence modules</p>
-                </div>
               </div>
 
               {otpState !== "verified" && formData.mobile && (
