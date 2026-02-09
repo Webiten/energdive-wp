@@ -784,59 +784,73 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 </div>
 
                 {/* Industry (single-select) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="industry">Industry *</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  {/* Industry Column */}
+                  <div className="flex flex-col space-y-2">
+                    <Label htmlFor="industry" className="font-medium text-sm text-gray-700">
+                      Industry <span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={formData.industry}
                       onValueChange={(value) => handleInputChange("industry", value)}
                       disabled={!formData.communities.length}
                     >
-                      <SelectTrigger className="bg-white shadow-sm hover:border-gray-400 transition-colors">
+                      <SelectTrigger className="w-full bg-white shadow-sm hover:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
                         <SelectValue placeholder={formData.communities.length ? "Select industry" : "Select community first"} />
                       </SelectTrigger>
-                      <SelectContent className="bg-white shadow-lg border border-gray-200 rounded-lg max-h-[300px] overflow-y-auto">
-                        {filteredIndustries.map((ind) => (
-                          <SelectItem
-                            key={ind.value}
-                            value={ind.value}
-                            className="cursor-pointer hover:bg-gray-50 focus:bg-gray-100 py-2.5 px-3"
-                          >
-                            {ind.label}
-                          </SelectItem>
-                        ))}
+                      {/* Ensure SelectContent is positioned relatively to the viewport */}
+                      <SelectContent className="z-[50] min-w-[200px] bg-white shadow-xl border border-gray-200 rounded-md">
+                        <div className="max-h-[250px] overflow-y-auto p-1">
+                          {filteredIndustries.map((ind) => (
+                            <SelectItem
+                              key={ind.value}
+                              value={ind.value}
+                              className="rounded-sm transition-colors"
+                            >
+                              {ind.label}
+                            </SelectItem>
+                          ))}
+                        </div>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* ✅ Sub-Industry (never blank now) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="subIndustry">Sub-Industry</Label>
+                  {/* Sub-Industry Column */}
+                  <div className="flex flex-col space-y-2">
+                    <Label htmlFor="subIndustry" className="font-medium text-sm text-gray-700">
+                      Sub-Industry
+                    </Label>
                     <Select
                       value={formData.subIndustry}
                       onValueChange={(value) => handleInputChange("subIndustry", value)}
                       disabled={!formData.industry}
                     >
-                      <SelectTrigger className="bg-white shadow-sm hover:border-gray-400 transition-colors">
+                      <SelectTrigger className="w-full bg-white shadow-sm hover:border-blue-400 transition-all">
                         <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
                       </SelectTrigger>
-                      <SelectContent className="bg-white shadow-lg border border-gray-200 rounded-lg max-h-[300px] overflow-y-auto">
-                        {subIndustryOptions.map((sub) => (
-                          <SelectItem
-                            key={sub.value}
-                            value={sub.value}
-                            className="cursor-pointer hover:bg-gray-50 focus:bg-gray-100 py-2.5 px-3"
-                          >
-                            {sub.label}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="z-[50] min-w-[200px] bg-white shadow-xl border border-gray-200 rounded-md">
+                        <div className="max-h-[250px] overflow-y-auto p-1">
+                          {subIndustryOptions.map((sub) => (
+                            <SelectItem
+                              key={sub.value}
+                              value={sub.value}
+                              className="rounded-sm"
+                            >
+                              {sub.label}
+                            </SelectItem>
+                          ))}
+                        </div>
                       </SelectContent>
                     </Select>
-                    {!safeSubIndustryMap[formData.industry]?.length && formData.industry ? (
-                      <p className="text-xs text-gray-500">
-                        Showing common sub-industry options (you can later paste full mapping for {formData.industry})
-                      </p>
-                    ) : null}
+
+                    {/* Helper text with absolute positioning to prevent layout shift */}
+                    <div className="relative h-4">
+                      {!safeSubIndustryMap[formData.industry]?.length && formData.industry && (
+                        <p className="absolute top-0 left-0 text-[11px] text-gray-400 italic leading-tight">
+                          Showing common sub-industry options for {formData.industry}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
