@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
-import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw, User, Briefcase, Building2, MapPin, Users, Layers, ChevronDown } from "lucide-react";
+import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw, User, Briefcase, Building2, ChevronDown, Search } from "lucide-react";
 import { AuthAPI } from "@/app/lib/api";
 
 interface RegisterPageProps {
@@ -529,6 +528,154 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     return Math.round(progress);
   };
 
+  // Custom Dropdown Component with proper z-index handling
+  interface CustomDropdownProps {
+    label: string;
+    required?: boolean;
+    value: string;
+    onChange: (value: string) => void;
+    options: Array<{ value: string; label: string }>;
+    placeholder: string;
+    disabled?: boolean;
+    helperText?: string;
+  }
+
+  function CustomDropdown({ label, required, value, onChange, options, placeholder, disabled, helperText }: CustomDropdownProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const selectedLabel = options.find(o => o.value === value)?.label;
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+          setSearchTerm("");
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filteredOptions = searchTerm 
+      ? options.filter(o => o.label.toLowerCase().includes(searchTerm.toLowerCase()))
+      : options;
+
+    return (
+      <div className="space-y-2" ref={dropdownRef}>
+        <Label className="text-sm font-medium text-gray-700">
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </Label>
+        <div className="relative">
+          {/* Trigger Button */}
+          <button
+            type="button"
+            onClick={() => !disabled && setIsOpen(!isOpen)}
+            disabled={disabled}
+            className={`w-full h-11 px-4 text-left border rounded-lg flex items-center justify-between transition-all ${
+              disabled 
+                ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed" 
+                : "bg-white border-gray-200 hover:border-gray-300 text-gray-900"
+            } ${isOpen ? "border-emerald-500 ring-2 ring-emerald-500/20" : ""}`}
+          >
+            <span className={value ? "text-gray-900" : "text-gray-400"}>
+              {selectedLabel || placeholder}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Dropdown Menu - Fixed positioning with high z-index */}
+          {isOpen && (
+            <div 
+              className="fixed z-[9999] mt-1 bg-white border border-gray-200 rounded-lg shadow-2xl overflow-hidden"
+              style={{
+                width: dropdownRef.current?.offsetWidth || 'auto',
+                top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + window.scrollY + 4 : 0,
+                left: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().left + window.scrollX : 0,
+              }}
+            >
+              {/* Search Input */}
+              <div className="p-2 border-b border-gray-100">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search..."
+                    className="w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-md focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Options List */}
+              <div className="max-h-60 overflow-y-auto">
+                {filteredOptions.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                    No options found
+                  </div>
+                ) : (
+                  filteredOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(option.value);
+                        setIsOpen(false);
+                        setSearchTerm("");
+                      }}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center justify-between ${
+                        value === option.value
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {value === option.value && <CheckCircle className="w-4 h-4 text-emerald-600" />}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        {helperText && <p className="text-xs text-gray-400 mt-1.5 italic">{helperText}</p>}
+      </div>
+    );
+  }
+
+  // Section Header Component
+  function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle?: string }) {
+    return (
+      <div className="flex items-start gap-4 mb-6">
+        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  // Form Field Component
+  function FormField({ label, required, children, error }: { label: string; required?: boolean; children: React.ReactNode; error?: string }) {
+    return (
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-gray-700">
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </Label>
+        {children}
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-emerald-50/30 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -737,20 +884,15 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
               {/* Location Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <FormField label="Country" required>
-                  <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
-                    <SelectTrigger className="h-11 border-gray-200 focus:ring-emerald-500/20 focus:border-emerald-500">
-                      <SelectValue placeholder="Select your country" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {countries.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormField>
+                <CustomDropdown
+                  label="Country"
+                  required
+                  value={formData.country}
+                  onChange={(value) => handleInputChange("country", value)}
+                  options={countries}
+                  placeholder="Select your country"
+                />
+                {/* </FormField> */}
 
                 <FormField label="State / Province">
                   <Input
@@ -805,7 +947,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
             <div className="h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500" />
             <CardHeader className="pb-4">
               <SectionHeader 
-                icon={Users} 
+                icon={User} 
                 title="Communities & Classification" 
                 subtitle="Select your areas of interest"
               />
@@ -936,47 +1078,25 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
               {/* Industry & Sub-Industry */}
               {formData.communities.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
-                  <FormField label="Industry" required>
-                    <Select
-                      value={formData.industry}
-                      onValueChange={(value) => handleInputChange("industry", value)}
-                    >
-                      <SelectTrigger className="h-11 border-gray-200 focus:ring-emerald-500/20 focus:border-emerald-500">
-                        <SelectValue placeholder="Select your industry" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        {filteredIndustries.map((ind) => (
-                          <SelectItem key={ind.value} value={ind.value}>
-                            {ind.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormField>
+                  <CustomDropdown
+                    label="Industry"
+                    required
+                    value={formData.industry}
+                    onChange={(value) => handleInputChange("industry", value)}
+                    options={filteredIndustries}
+                    placeholder="Select your industry"
+                  />
 
-                  <FormField label="Sub-Industry">
-                    <Select
-                      value={formData.subIndustry}
-                      onValueChange={(value) => handleInputChange("subIndustry", value)}
-                      disabled={!formData.industry}
-                    >
-                      <SelectTrigger className={`h-11 border-gray-200 focus:ring-emerald-500/20 focus:border-emerald-500 ${!formData.industry ? "bg-gray-50" : ""}`}>
-                        <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72">
-                        {subIndustryOptions.map((sub) => (
-                          <SelectItem key={sub.value} value={sub.value}>
-                            {sub.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!safeSubIndustryMap[formData.industry]?.length && formData.industry && (
-                      <p className="text-xs text-gray-400 mt-1.5 italic">
-                        Showing common options for {industries.find(i => i.value === formData.industry)?.label}
-                      </p>
-                    )}
-                  </FormField>
+                  <CustomDropdown
+                    label="Sub-Industry"
+                    value={formData.subIndustry}
+                    onChange={(value) => handleInputChange("subIndustry", value)}
+                    options={subIndustryOptions}
+                    placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"}
+                    disabled={!formData.industry}
+                    helperText={!safeSubIndustryMap[formData.industry]?.length && formData.industry ? 
+                      `Showing common options for ${industries.find(i => i.value === formData.industry)?.label}` : undefined}
+                  />
                 </div>
               )}
             </CardContent>
