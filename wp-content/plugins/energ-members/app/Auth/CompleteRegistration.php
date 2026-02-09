@@ -105,31 +105,52 @@ class CompleteRegistration
             }
         }
 
-        /* ================= DATABASE UPDATE ================= */
+        /* ================= DATABASE UPDATE - FIXED ================= */
 
         $table = $wpdb->prefix . 'energ_members';
 
-        // Safer WHERE resolution
+        // FIX: Better lookup logic
+        $existing = null;
+        
+        // First try to find by JWT user
         if (is_numeric($user)) {
-            $where = ['user_id' => (int) $user];
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table} WHERE user_id = %d LIMIT 1",
+                (int) $user
+            ));
         } elseif (is_email($user)) {
-            $where = ['email' => sanitize_email($user)];
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table} WHERE email = %s LIMIT 1",
+                sanitize_email($user)
+            ));
         } else {
-            $where = ['phone' => sanitize_text_field($user)];
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table} WHERE phone = %s LIMIT 1",
+                sanitize_text_field($user)
+            ));
         }
 
-        // Fallback lookup if above misses the row
-        $existing = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT * FROM {$table} WHERE email = %s OR phone = %s LIMIT 1",
-                $params['email'] ?? '',
-                $params['phone'] ?? ''
-            )
-        );
-
-        if ($existing) {
-            $where = ['id' => (int) $existing->id];
+        // Fallback: try params email/phone if JWT lookup failed
+        if (!$existing && !empty($params['email'])) {
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table} WHERE email = %s LIMIT 1",
+                sanitize_email($params['email'])
+            ));
         }
+
+        if (!$existing && !empty($params['phone'])) {
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table} WHERE phone = %s LIMIT 1",
+                sanitize_text_field($params['phone'])
+            ));
+        }
+
+        if (!$existing) {
+            return new WP_Error('member_not_found', 'Member record not found. Please contact support.', ['status' => 404]);
+        }
+
+        // Now update using the found record's ID
+        $where = ['id' => (int) $existing->id];
 
         $data = [
             'first_name'           => sanitize_text_field($params['first_name']),
@@ -138,7 +159,7 @@ class CompleteRegistration
             'organization'         => sanitize_text_field($params['organization']),
             'country'              => sanitize_text_field($params['country']),
             'state'                => $state,
-            'phone'                => sanitize_text_field($params['phone'] ?? ''),
+            'phone'                => sanitize_text_field($params['phone'] ?? $existing->phone ?? ''),
 
             // legacy support (keep primary values)
             'community'            => sanitize_text_field($communities[0]),
@@ -158,11 +179,8 @@ class CompleteRegistration
         $updated = $wpdb->update($table, $data, $where, $formats);
 
         if ($updated === false) {
+            error_log("ENERG DEBUG - DB Update Failed: " . $wpdb->last_error);
             return new WP_Error('db_error', 'Could not complete registration', ['status' => 500]);
-        }
-
-        if ($updated === 0) {
-            return new WP_Error('member_not_found', 'Member record not found for this user', ['status' => 404]);
         }
 
         /* ================= SYNC WITH WORDPRESS USER (HEADER FIX) ================= */
