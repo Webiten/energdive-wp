@@ -5,7 +5,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
-import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw, User, Briefcase, Building2, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw, User, Briefcase, Building2, MapPin, Users, Layers, ChevronDown } from "lucide-react";
 import { AuthAPI } from "@/app/lib/api";
 
 interface RegisterPageProps {
@@ -152,8 +152,21 @@ const industries = [
   { value: "wood", label: "Wood" },
 ];
 
-const subIndustryMap: Record<string, Array<{ value: string; label: string }>> = {};
+/**
+ * ✅ Sub-Industry map:
+ * - If you already have your huge map, paste it here.
+ * - Even if you keep this empty, we will show fallback options (so NEVER blank).
+ */
+const subIndustryMap: Record<string, Array<{ value: string; label: string }>> = {
+  // Example (optional):
+  // logistics: [
+  //   { value: "road", label: "Road Logistics" },
+  //   { value: "rail", label: "Rail Logistics" },
+  //   { value: "marine", label: "Marine Logistics" },
+  // ],
+};
 
+// ✅ fallback options (always available)
 const COMMON_SUB_INDUSTRIES: Array<{ value: string; label: string }> = [
   { value: "operations", label: "Operations" },
   { value: "engineering", label: "Engineering" },
@@ -214,9 +227,37 @@ function toggleInArray(arr: string[], value: string) {
   return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
 }
 
+// Section Header Component
+function SectionHeader({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-start gap-4 mb-6">
+      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <Icon className="w-5 h-5 text-white" />
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+// Form Field Component
+function FormField({ label, required, children, error }: { label: string; required?: boolean; children: React.ReactNode; error?: string }) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium text-gray-700">
+        {label}
+        {required && <span className="text-red-500 ml-0.5">*</span>}
+      </Label>
+      {children}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -225,22 +266,28 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     mobile: "",
     country: "",
     state: "",
+
     jobTitle: "",
     organization: "",
+
     communities: [] as string[],
     subCommunities: [] as string[],
+
     industry: "",
     subIndustry: "",
     areaOfIndustry: "",
   });
+
 
   const [otpState, setOtpState] = useState<"idle" | "sent" | "verifying" | "verified" | "error">("idle");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
+  // ✅ stable map
   const safeSubIndustryMap = useMemo(() => subIndustryMap || {}, []);
 
+  // ✅ sub-communities based on selected communities (union)
   const availableSubCommunities = useMemo(() => {
     const set = new Map<string, { value: string; label: string }>();
     for (const c of formData.communities) {
@@ -249,16 +296,20 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     return Array.from(set.values());
   }, [formData.communities]);
 
+  // ✅ industry based on selected communities (union)
   const filteredIndustries = useMemo(() => {
     if (!formData.communities.length) return industries;
+
     const allowed = new Set<string>();
     formData.communities.forEach((c) => (communityIndustryMap[c] || []).forEach((x) => allowed.add(x)));
     return industries.filter((i) => allowed.has(i.value));
   }, [formData.communities]);
 
+  // ✅ sub-industry options never blank
   const subIndustryOptions = useMemo(() => {
     const custom = safeSubIndustryMap[formData.industry];
     if (custom && custom.length) return custom;
+    // fallback options always
     return COMMON_SUB_INDUSTRIES;
   }, [formData.industry, safeSubIndustryMap]);
 
@@ -273,12 +324,14 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     setFormData((prev) => {
       const updated: any = { ...prev, [field]: value };
       if (field === "industry") {
+        // reset sub-industry safely
         updated.subIndustry = "";
       }
       return updated;
     });
   };
 
+  // ✅ when mobile changes after verified => reset OTP state (important)
   const handleMobileChange = (value: string) => {
     setFormData((prev) => ({ ...prev, mobile: value }));
     if (otpState === "verified") {
@@ -292,6 +345,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   const handleToggleCommunity = (value: string) => {
     setFormData((prev) => {
       const nextCommunities = toggleInArray(prev.communities, value);
+
+      // if none selected -> hard reset dependent fields
       if (!nextCommunities.length) {
         return {
           ...prev,
@@ -302,13 +357,20 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
           areaOfIndustry: "",
         };
       }
+
+      // remove invalid sub-communities
       const validSubs = new Set<string>();
       nextCommunities.forEach((c) => (subCommunityMap[c] || []).forEach((s) => validSubs.add(s.value)));
       const nextSubCommunities = prev.subCommunities.filter((s) => validSubs.has(s));
+
+      // allowed industries union
       const nextAllowedIndustries = new Set<string>();
       nextCommunities.forEach((c) => (communityIndustryMap[c] || []).forEach((x) => nextAllowedIndustries.add(x)));
+
+      // if current industry not allowed -> clear
       const nextIndustry = prev.industry && nextAllowedIndustries.has(prev.industry) ? prev.industry : "";
       const nextSubIndustry = nextIndustry ? prev.subIndustry : "";
+
       return {
         ...prev,
         communities: nextCommunities,
@@ -334,9 +396,11 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
       setOtpError("Please enter a valid mobile number");
       return;
     }
+
     setOtpState("sent");
     setResendTimer(60);
     setOtpError("");
+
     try {
       const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
       await requestOtpWithContext(identifier, "register_phone");
@@ -358,6 +422,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     newOtp[index] = value;
     setOtp(newOtp);
     setOtpError("");
+
     if (value && index < 5) document.getElementById(`otp-${index + 1}`)?.focus();
     if (newOtp.every((d) => d !== "") && index === 5) void verifyOTP(newOtp.join(""));
   };
@@ -384,16 +449,22 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (otpState !== "verified") {
       setOtpError("Please verify your mobile number before submitting");
       return;
     }
+
     setIsLoading(true);
     setOtpError("");
+
     try {
       const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
+
+      // backward compatible
       const primaryCommunity = formData.communities[0] || "";
       const primarySubCommunity = formData.subCommunities[0] || "";
+
       await AuthAPI.completeRegistration({
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -401,17 +472,25 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
         phone: identifier,
         country: formData.country,
         state: formData.state,
+
         job_title: formData.jobTitle,
         organization: formData.organization,
+
+
+        // ✅ old fields (so your existing backend validation/DB works)
         community: primaryCommunity,
         sub_community: primarySubCommunity,
+
+        // ✅ new fields (backend upgrade later)
         communities: formData.communities,
         sub_communities: formData.subCommunities,
+
         industry: formData.industry,
         sub_industry: formData.subIndustry,
         area_of_industry: formData.areaOfIndustry,
         privacy_accepted: true,
       });
+
       localStorage.removeItem("onboarding_required");
       setIsLoading(false);
       onRegistrationComplete();
@@ -421,140 +500,128 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     }
   };
 
-  // Step validation
-  const isStep1Valid = formData.firstName && formData.lastName && formData.mobile && otpState === "verified" && formData.country;
-  const isStep2Valid = formData.jobTitle && formData.organization;
-  const isStep3Valid = formData.communities.length > 0 && formData.industry;
+  const isFormValid =
+    formData.firstName &&
+    formData.lastName &&
+    formData.mobile &&
+    formData.country &&
+    formData.jobTitle &&
+    formData.organization &&
+    formData.communities.length > 0 &&
+    formData.industry &&
+    otpState === "verified";
 
-  const steps = [
-    { number: 1, title: "Personal Info", icon: User },
-    { number: 2, title: "Professional", icon: Briefcase },
-    { number: 3, title: "Communities", icon: Building2 },
-  ];
+  // Progress calculation
+  const calculateProgress = () => {
+    let progress = 0;
+    const fields = [
+      formData.firstName,
+      formData.lastName,
+      formData.mobile,
+      formData.country,
+      formData.jobTitle,
+      formData.organization,
+      formData.communities.length > 0,
+      formData.industry,
+      otpState === "verified",
+    ];
+    progress = (fields.filter(Boolean).length / fields.length) * 100;
+    return Math.round(progress);
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-blue-50 py-12 px-4">
-      <div className="w-full max-w-4xl">
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
-            {steps.map((step, idx) => {
-              const isActive = currentStep === step.number;
-              const isCompleted = currentStep > step.number;
-              const Icon = step.icon;
-              
-              return (
-                <div key={step.number} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center flex-1">
-                    <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        isCompleted
-                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
-                          : isActive
-                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-110"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      {isCompleted ? <Check className="w-6 h-6" /> : <Icon className="w-6 h-6" />}
-                    </div>
-                    <p className={`mt-2 text-sm font-medium ${isActive ? "text-emerald-600" : "text-gray-500"}`}>
-                      {step.title}
-                    </p>
-                  </div>
-                  {idx < steps.length - 1 && (
-                    <div className={`h-1 flex-1 mx-2 rounded transition-all duration-300 ${
-                      currentStep > step.number ? "bg-emerald-600" : "bg-gray-200"
-                    }`} />
-                  )}
-                </div>
-              );
-            })}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-emerald-50/30 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/25 mb-4">
+            <User className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h1>
+          <p className="text-gray-600 max-w-md mx-auto">
+            Join our professional energy community and connect with industry experts worldwide
+          </p>
+          
+          {/* Progress Bar */}
+          <div className="mt-6 max-w-xs mx-auto">
+            <div className="flex justify-between text-xs text-gray-500 mb-2">
+              <span>Profile Completion</span>
+              <span className="font-medium text-emerald-600">{calculateProgress()}%</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500 ease-out"
+                style={{ width: `${calculateProgress()}%` }}
+              />
+            </div>
           </div>
         </div>
 
-        <Card className="shadow-2xl border-0 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white py-8">
-            <CardTitle className="text-3xl text-center font-bold">Create Your Profile</CardTitle>
-            <p className="text-center text-emerald-50 text-sm mt-2">
-              {currentStep === 1 && "Let's start with your basic information"}
-              {currentStep === 2 && "Tell us about your professional background"}
-              {currentStep === 3 && "Select your areas of interest"}
-            </p>
-          </CardHeader>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personal Information Card */}
+          <Card className="shadow-xl border-0 overflow-hidden bg-white/80 backdrop-blur-sm">
+            <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+            <CardHeader className="pb-4">
+              <SectionHeader 
+                icon={User} 
+                title="Personal Information" 
+                subtitle="Tell us about yourself"
+              />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Name Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <FormField label="First Name" required>
+                  <Input
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    placeholder="e.g. John"
+                    className="h-11 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
+                  />
+                </FormField>
 
-          <CardContent className="p-8">
-            <form onSubmit={handleSubmit}>
-              {/* Step 1: Personal Information */}
-              {currentStep === 1 && (
-                <div className="space-y-6 animate-in fade-in duration-500">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm font-semibold text-gray-700">
-                        First Name <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                        placeholder="John"
-                        className="h-11 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
+                <FormField label="Last Name" required>
+                  <Input
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    placeholder="e.g. Doe"
+                    className="h-11 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
+                  />
+                </FormField>
+              </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm font-semibold text-gray-700">
-                        Last Name <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) => handleInputChange("lastName", e.target.value)}
-                        placeholder="Doe"
-                        className="h-11 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</Label>
-                    <div className="relative">
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        value={email} 
-                        disabled 
-                        className="h-11 bg-gray-50 border-gray-200 pr-24"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-medium">
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Verified
-                        </div>
-                      </div>
+              {/* Email */}
+              <FormField label="Email Address">
+                <div className="relative">
+                  <Input
+                    type="email"
+                    value={email}
+                    disabled
+                    className="h-11 bg-gray-50 border-gray-200 text-gray-600 pr-10"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
                     </div>
                   </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3 text-emerald-500" />
+                  This email has been verified
+                </p>
+              </FormField>
 
-                  {/* Mobile OTP Section */}
-                  <div className="space-y-3">
-                    <Label htmlFor="mobile" className="text-sm font-semibold text-gray-700">
-                      Mobile Number <span className="text-red-500">*</span>
-                    </Label>
-
-                    <div className="flex gap-3">
+              {/* Mobile with OTP */}
+              <div className="space-y-3">
+                <FormField label="Mobile Number" required error={otpState === "error" ? otpError : undefined}>
+                  <div className="flex gap-3">
+                    {/* Country Code Select */}
+                    <div className="relative flex-shrink-0">
                       <select
                         value={formData.countryCode}
                         onChange={(e) => handleInputChange("countryCode", e.target.value)}
                         disabled={otpState === "verified"}
-                        className="w-32 h-11 px-3 border border-gray-300 rounded-lg bg-white cursor-pointer disabled:bg-gray-50 disabled:cursor-not-allowed appearance-none shadow-sm hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        style={{
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'right 0.5rem center',
-                          backgroundSize: '1.5em 1.5em',
-                          paddingRight: '2.5rem'
-                        }}
+                        className="h-11 pl-3 pr-10 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 disabled:bg-gray-50 disabled:text-gray-500 appearance-none cursor-pointer transition-all hover:border-gray-300"
                       >
                         {countryCodes.map((code) => (
                           <option key={code.value} value={code.value}>
@@ -562,268 +629,260 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                           </option>
                         ))}
                       </select>
-
-                      <div className="flex-1 flex gap-3">
-                        <Input
-                          id="mobile"
-                          type="tel"
-                          value={formData.mobile}
-                          onChange={(e) => handleMobileChange(e.target.value)}
-                          placeholder="555 123 4567"
-                          disabled={otpState === "verified"}
-                          className={`h-11 ${otpState === "verified" ? "bg-gray-50" : ""} border-gray-300 focus:border-emerald-500 focus:ring-emerald-500`}
-                          required
-                        />
-
-                        {otpState === "idle" || otpState === "error" ? (
-                          <Button
-                            type="button"
-                            onClick={() => void handleSendOTP()}
-                            className="bg-emerald-600 hover:bg-emerald-700 whitespace-nowrap h-11 px-6"
-                          >
-                            <Phone className="w-4 h-4 mr-2" />
-                            Send OTP
-                          </Button>
-                        ) : otpState === "verified" ? (
-                          <div className="flex items-center gap-2 px-5 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-emerald-600" />
-                            <span className="text-sm text-emerald-700 font-semibold">Verified</span>
-                          </div>
-                        ) : null}
-                      </div>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
 
-                    {(otpState === "sent" || otpState === "verifying" || otpState === "error") && (
-                      <div className="mt-4 p-6 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl space-y-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <p className="text-base font-semibold text-gray-900">Enter Verification Code</p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              We sent a 6-digit code to {formData.countryCode} {formData.mobile}
-                            </p>
+                    {/* Mobile Input */}
+                    <div className="flex-1 flex gap-3">
+                      <Input
+                        type="tel"
+                        value={formData.mobile}
+                        onChange={(e) => handleMobileChange(e.target.value)}
+                        placeholder="555 123 4567"
+                        disabled={otpState === "verified"}
+                        className={`h-11 flex-1 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all ${otpState === "verified" ? "bg-gray-50" : ""}`}
+                      />
+
+                      {/* OTP Button / Verified Badge */}
+                      {otpState === "idle" || otpState === "error" ? (
+                        <Button
+                          type="button"
+                          onClick={() => void handleSendOTP()}
+                          className="h-11 px-5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 transition-all"
+                        >
+                          <Phone className="w-4 h-4 mr-2" />
+                          Send OTP
+                        </Button>
+                      ) : otpState === "verified" ? (
+                        <div className="h-11 px-4 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                            <CheckCircle className="w-3 h-3 text-white" />
                           </div>
-                          {otpState === "verifying" && <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />}
+                          <span className="text-sm font-medium text-emerald-700">Verified</span>
                         </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </FormField>
 
-                        <div className="flex gap-3 justify-center">
-                          {otp.map((digit, index) => (
-                            <Input
-                              key={index}
-                              id={`otp-${index}`}
-                              type="text"
-                              inputMode="numeric"
-                              maxLength={1}
-                              value={digit}
-                              onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ""))}
-                              onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                              className={`w-14 h-14 text-center text-xl font-bold ${
-                                otpState === "error" ? "border-red-500 bg-red-50" : "border-gray-300"
-                              } focus:border-emerald-500 focus:ring-emerald-500`}
-                              disabled={otpState === "verifying"}
-                            />
-                          ))}
+                {/* OTP Verification Panel */}
+                {(otpState === "sent" || otpState === "verifying" || otpState === "error") && (
+                  <div className="mt-4 p-5 bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200 rounded-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Enter Verification Code</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          We sent a 6-digit code to <span className="font-medium text-gray-700">{formData.countryCode} {formData.mobile}</span>
+                        </p>
+                      </div>
+                      {otpState === "verifying" && (
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                          <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
                         </div>
+                      )}
+                    </div>
 
-                        {otpError && (
-                          <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                            <AlertCircle className="w-4 h-4" />
-                            <span>{otpError}</span>
-                          </div>
-                        )}
+                    {/* OTP Inputs */}
+                    <div className="flex gap-2 justify-center">
+                      {otp.map((digit, index) => (
+                        <Input
+                          key={index}
+                          id={`otp-${index}`}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ""))}
+                          onKeyDown={(e) => handleOTPKeyDown(index, e)}
+                          disabled={otpState === "verifying"}
+                          className={`w-12 h-12 text-center text-xl font-bold rounded-lg border-2 transition-all ${
+                            otpState === "error" 
+                              ? "border-red-400 bg-red-50 text-red-600 focus:border-red-500 focus:ring-red-500/20" 
+                              : digit 
+                                ? "border-emerald-500 bg-emerald-50 text-emerald-700" 
+                                : "border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                          }`}
+                        />
+                      ))}
+                    </div>
 
-                        <div className="text-center pt-2">
-                          {resendTimer > 0 ? (
-                            <p className="text-sm text-gray-600">
-                              Resend code in <span className="font-bold text-emerald-600">{resendTimer}s</span>
-                            </p>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => void handleResendOTP()}
-                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-300"
-                            >
-                              <RefreshCw className="w-4 h-4 mr-2" />
-                              Resend OTP
-                            </Button>
-                          )}
-                        </div>
+                    {/* Error Message */}
+                    {otpError && otpState === "error" && (
+                      <div className="flex items-center justify-center gap-2 text-red-600 text-sm bg-red-50 py-2 px-4 rounded-lg">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>{otpError}</span>
                       </div>
                     )}
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="country" className="text-sm font-semibold text-gray-700">
-                        Country <span className="text-red-500">*</span>
-                      </Label>
-                      <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
-                        <SelectTrigger className="h-11 bg-white shadow-sm hover:border-emerald-400 transition-colors">
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-xl border border-gray-200 rounded-lg">
-                          {countries.map((c) => (
-                            <SelectItem 
-                              key={c.value} 
-                              value={c.value}
-                              className="cursor-pointer hover:bg-emerald-50 focus:bg-emerald-100"
-                            >
-                              {c.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="state" className="text-sm font-semibold text-gray-700">State / Province</Label>
-                      <Input
-                        id="state"
-                        value={formData.state}
-                        onChange={(e) => handleInputChange("state", e.target.value)}
-                        placeholder="Enter state or province"
-                        className="h-11 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                      />
+                    {/* Resend */}
+                    <div className="text-center pt-2">
+                      {resendTimer > 0 ? (
+                        <p className="text-sm text-gray-500">
+                          Resend code in <span className="font-semibold text-emerald-600">{resendTimer}s</span>
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void handleResendOTP()}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Resend OTP
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Step 2: Professional Information */}
-              {currentStep === 2 && (
-                <div className="space-y-6 animate-in fade-in duration-500">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="jobTitle" className="text-sm font-semibold text-gray-700">
-                        Job Title <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="jobTitle"
-                        value={formData.jobTitle}
-                        onChange={(e) => handleInputChange("jobTitle", e.target.value)}
-                        placeholder="e.g. Senior Engineer"
-                        className="h-11 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
+              {/* Location Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <FormField label="Country" required>
+                  <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
+                    <SelectTrigger className="h-11 border-gray-200 focus:ring-emerald-500/20 focus:border-emerald-500">
+                      <SelectValue placeholder="Select your country" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {countries.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="organization" className="text-sm font-semibold text-gray-700">
-                        Organization <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="organization"
-                        value={formData.organization}
-                        onChange={(e) => handleInputChange("organization", e.target.value)}
-                        placeholder="Company / Organization Name"
-                        className="h-11 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
+                <FormField label="State / Province">
+                  <Input
+                    value={formData.state}
+                    onChange={(e) => handleInputChange("state", e.target.value)}
+                    placeholder="e.g. California"
+                    className="h-11 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
+                  />
+                </FormField>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Professional Information Card */}
+          <Card className="shadow-xl border-0 overflow-hidden bg-white/80 backdrop-blur-sm">
+            <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+            <CardHeader className="pb-4">
+              <SectionHeader 
+                icon={Briefcase} 
+                title="Professional Information" 
+                subtitle="Your work details"
+              />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <FormField label="Job Title" required>
+                  <Input
+                    value={formData.jobTitle}
+                    onChange={(e) => handleInputChange("jobTitle", e.target.value)}
+                    placeholder="e.g. Senior Engineer"
+                    className="h-11 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
+                  />
+                </FormField>
+
+                <FormField label="Organization" required>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      value={formData.organization}
+                      onChange={(e) => handleInputChange("organization", e.target.value)}
+                      placeholder="Company / Organization Name"
+                      className="h-11 pl-10 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all"
+                    />
                   </div>
+                </FormField>
+              </div>
+            </CardContent>
+          </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="industry" className="text-sm font-semibold text-gray-700">
-                        Industry <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.industry}
-                        onValueChange={(value) => handleInputChange("industry", value)}
-                        disabled={!formData.communities.length}
-                      >
-                        <SelectTrigger className="h-11 bg-white shadow-sm hover:border-emerald-400 transition-colors">
-                          <SelectValue placeholder={formData.communities.length ? "Select industry" : "Select communities first"} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-xl border border-gray-200 rounded-lg max-h-[300px] overflow-y-auto">
-                          {filteredIndustries.map((ind) => (
-                            <SelectItem 
-                              key={ind.value} 
-                              value={ind.value}
-                              className="cursor-pointer hover:bg-emerald-50 focus:bg-emerald-100"
-                            >
-                              {ind.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="subIndustry" className="text-sm font-semibold text-gray-700">Sub-Industry</Label>
-                      <Select
-                        value={formData.subIndustry}
-                        onValueChange={(value) => handleInputChange("subIndustry", value)}
-                        disabled={!formData.industry}
-                      >
-                        <SelectTrigger className="h-11 bg-white shadow-sm hover:border-emerald-400 transition-colors">
-                          <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-xl border border-gray-200 rounded-lg max-h-[300px] overflow-y-auto">
-                          {subIndustryOptions.map((sub) => (
-                            <SelectItem 
-                              key={sub.value} 
-                              value={sub.value}
-                              className="cursor-pointer hover:bg-emerald-50 focus:bg-emerald-100"
-                            >
-                              {sub.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+          {/* Communities & Classification Card */}
+          <Card className="shadow-xl border-0 overflow-hidden bg-white/80 backdrop-blur-sm">
+            <div className="h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500" />
+            <CardHeader className="pb-4">
+              <SectionHeader 
+                icon={Users} 
+                title="Communities & Classification" 
+                subtitle="Select your areas of interest"
+              />
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {/* Communities */}
+              <div className="space-y-3">
+                <FormField label="Communities" required>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {communities.map((comm) => {
+                      const checked = formData.communities.includes(comm.value);
+                      return (
+                        <label
+                          key={comm.value}
+                          className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                            checked 
+                              ? "border-emerald-500 bg-emerald-50/50" 
+                              : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(v) => {
+                              if (v === "indeterminate") return;
+                              if (v !== checked) handleToggleCommunity(comm.value);
+                            }}
+                            className="data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                          />
+                          <span className={`text-sm font-medium ${checked ? "text-emerald-900" : "text-gray-700"}`}>
+                            {comm.label}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
+                </FormField>
 
-              {/* Step 3: Communities */}
-              {currentStep === 3 && (
-                <div className="space-y-6 animate-in fade-in duration-500">
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold text-gray-700">
-                      Communities <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {communities.map((comm) => {
-                        const checked = formData.communities.includes(comm.value);
-                        return (
-                          <label
-                            key={comm.value}
-                            className={`flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer transition-all border-2 ${
-                              checked
-                                ? "bg-emerald-50 border-emerald-500 shadow-md"
-                                : "bg-white border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/30"
-                            }`}
+                {/* Selected Communities Tags */}
+                {formData.communities.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {formData.communities.map((commValue) => {
+                      const comm = communities.find(c => c.value === commValue);
+                      return (
+                        <span 
+                          key={commValue}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-medium rounded-full"
+                        >
+                          {comm?.label}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCommunity(commValue)}
+                            className="w-4 h-4 rounded-full bg-emerald-200 hover:bg-emerald-300 flex items-center justify-center transition-colors"
                           >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(v) => {
-                                if (v === "indeterminate") return;
-                                if (v !== checked) handleToggleCommunity(comm.value);
-                              }}
-                              className="border-2"
-                            />
-                            <span className="text-sm font-medium">{comm.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                            <span className="text-emerald-700 text-xs">×</span>
+                          </button>
+                        </span>
+                      );
+                    })}
                   </div>
+                )}
+              </div>
 
-                  {formData.communities.length > 0 && availableSubCommunities.length > 0 && (
-                    <div className="space-y-3">
-                      <Label className="text-sm font-semibold text-gray-700">Sub-Communities (Optional)</Label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        {availableSubCommunities.map((sub) => {
+              {/* Sub-Communities */}
+              {formData.communities.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-gray-100">
+                  <FormField label="Sub-Communities">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {availableSubCommunities.length ? (
+                        availableSubCommunities.map((sub) => {
                           const checked = formData.subCommunities.includes(sub.value);
                           return (
                             <label
                               key={sub.value}
-                              className={`flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer transition-all border-2 ${
-                                checked
-                                  ? "bg-blue-50 border-blue-500 shadow-md"
-                                  : "bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"
+                              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                checked 
+                                  ? "border-teal-500 bg-teal-50/50" 
+                                  : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
                               }`}
                             >
                               <Checkbox
@@ -832,77 +891,150 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                                   if (v === "indeterminate") return;
                                   if (v !== checked) handleToggleSubCommunity(sub.value);
                                 }}
-                                className="border-2"
+                                className="data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
                               />
-                              <span className="text-sm font-medium">{sub.label}</span>
+                              <span className={`text-sm font-medium ${checked ? "text-teal-900" : "text-gray-700"}`}>
+                                {sub.label}
+                              </span>
                             </label>
                           );
-                        })}
-                      </div>
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500 col-span-full py-4 text-center bg-gray-50 rounded-xl">
+                          No sub-communities available for selected communities
+                        </p>
+                      )}
+                    </div>
+                  </FormField>
+
+                  {/* Selected Sub-Communities Tags */}
+                  {formData.subCommunities.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {formData.subCommunities.map((subValue) => {
+                        const sub = availableSubCommunities.find(s => s.value === subValue);
+                        return (
+                          <span 
+                            key={subValue}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-100 text-teal-800 text-xs font-medium rounded-full"
+                          >
+                            {sub?.label}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleSubCommunity(subValue)}
+                              className="w-4 h-4 rounded-full bg-teal-200 hover:bg-teal-300 flex items-center justify-center transition-colors"
+                            >
+                              <span className="text-teal-700 text-xs">×</span>
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Navigation Buttons */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t">
-                {currentStep > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep(currentStep - 1)}
-                    className="px-6 h-11"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-2" />
-                    Previous
-                  </Button>
-                ) : (
-                  <div />
-                )}
+              {/* Industry & Sub-Industry */}
+              {formData.communities.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
+                  <FormField label="Industry" required>
+                    <Select
+                      value={formData.industry}
+                      onValueChange={(value) => handleInputChange("industry", value)}
+                    >
+                      <SelectTrigger className="h-11 border-gray-200 focus:ring-emerald-500/20 focus:border-emerald-500">
+                        <SelectValue placeholder="Select your industry" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {filteredIndustries.map((ind) => (
+                          <SelectItem key={ind.value} value={ind.value}>
+                            {ind.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
 
-                {currentStep < 3 ? (
-                  <Button
-                    type="button"
-                    onClick={() => setCurrentStep(currentStep + 1)}
-                    disabled={
-                      (currentStep === 1 && !isStep1Valid) ||
-                      (currentStep === 2 && !isStep2Valid)
-                    }
-                    className="bg-emerald-600 hover:bg-emerald-700 px-6 h-11 ml-auto"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="submit"
-                    className="bg-emerald-600 hover:bg-emerald-700 px-8 h-11 ml-auto"
-                    disabled={isLoading || !isStep3Valid}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating Profile...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Complete Registration
-                      </>
+                  <FormField label="Sub-Industry">
+                    <Select
+                      value={formData.subIndustry}
+                      onValueChange={(value) => handleInputChange("subIndustry", value)}
+                      disabled={!formData.industry}
+                    >
+                      <SelectTrigger className={`h-11 border-gray-200 focus:ring-emerald-500/20 focus:border-emerald-500 ${!formData.industry ? "bg-gray-50" : ""}`}>
+                        <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {subIndustryOptions.map((sub) => (
+                          <SelectItem key={sub.value} value={sub.value}>
+                            {sub.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!safeSubIndustryMap[formData.industry]?.length && formData.industry && (
+                      <p className="text-xs text-gray-400 mt-1.5 italic">
+                        Showing common options for {industries.find(i => i.value === formData.industry)?.label}
+                      </p>
                     )}
-                  </Button>
-                )}
-              </div>
-
-              {otpError && currentStep === 3 && (
-                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-4 rounded-lg mt-4">
-                  <AlertCircle className="w-5 h-5" />
-                  <span>{otpError}</span>
+                  </FormField>
                 </div>
               )}
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Verification Warning */}
+          {otpState !== "verified" && formData.mobile && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Mobile Verification Required</p>
+                <p className="text-sm text-amber-800 mt-0.5">
+                  Please verify your mobile number to complete registration.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <div className="pt-4">
+            <Button
+              type="submit"
+              disabled={isLoading || !isFormValid}
+              className={`w-full h-14 text-base font-semibold rounded-xl transition-all ${
+                isFormValid 
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5" 
+                  : "bg-gray-300 cursor-not-allowed"
+              }`}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Creating your profile...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Complete Registration
+                </span>
+              )}
+            </Button>
+
+            {/* Form Error */}
+            {otpError && otpState !== "error" && (
+              <div className="mt-4 flex items-center justify-center gap-2 text-red-600 text-sm bg-red-50 py-3 px-4 rounded-xl">
+                <AlertCircle className="w-4 h-4" />
+                <span>{otpError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <p className="text-center text-xs text-gray-500">
+            By completing registration, you agree to our Terms of Service and Privacy Policy
+          </p>
+        </form>
       </div>
     </div>
   );
