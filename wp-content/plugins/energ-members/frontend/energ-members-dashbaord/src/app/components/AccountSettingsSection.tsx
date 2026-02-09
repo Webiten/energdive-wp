@@ -171,12 +171,12 @@ export function AccountSettingsSection() {
       localStorage.removeItem("onboarding_required");
       
       // Redirect to login
-      window.location.href = "/login";
+      window.location.href = "/dashboard";
     } catch (error) {
       console.error("Logout failed:", error);
       // Force logout anyway
       localStorage.clear();
-      window.location.href = "/login";
+      window.location.href = "/dashboard";
     }
   };
 
