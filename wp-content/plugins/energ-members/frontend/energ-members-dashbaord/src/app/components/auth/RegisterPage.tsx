@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Checkbox } from "../ui/checkbox";
 import { CheckCircle, Loader2, Phone, AlertCircle, RefreshCw, User, Briefcase, Building2, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { AuthAPI } from "@/app/lib/api";
@@ -442,18 +442,17 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
               const isActive = currentStep === step.number;
               const isCompleted = currentStep > step.number;
               const Icon = step.icon;
-              
+
               return (
                 <div key={step.number} className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        isCompleted
-                          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
-                          : isActive
+                      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${isCompleted
+                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200"
+                        : isActive
                           ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-110"
                           : "bg-gray-200 text-gray-500"
-                      }`}
+                        }`}
                     >
                       {isCompleted ? <Check className="w-6 h-6" /> : <Icon className="w-6 h-6" />}
                     </div>
@@ -462,9 +461,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                     </p>
                   </div>
                   {idx < steps.length - 1 && (
-                    <div className={`h-1 flex-1 mx-2 rounded transition-all duration-300 ${
-                      currentStep > step.number ? "bg-emerald-600" : "bg-gray-200"
-                    }`} />
+                    <div className={`h-1 flex-1 mx-2 rounded transition-all duration-300 ${currentStep > step.number ? "bg-emerald-600" : "bg-gray-200"
+                      }`} />
                   )}
                 </div>
               );
@@ -520,11 +518,11 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-semibold text-gray-700">Email Address</Label>
                     <div className="relative">
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        value={email} 
-                        disabled 
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        disabled
                         className="h-11 bg-gray-50 border-gray-200 pr-24"
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -616,9 +614,8 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                               value={digit}
                               onChange={(e) => handleOTPChange(index, e.target.value.replace(/[^0-9]/g, ""))}
                               onKeyDown={(e) => handleOTPKeyDown(index, e)}
-                              className={`w-14 h-14 text-center text-xl font-bold ${
-                                otpState === "error" ? "border-red-500 bg-red-50" : "border-gray-300"
-                              } focus:border-emerald-500 focus:ring-emerald-500`}
+                              className={`w-14 h-14 text-center text-xl font-bold ${otpState === "error" ? "border-red-500 bg-red-50" : "border-gray-300"
+                                } focus:border-emerald-500 focus:ring-emerald-500`}
                               disabled={otpState === "verifying"}
                             />
                           ))}
@@ -658,22 +655,19 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                       <Label htmlFor="country" className="text-sm font-semibold text-gray-700">
                         Country <span className="text-red-500">*</span>
                       </Label>
-                      <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
-                        <SelectTrigger className="h-11 bg-white shadow-sm hover:border-emerald-400 transition-colors">
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white shadow-xl border border-gray-200 rounded-lg">
-                          {countries.map((c) => (
-                            <SelectItem 
-                              key={c.value} 
-                              value={c.value}
-                              className="cursor-pointer hover:bg-emerald-50 focus:bg-emerald-100"
-                            >
-                              {c.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <select
+                        value={formData.country}
+                        onChange={(e) => handleInputChange("country", e.target.value)}
+                        className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500"
+                        required
+                      >
+                        <option value="">Select country</option>
+                        {countries.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="space-y-2">
@@ -742,11 +736,10 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         return (
                           <label
                             key={comm.value}
-                            className={`flex items-center gap-3 rounded-lg px-4 py-3.5 cursor-pointer transition-all border-2 ${
-                              checked
-                                ? "bg-emerald-50 border-emerald-600 shadow-md"
-                                : "bg-white border-gray-200 hover:border-emerald-300 hover:shadow-sm"
-                            }`}
+                            className={`flex items-center gap-3 rounded-lg px-4 py-3.5 cursor-pointer transition-all border-2 ${checked
+                              ? "bg-emerald-50 border-emerald-600 shadow-md"
+                              : "bg-white border-gray-200 hover:border-emerald-300 hover:shadow-sm"
+                              }`}
                           >
                             <Checkbox
                               checked={checked}
@@ -776,11 +769,10 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                           return (
                             <label
                               key={sub.value}
-                              className={`flex items-center gap-3 rounded-lg px-4 py-3.5 cursor-pointer transition-all border-2 ${
-                                checked
-                                  ? "bg-blue-50 border-blue-600 shadow-md"
-                                  : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm"
-                              }`}
+                              className={`flex items-center gap-3 rounded-lg px-4 py-3.5 cursor-pointer transition-all border-2 ${checked
+                                ? "bg-blue-50 border-blue-600 shadow-md"
+                                : "bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm"
+                                }`}
                             >
                               <Checkbox
                                 checked={checked}
@@ -804,42 +796,29 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                       <Label className="text-base font-bold text-gray-800">Industry Classification</Label>
                       <p className="text-xs text-gray-500 mt-1">Select your primary industry and specialization</p>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Industry Dropdown */}
                       <div className="space-y-2">
                         <Label htmlFor="industry" className="text-sm font-semibold text-gray-700">
                           Industry <span className="text-red-500">*</span>
                         </Label>
-                        <Select
+                        <select
                           value={formData.industry}
-                          onValueChange={(value) => handleInputChange("industry", value)}
+                          onChange={(e) => handleInputChange("industry", e.target.value)}
                           disabled={!formData.communities.length}
+                          className="h-12 w-full rounded-lg border-2 border-gray-300 bg-white px-3 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                         >
-                          <SelectTrigger className="h-12 bg-white border-2 border-gray-300 hover:border-gray-400 focus:border-emerald-500 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                            <SelectValue 
-                              placeholder={formData.communities.length ? "Choose your industry" : "Select communities first"} 
-                              className="text-gray-900"
-                            />
-                          </SelectTrigger>
-                          <SelectContent 
-                            className="bg-white border-2 border-gray-200 shadow-2xl rounded-lg"
-                            position="popper"
-                            sideOffset={5}
-                          >
-                            <div className="max-h-[320px] overflow-y-auto p-1">
-                              {filteredIndustries.map((ind) => (
-                                <SelectItem 
-                                  key={ind.value} 
-                                  value={ind.value}
-                                  className="cursor-pointer hover:bg-emerald-50 focus:bg-emerald-100 rounded-md px-3 py-2.5 my-0.5 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  {ind.label}
-                                </SelectItem>
-                              ))}
-                            </div>
-                          </SelectContent>
-                        </Select>
+                          <option value="">
+                            {formData.communities.length ? "Choose your industry" : "Select communities first"}
+                          </option>
+
+                          {filteredIndustries.map((ind) => (
+                            <option key={ind.value} value={ind.value}>
+                              {ind.label}
+                            </option>
+                          ))}
+                        </select>
                         {!formData.communities.length && (
                           <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
                             <AlertCircle className="w-3 h-3" />
@@ -853,35 +832,22 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         <Label htmlFor="subIndustry" className="text-sm font-semibold text-gray-700">
                           Sub-Industry
                         </Label>
-                        <Select
+                        <select
                           value={formData.subIndustry}
-                          onValueChange={(value) => handleInputChange("subIndustry", value)}
+                          onChange={(e) => handleInputChange("subIndustry", e.target.value)}
                           disabled={!formData.industry}
+                          className="h-12 w-full rounded-lg border-2 border-gray-300 bg-white px-3 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                         >
-                          <SelectTrigger className="h-12 bg-white border-2 border-gray-300 hover:border-gray-400 focus:border-emerald-500 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                            <SelectValue 
-                              placeholder={!formData.industry ? "Select industry first" : "Choose specialization"} 
-                              className="text-gray-900"
-                            />
-                          </SelectTrigger>
-                          <SelectContent 
-                            className="bg-white border-2 border-gray-200 shadow-2xl rounded-lg"
-                            position="popper"
-                            sideOffset={5}
-                          >
-                            <div className="max-h-[320px] overflow-y-auto p-1">
-                              {subIndustryOptions.map((sub) => (
-                                <SelectItem 
-                                  key={sub.value} 
-                                  value={sub.value}
-                                  className="cursor-pointer hover:bg-blue-50 focus:bg-blue-100 rounded-md px-3 py-2.5 my-0.5 text-sm font-medium text-gray-700 transition-colors"
-                                >
-                                  {sub.label}
-                                </SelectItem>
-                              ))}
-                            </div>
-                          </SelectContent>
-                        </Select>
+                          <option value="">
+                            {!formData.industry ? "Select industry first" : "Choose specialization"}
+                          </option>
+
+                          {subIndustryOptions.map((sub) => (
+                            <option key={sub.value} value={sub.value}>
+                              {sub.label}
+                            </option>
+                          ))}
+                        </select>
                         {!safeSubIndustryMap[formData.industry]?.length && formData.industry && (
                           <p className="text-xs text-gray-500 italic mt-1">
                             Showing common specializations for {formData.industry}
