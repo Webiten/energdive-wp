@@ -55,10 +55,10 @@ export function DashboardHome() {
   } = useTrendingNews();
 
   // ====== VIDEOS (NEW) ======
-  const {
-    data: videos = [],
-    loading: videoLoading,
-  } = useVideos(4);
+  // const {
+  //   data: videos = [],
+  //   loading: videoLoading,
+  // } = useVideos(4);
 
   const welcomeName = useMemo(() => {
     return loading ? "…" : getMeDisplayName(me);
@@ -182,7 +182,7 @@ export function DashboardHome() {
             </Card>
 
             {/* ====== NEW: LATEST VIDEOS ====== */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Latest Videos</CardTitle>
               </CardHeader>
@@ -223,7 +223,7 @@ export function DashboardHome() {
                   </div>
                 ))}
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Placeholder (unchanged) */}
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
