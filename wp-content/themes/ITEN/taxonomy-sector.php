@@ -1,7 +1,48 @@
 <?php get_header(); ?>
 
 <style>
-/* RESET */
+/* ======== ADDED: TOP NEWS BANNER (LIKE YOUR REFERENCE) ======== */
+.news-hero {
+    width: 100%;
+    height: 320px;
+    background: url('https://your-image-url-here.com/banner.jpg') center/cover no-repeat;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.news-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+}
+
+.news-hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: white;
+    max-width: 700px;
+    padding: 0 20px;
+}
+
+.news-hero-content h1 {
+    font-family: "Playfair Display", serif;
+    font-size: 42px;
+    margin-bottom: 10px;
+    letter-spacing: 1.2px;
+}
+
+.news-hero-content p {
+    font-family: "Roboto Flex", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* ===== YOUR EXISTING CSS (UNCHANGED) ===== */
+
 * { box-sizing: border-box; }
 html, body { overflow-x: hidden; }
 a { text-decoration: none !important; }
@@ -67,7 +108,7 @@ h1.sec-head {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 25px;
-    width: calc(100% - 280px); /* SAME LOOK AS SCREENSHOT (140px left + 140px right) */
+    width: calc(100% - 280px);
     margin: 0 auto;
 }
 
@@ -187,6 +228,10 @@ h3.sector-title {
 /* TABLET */
 @media (max-width: 991px) {
 
+    .news-hero { height: 260px; }
+
+    .news-hero-content h1 { font-size: 34px; }
+
     .community-post-thumb img { height: 200px; }
 
     .default-results {
@@ -202,6 +247,10 @@ h3.sector-title {
 
 /* MOBILE */
 @media (max-width: 600px) {
+
+    .news-hero { height: 220px; }
+
+    .news-hero-content h1 { font-size: 28px; }
 
     h1.sec-head { font-size: 20px; }
 
@@ -224,29 +273,54 @@ h3.sector-title {
 }
 </style>
 
+<!-- ======== NEW BANNER (ADDED ON TOP) ======== -->
+<?php 
+$term = get_queried_object();
+$banner = '';
+
+if (function_exists('get_field') && isset($term->term_id)) {
+    $banner = get_field('sector_banner', 'sector_' . $term->term_id);
+}
+?>
+
+<div class="news-hero" 
+<?php if (!empty($banner)) : ?>
+style="background:url('<?php echo esc_url($banner); ?>') center/cover no-repeat;"
+<?php else : ?>
+style="background:#111;"
+<?php endif; ?>
+>
+   <div class="news-hero-content">
+      <h1><?php echo esc_html($term->name); ?></h1>
+      <p>
+        Explore oil & gas intelligence from ENERGDIVE, bringing you insights on policy,
+        markets, infrastructure, technology, and developments shaping the sector’s future.
+      </p>
+   </div>
+</div>
+
+<!-- ======== BANNER ENDS ======== -->
 
 <div class="container">
 
-    <?php
-    $current_term = get_queried_object();
+<?php
+$current_term = get_queried_object();
 
-    if ($current_term && isset($current_term->term_id)) :
+if ($current_term && isset($current_term->term_id)) :
 
-        $child_terms = get_terms([
-            'taxonomy'   => 'sector',
-            'parent'     => $current_term->term_id,
-            'hide_empty' => false
-        ]);
+    $child_terms = get_terms([
+        'taxonomy'   => 'sector',
+        'parent'     => $current_term->term_id,
+        'hide_empty' => false
+    ]);
 
-        if (!empty($child_terms)) :
-    ?>
+    if (!empty($child_terms)) :
+?>
 
-    <?php endif; endif; ?>
+<?php endif; endif; ?>
 
 </div> <!-- container END -->
 
-
-<!-- JS OUTSIDE CONTAINER (IMPORTANT) -->
 <script>
 function openSectorTab(evt, slug) {
     document.querySelectorAll(".tabcontent").forEach(t => t.style.display = "none");
@@ -256,7 +330,6 @@ function openSectorTab(evt, slug) {
     evt.currentTarget.classList.add("active");
 }
 </script>
-
 
 <!-- DEFAULT POSTS -->
 <section class="dfr">
@@ -287,13 +360,8 @@ function openSectorTab(evt, slug) {
     ]]
 ]);
 
-        
-            
-        
-        
-
         while ($sector_query->have_posts()) : $sector_query->the_post();
-        // content_type terms (linked)
+
       $ctype_terms = get_the_terms(get_the_ID(), 'content_type');
       $ctype_html  = '';
       if (!is_wp_error($ctype_terms) && !empty($ctype_terms)) {
@@ -344,6 +412,7 @@ function openSectorTab(evt, slug) {
 
     </div>
 </section>
+
 <section class="dfr">
     <h3 class="sector-title">Videos</h3>
     <div class="default-results">
@@ -359,7 +428,7 @@ function openSectorTab(evt, slug) {
         ]);
 
         while ($sector_query->have_posts()) : $sector_query->the_post();
-        // content_type terms (linked)
+
       $ctype_terms = get_the_terms(get_the_ID(), 'content_type');
       $ctype_html  = '';
       if (!is_wp_error($ctype_terms) && !empty($ctype_terms)) {
