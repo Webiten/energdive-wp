@@ -187,6 +187,7 @@ const countries = [
   { value: "france", label: "France" },
 ];
 
+
 function phoneIdentifierDigits(countryCode: string, mobile: string) {
   const cleanedMobile = (mobile || "").replace(/[^\d]/g, "");
   const ccDigits = (countryCode || "").replace(/[^\d]/g, "");
@@ -234,8 +235,9 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     areaOfIndustry: "",
   });
 
+
   const [otpState, setOtpState] = useState<"idle" | "sent" | "verifying" | "verified" | "error">("idle");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""])
   const [otpError, setOtpError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
@@ -277,7 +279,7 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
       }
       return updated;
     });
-    console.log("Submitting",formData)
+    console.log("submititied", formData)
   };
 
   const handleMobileChange = (value: string) => {
