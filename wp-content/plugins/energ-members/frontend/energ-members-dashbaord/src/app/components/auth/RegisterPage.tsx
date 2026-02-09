@@ -272,11 +272,12 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => {
       const updated: any = { ...prev, [field]: value };
-      if (field === "industry") {
+      if (field === "industry" && value) {
         updated.subIndustry = "";
       }
       return updated;
     });
+    console.log("Submitting",formData)
   };
 
   const handleMobileChange = (value: string) => {
