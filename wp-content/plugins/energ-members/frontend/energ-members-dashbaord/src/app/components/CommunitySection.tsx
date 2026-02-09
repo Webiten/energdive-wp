@@ -50,7 +50,9 @@ export function CommunitySection() {
                   {videos.map((v: any) => (
                     <a
                       key={v.id}
-                      href={v.video_url}
+                      href={v.video_url.startsWith("http")
+                        ? v.video_url
+                        : `https://stage.energdive.com${v.video_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block"
