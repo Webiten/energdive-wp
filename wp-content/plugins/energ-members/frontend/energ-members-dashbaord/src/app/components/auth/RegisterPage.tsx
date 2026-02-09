@@ -385,44 +385,103 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otpState !== "verified") {
-      setOtpError("Please verify your mobile number before submitting");
-      return;
-    }
-    setIsLoading(true);
-    setOtpError("");
-    try {
-      const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
-      const primaryCommunity = formData.communities[0] || "";
-      const primarySubCommunity = formData.subCommunities[0] || "";
-      await AuthAPI.completeRegistration({
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        email,
-        phone: identifier,
-        country: formData.country,
-        state: formData.state,
-        job_title: formData.jobTitle,
-        organization: formData.organization,
-        community: primaryCommunity,
-        sub_community: primarySubCommunity,
-        communities: formData.communities,
-        sub_communities: formData.subCommunities,
-        industry: formData.industry,
-        sub_industry: formData.subIndustry,
-        area_of_industry: formData.areaOfIndustry,
-        privacy_accepted: true,
-      });
-      localStorage.removeItem("onboarding_required");
-      setIsLoading(false);
-      onRegistrationComplete();
-    } catch (err: any) {
-      setIsLoading(false);
-      setOtpError(err?.message || err?.data?.message || "Registration failed. Please try again.");
-    }
-  };
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (otpState !== "verified") {
+  //     setOtpError("Please verify your mobile number before submitting");
+  //     return;
+  //   }
+  //   setIsLoading(true);
+  //   setOtpError("");
+  //   try {
+  //     const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
+  //     const primaryCommunity = formData.communities[0] || "";
+  //     const primarySubCommunity = formData.subCommunities[0] || "";
+  //     await AuthAPI.completeRegistration({
+  //       first_name: formData.firstName,
+  //       last_name: formData.lastName,
+  //       email,
+  //       phone: identifier,
+  //       country: formData.country,
+  //       state: formData.state,
+  //       job_title: formData.jobTitle,
+  //       organization: formData.organization,
+  //       community: primaryCommunity,
+  //       sub_community: primarySubCommunity,
+  //       communities: formData.communities,
+  //       sub_communities: formData.subCommunities,
+  //       industry: formData.industry,
+  //       sub_industry: formData.subIndustry,
+  //       area_of_industry: formData.areaOfIndustry,
+  //       privacy_accepted: true,
+  //     });
+  //     localStorage.removeItem("onboarding_required");
+  //     setIsLoading(false);
+  //     onRegistrationComplete();
+  //   } catch (err: any) {
+  //     setIsLoading(false);
+  //     setOtpError(err?.message || err?.data?.message || "Registration failed. Please try again.");
+  //   }
+  // };
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // ADD THIS DEBUG
+  console.log("=== FORM SUBMIT DEBUG ===");
+  console.log("OTP State:", otpState);
+  console.log("Form Data:", formData);
+  
+  if (otpState !== "verified") {
+    setOtpError("Please verify your mobile number before submitting");
+    return;
+  }
+  
+  setIsLoading(true);
+  setOtpError("");
+  
+  try {
+    const identifier = phoneIdentifierDigits(formData.countryCode, formData.mobile);
+    const primaryCommunity = formData.communities[0] || "";
+    const primarySubCommunity = formData.subCommunities[0] || "";
+    
+    const payload = {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email,
+      phone: identifier,
+      country: formData.country,
+      state: formData.state,
+      job_title: formData.jobTitle,
+      organization: formData.organization,
+      community: primaryCommunity,
+      sub_community: primarySubCommunity,
+      communities: formData.communities,
+      sub_communities: formData.subCommunities,
+      industry: formData.industry,
+      sub_industry: formData.subIndustry,
+      area_of_industry: formData.areaOfIndustry,
+      privacy_accepted: true,
+    };
+    
+    // ADD THIS DEBUG
+    console.log("=== PAYLOAD TO API ===");
+    console.log(JSON.stringify(payload, null, 2));
+    
+    await AuthAPI.completeRegistration(payload);
+    
+    localStorage.removeItem("onboarding_required");
+    setIsLoading(false);
+    onRegistrationComplete();
+  } catch (err: any) {
+    // ADD THIS DEBUG
+    console.log("=== REGISTRATION ERROR ===");
+    console.log(err);
+    
+    setIsLoading(false);
+    setOtpError(err?.message || err?.data?.message || "Registration failed. Please try again.");
+  }
+};
 
   // Step validation
   const isStep1Valid = formData.firstName && formData.lastName && formData.mobile && otpState === "verified" && formData.country;
