@@ -5,12 +5,12 @@ import { TrendingUp, Users, Award, Clock, Play } from "lucide-react";
 import { useVideos } from "../hooks/useVideos";
 import { useAuthors } from "../hooks/useAuthors";   // ✅ NEW
 
-const trendingTopics = [
-  { topic: "Green Hydrogen", discussions: 45, growth: "+23%" },
-  { topic: "Grid Modernization", discussions: 38, growth: "+18%" },
-  { topic: "Carbon Markets", discussions: 34, growth: "+31%" },
-  { topic: "Energy Storage", discussions: 29, growth: "+15%" },
-];
+// const trendingTopics = [
+//   { topic: "Green Hydrogen", discussions: 45, growth: "+23%" },
+//   { topic: "Grid Modernization", discussions: 38, growth: "+18%" },
+//   { topic: "Carbon Markets", discussions: 34, growth: "+31%" },
+//   { topic: "Energy Storage", discussions: 29, growth: "+15%" },
+// ];
 
 export function CommunitySection() {
 
@@ -47,41 +47,68 @@ export function CommunitySection() {
                 {videoLoading && <p>Loading videos...</p>}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {videos.map((v: any) => (
-                    <Card key={v.id}>
-                      <CardContent className="pt-4 space-y-3">
-                        {v.thumbnail && (
-                          <img
-                            src={v.thumbnail}
-                            className="w-full rounded-lg aspect-video object-cover"
-                          />
-                        )}
+                  {videos.map((v: any) => {
+                    const videoLink = v.video_url || v.link || "#";
 
-                        <h3 className="font-semibold">{v.title}</h3>
+                    return (
+                      <Card key={v.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="pt-4 space-y-3">
 
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <Badge variant="outline">Video</Badge>
-                          {v.date && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {v.date}
-                            </span>
+                          {/* CLICKABLE THUMBNAIL */}
+                          {v.thumbnail && (
+                            <a
+                              href={videoLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <img
+                                src={v.thumbnail}
+                                className="w-full rounded-lg aspect-video object-cover hover:opacity-90 transition"
+                              />
+                            </a>
                           )}
-                        </div>
 
-                        {v.video_url && (
+                          {/* CLICKABLE TITLE */}
                           <a
-                            href={v.video_url}
+                            href={videoLink}
                             target="_blank"
-                            className="text-emerald-600 text-sm font-medium"
+                            rel="noopener noreferrer"
+                            className="block"
                           >
-                            Watch Video →
+                            <h3 className="font-semibold text-gray-900 hover:text-emerald-600">
+                              {v.title}
+                            </h3>
                           </a>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <Badge variant="outline">Video</Badge>
+
+                            {v.date && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {v.date}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* BACKUP BUTTON (also clickable) */}
+                          {videoLink !== "#" && (
+                            <a
+                              href={videoLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 text-sm font-medium hover:underline"
+                            >
+                              Watch Video →
+                            </a>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
+
               </CardContent>
             </Card>
           </div>
@@ -129,7 +156,7 @@ export function CommunitySection() {
             </Card>
 
             {/* Trending Topics (same as before) */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-emerald-600" />
@@ -149,7 +176,7 @@ export function CommunitySection() {
                   </div>
                 ))}
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Guidelines (same) */}
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100">

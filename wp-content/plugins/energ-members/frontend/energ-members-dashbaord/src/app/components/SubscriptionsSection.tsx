@@ -5,66 +5,54 @@ import { Check } from "lucide-react";
 
 const plans = [
   {
-    name: "Basic",
+    name: "Standard",
     price: "Free",
     period: "",
-    description: "Perfect for getting started with energy industry insights",
+    description:
+      "Ideal for professionals, early-career talent & students. Benefits Include:",
     features: [
-      "Access to selected articles",
-      "Monthly newsletter",
-      "Community discussions (view only)",
-      "Limited event access"
-    ],
-    current: false
-  },
-  {
-    name: "Professional",
-    price: "$49",
-    period: "/month",
-    description: "For practitioners and consultants seeking comprehensive insights",
-    features: [
-      "Full access to all articles and analysis",
-      "Weekly intelligence briefings",
-      "Community participation",
-      "All webinars and digital dialogues",
-      "Bookmark and save content",
-      "Priority event registration"
+      "Priority access to EnergDive featured content",
+      "Join multiple digital sub-communities",
+      "Personalised Knowledge Hub based on sectors & interests",
+      "10% discount on delegate passes across EnergDive Global Forums",
+      "Complimentary access to EnergDive Digital Dialogues & Virtual Roundtables",
+      "Digital Membership Card",
     ],
     current: true,
-    popular: true
+    popular: true,
+  },
+  {
+    name: "Premier",
+    price: "Paid",
+    period: "",
+    description:
+      "Designed for experienced professionals and industry practitioners. Includes all Standard Benefits, plus:",
+    features: [
+      "Complimentary Digital Edition of EnergDive Magazine (till June 2026)",
+      "Publish viewpoints, technical papers & success stories (Digital/Print)",
+      "Priority check-in at EnergDive Global Forums",
+      "Enhanced visibility & community engagement",
+    ],
+    current: false,
+    comingSoon: true,
   },
   {
     name: "Executive",
-    price: "$149",
-    period: "/month",
-    description: "For senior leaders and decision-makers",
-    features: [
-      "Everything in Professional",
-      "Executive intelligence reports",
-      "Exclusive executive lounges",
-      "Data tools and AI insights",
-      "Custom research requests",
-      "1-on-1 analyst consultations",
-      "Premium networking events"
-    ],
-    current: false
-  },
-  {
-    name: "Corporate",
-    price: "Custom",
+    price: "Invite / Corporate Nomination",
     period: "",
-    description: "Tailored solutions for organizations and teams",
+    description:
+      "Reserved for CXOs, industry leaders, changemakers and domain authorities. Includes all Premier Benefits, plus:",
     features: [
-      "Everything in Executive",
-      "Team accounts (5+ users)",
-      "Corporate dashboard",
-      "Custom content curation",
-      "Dedicated account manager",
-      "On-site workshops and training",
-      "White-label research options"
+      "Complimentary Print Edition of EnergDive Magazine (till Dec 2026)",
+      "VIP Invites to EnergDive Global Forums",
+      "Speaking Opportunities at global and national events",
+      "Access to Executive Lounge experiences",
+      "Thought-leadership amplification across EnergDive Media",
+      "Exclusive Executive Member Kit & Card",
     ],
-    current: false
-  }
+    current: false,
+    comingSoon: true,
+  },
 ];
 
 export function SubscriptionsSection() {
@@ -80,11 +68,10 @@ export function SubscriptionsSection() {
           {plans.map((plan) => (
             <Card
               key={plan.name}
-              className={`relative ${
-                plan.popular
+              className={`relative ${plan.popular
                   ? "border-emerald-500 shadow-lg"
                   : ""
-              }`}
+                }`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -119,16 +106,16 @@ export function SubscriptionsSection() {
                   <Button className="w-full" variant="outline" disabled>
                     Current Plan
                   </Button>
+                ) : plan.comingSoon ? (
+                  <Button className="w-full" variant="outline" disabled>
+                    Coming Soon
+                  </Button>
                 ) : (
                   <Button
-                    className={`w-full ${
-                      plan.popular
-                        ? "bg-emerald-600 hover:bg-emerald-700"
-                        : ""
-                    }`}
+                    className={`w-full ${plan.popular ? "bg-emerald-600 hover:bg-emerald-700" : ""
+                      }`}
                     variant={plan.popular ? "default" : "outline"}
                   >
-                    {plan.name === "Corporate" ? "Contact Sales" : "Upgrade Now"}
                   </Button>
                 )}
               </CardContent>
@@ -137,20 +124,20 @@ export function SubscriptionsSection() {
         </div>
 
         {/* Additional Information */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+        {/* <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
           <CardContent className="pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Need a custom solution?
             </h3>
             <p className="text-gray-700 mb-4">
-              Our Corporate plan can be tailored to meet your organization's specific needs. 
+              Our Corporate plan can be tailored to meet your organization's specific needs.
               Contact our sales team to discuss custom pricing and features.
             </p>
             <Button className="bg-emerald-600 hover:bg-emerald-700">
               Contact Sales Team
             </Button>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
