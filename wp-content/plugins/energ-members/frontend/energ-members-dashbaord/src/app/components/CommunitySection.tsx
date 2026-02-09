@@ -47,43 +47,30 @@ export function CommunitySection() {
                 {videoLoading && <p>Loading videos...</p>}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {videos.map((v: any) => {
-                    const videoLink = v.video_url || v.link || "#";
-
-                    return (
-                      <Card key={v.id} className="hover:shadow-md transition-shadow">
+                  {videos.map((v: any) => (
+                    <a
+                      key={v.id}
+                      href={v.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
                         <CardContent className="pt-4 space-y-3">
 
-                          {/* CLICKABLE THUMBNAIL */}
                           {v.thumbnail && (
-                            <a
-                              href={videoLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block"
-                            >
-                              <img
-                                src={v.thumbnail}
-                                className="w-full rounded-lg aspect-video object-cover hover:opacity-90 transition"
-                              />
-                            </a>
+                            <img
+                              src={v.thumbnail}
+                              className="w-full rounded-lg aspect-video object-cover"
+                            />
                           )}
 
-                          {/* CLICKABLE TITLE */}
-                          <a
-                            href={videoLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block"
-                          >
-                            <h3 className="font-semibold text-gray-900 hover:text-emerald-600">
-                              {v.title}
-                            </h3>
-                          </a>
+                          <h3 className="font-semibold text-gray-900 hover:text-emerald-600">
+                            {v.title}
+                          </h3>
 
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <Badge variant="outline">Video</Badge>
-
                             {v.date && (
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
@@ -92,21 +79,14 @@ export function CommunitySection() {
                             )}
                           </div>
 
-                          {/* BACKUP BUTTON (also clickable) */}
-                          {videoLink !== "#" && (
-                            <a
-                              href={videoLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-600 text-sm font-medium hover:underline"
-                            >
-                              Watch Video →
-                            </a>
-                          )}
+                          <span className="text-emerald-600 text-sm font-medium">
+                            Watch on original site →
+                          </span>
+
                         </CardContent>
                       </Card>
-                    );
-                  })}
+                    </a>
+                  ))}
                 </div>
 
               </CardContent>
