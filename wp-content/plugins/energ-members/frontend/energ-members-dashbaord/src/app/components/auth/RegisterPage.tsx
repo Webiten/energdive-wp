@@ -666,16 +666,21 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="country">Country *</Label>
-                    <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
-                      <SelectTrigger>
+                    <Select
+                      value={formData.country}
+                      onValueChange={(value) => handleInputChange("country", value)}
+                    >
+                      <SelectTrigger className="h-[42px] bg-white border-gray-300 shadow-sm hover:border-emerald-500 transition-all">
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="z-[100] bg-white shadow-xl border-gray-200">
+                        <div className="max-h-[200px] overflow-y-auto p-1">
+                          {countries.map((c) => (
+                            <SelectItem key={c.value} value={c.value} className="py-2.5">
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </div>
                       </SelectContent>
                     </Select>
                   </div>
@@ -784,28 +789,27 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                 </div>
 
                 {/* Industry (single-select) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  {/* Industry Column */}
-                  <div className="flex flex-col space-y-2">
-                    <Label htmlFor="industry" className="font-medium text-sm text-gray-700">
-                      Industry <span className="text-red-500">*</span>
-                    </Label>
+                {/* --- Updated Industry & Sub-Industry Section --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  {/* Industry */}
+                  <div className="space-y-2">
+                    <Label htmlFor="industry">Industry *</Label>
                     <Select
                       value={formData.industry}
                       onValueChange={(value) => handleInputChange("industry", value)}
                       disabled={!formData.communities.length}
                     >
-                      <SelectTrigger className="w-full bg-white shadow-sm hover:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all">
+                      <SelectTrigger className="h-[42px] bg-white border-gray-300 shadow-sm hover:border-emerald-500 transition-all focus:ring-2 focus:ring-emerald-500/20">
                         <SelectValue placeholder={formData.communities.length ? "Select industry" : "Select community first"} />
                       </SelectTrigger>
-                      {/* Ensure SelectContent is positioned relatively to the viewport */}
-                      <SelectContent className="z-[50] min-w-[200px] bg-white shadow-xl border border-gray-200 rounded-md">
-                        <div className="max-h-[250px] overflow-y-auto p-1">
+                      {/* Use Portal to ensure it floats above all other grid elements */}
+                      <SelectContent className="z-[100] bg-white border border-gray-200 shadow-xl rounded-lg">
+                        <div className="max-h-[280px] overflow-y-auto p-1">
                           {filteredIndustries.map((ind) => (
                             <SelectItem
                               key={ind.value}
                               value={ind.value}
-                              className="rounded-sm transition-colors"
+                              className="cursor-pointer py-2.5 px-3 rounded-md hover:bg-emerald-50 focus:bg-emerald-50 focus:text-emerald-900"
                             >
                               {ind.label}
                             </SelectItem>
@@ -815,26 +819,24 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                     </Select>
                   </div>
 
-                  {/* Sub-Industry Column */}
-                  <div className="flex flex-col space-y-2">
-                    <Label htmlFor="subIndustry" className="font-medium text-sm text-gray-700">
-                      Sub-Industry
-                    </Label>
+                  {/* Sub-Industry */}
+                  <div className="space-y-2">
+                    <Label htmlFor="subIndustry">Sub-Industry</Label>
                     <Select
                       value={formData.subIndustry}
                       onValueChange={(value) => handleInputChange("subIndustry", value)}
                       disabled={!formData.industry}
                     >
-                      <SelectTrigger className="w-full bg-white shadow-sm hover:border-blue-400 transition-all">
+                      <SelectTrigger className="h-[42px] bg-white border-gray-300 shadow-sm hover:border-emerald-500 transition-all focus:ring-2 focus:ring-emerald-500/20">
                         <SelectValue placeholder={!formData.industry ? "Select industry first" : "Select sub-industry"} />
                       </SelectTrigger>
-                      <SelectContent className="z-[50] min-w-[200px] bg-white shadow-xl border border-gray-200 rounded-md">
-                        <div className="max-h-[250px] overflow-y-auto p-1">
+                      <SelectContent className="z-[100] bg-white border border-gray-200 shadow-xl rounded-lg">
+                        <div className="max-h-[280px] overflow-y-auto p-1">
                           {subIndustryOptions.map((sub) => (
                             <SelectItem
                               key={sub.value}
                               value={sub.value}
-                              className="rounded-sm"
+                              className="cursor-pointer py-2.5 px-3 rounded-md hover:bg-emerald-50 focus:bg-emerald-50"
                             >
                               {sub.label}
                             </SelectItem>
@@ -842,12 +844,10 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
                         </div>
                       </SelectContent>
                     </Select>
-
-                    {/* Helper text with absolute positioning to prevent layout shift */}
-                    <div className="relative h-4">
+                    <div className="h-4 relative">
                       {!safeSubIndustryMap[formData.industry]?.length && formData.industry && (
-                        <p className="absolute top-0 left-0 text-[11px] text-gray-400 italic leading-tight">
-                          Showing common sub-industry options for {formData.industry}
+                        <p className="absolute top-0 text-[10px] text-gray-400 italic">
+                          Showing common roles for {formData.industry}
                         </p>
                       )}
                     </div>
