@@ -160,7 +160,9 @@ class CompleteRegistration
             'organization'         => sanitize_text_field($params['organization']),
             'country'              => sanitize_text_field($params['country']),
             'state'                => $state,
-            'phone'                => sanitize_text_field($params['phone'] ?? $existing->phone ?? ''),
+            'phone' => !empty($params['phone']) && $params['phone'] !== $existing->phone
+                ? sanitize_text_field($params['phone'])
+                : $existing->phone,
 
             // legacy support (keep primary values)
             'community'            => sanitize_text_field($communities[0]),
@@ -188,7 +190,9 @@ class CompleteRegistration
 
         try {
             $mailer = new Mailer();
-            $mailer->sendWelcomeEmail($existing->user_id ?? $wp_user->ID ?? null);
+            $mailer->sendWelcomeEmail(
+                $wp_user->ID ?? $existing->user_id ?? null
+            );
         } catch (\Exception $e) {
             error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
         }
