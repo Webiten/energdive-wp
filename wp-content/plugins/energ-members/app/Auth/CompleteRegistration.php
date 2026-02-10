@@ -4,6 +4,7 @@ namespace Energ\Auth;
 
 use WP_Error;
 use Energ\Helpers\CommunityValidator;
+use Energ\Services\Mailer;
 
 class CompleteRegistration
 {
@@ -111,7 +112,7 @@ class CompleteRegistration
 
         // FIX: Better lookup logic
         $existing = null;
-        
+
         // First try to find by JWT user
         if (is_numeric($user)) {
             $existing = $wpdb->get_row($wpdb->prepare(
@@ -183,6 +184,16 @@ class CompleteRegistration
             return new WP_Error('db_error', 'Could not complete registration', ['status' => 500]);
         }
 
+        /* ============ SEND WELCOME EMAIL AFTER SUCCESS ============ */
+
+        try {
+            $mailer = new Mailer();
+            $mailer->sendWelcomeEmail($existing->user_id ?? $wp_user->ID ?? null);
+        } catch (\Exception $e) {
+            error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
+        }
+
+
         /* ================= SYNC WITH WORDPRESS USER (HEADER FIX) ================= */
 
         $wp_user = null;
@@ -200,7 +211,7 @@ class CompleteRegistration
             wp_update_user([
                 'ID' => $wp_user->ID,
                 'display_name' =>
-                    sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
+                sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
             ]);
         }
 
