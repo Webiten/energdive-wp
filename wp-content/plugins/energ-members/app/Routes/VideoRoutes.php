@@ -17,7 +17,7 @@ class VideoRoutes
     {
         $query = new \WP_Query([
             'post_type'      => 'videos',   // 👈 tumhara CPT slug
-            'posts_per_page' => 8,
+            'posts_per_page' => 15,
             'orderby'        => 'date',
             'order'          => 'DESC',
         ]);
