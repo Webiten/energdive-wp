@@ -191,7 +191,7 @@ class CompleteRegistration
             wp_update_user([
                 'ID' => $wp_user->ID,
                 'display_name' =>
-                    sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
+                sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
             ]);
         }
 
@@ -200,10 +200,10 @@ class CompleteRegistration
         try {
             error_log("ENERG DEBUG - Sending welcome email to: " . $existing->email);
 
-            $mailer = new Mailer();
             $mailer->sendWelcomeEmailByAddress(
                 $existing->email,
-                $existing->first_name ?? 'Member'
+                $existing->first_name ?? 'Member',
+                ucfirst(str_replace('-', ' ', $existing->community))
             );
         } catch (\Exception $e) {
             error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
