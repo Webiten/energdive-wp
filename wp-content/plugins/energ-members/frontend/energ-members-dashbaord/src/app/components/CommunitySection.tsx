@@ -1,15 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { TrendingUp, Users, Award, Clock, Play } from "lucide-react";
+import { Users, Award, Clock, Play } from "lucide-react";
 import { useVideos } from "../hooks/useVideos";
-import { useAuthors } from "../hooks/useAuthors";   // ✅ NEW
+import { useAuthors } from "../hooks/useAuthors";
+
+/* ==============================
+   ✅ HTML ENTITY DECODE HELPER
+================================ */
+const decodeHtml = (str: string) => {
+  if (!str) return "";
+  const txt = document.createElement("textarea");
+  txt.innerHTML = str;
+  return txt.value;
+};
 
 export function CommunitySection() {
 
   const { data: videos = [], loading: videoLoading } = useVideos(12);
-
-  // ✅ REAL AUTHORS FROM CPT
   const { authors, loading: authorLoading } = useAuthors(5);
 
   return (
@@ -39,11 +47,11 @@ export function CommunitySection() {
               <CardContent>
                 {videoLoading && <p>Loading videos...</p>}
 
-                {/* ✅ CHANGE #1: 3 columns instead of 2 */}
+                {/* ✅ 3 COLUMN GRID */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                   {videos.map((v: any) => {
-                    // ✅ Ensure absolute URL (safe fix)
+
                     const finalUrl = v.video_url?.startsWith("http")
                       ? v.video_url
                       : `https://stage.energdive.com${v.video_url || ""}`;
@@ -62,7 +70,7 @@ export function CommunitySection() {
                             />
                           )}
 
-                          {/* ✅ CHANGE #2: TITLE LINKS TO ORIGINAL PAGE */}
+                          {/* ✅ DECODED TITLE + ORIGINAL LINK */}
                           <a
                             href={finalUrl}
                             target="_blank"
@@ -70,7 +78,7 @@ export function CommunitySection() {
                             className="block text-gray-900 hover:text-emerald-600"
                           >
                             <h3 className="font-semibold text-base leading-snug">
-                              {v.title}
+                              {decodeHtml(v.title)}
                             </h3>
                           </a>
 
@@ -84,7 +92,7 @@ export function CommunitySection() {
                             )}
                           </div>
 
-                          {/* CTA still works */}
+                          {/* CTA */}
                           {v.video_url && (
                             <a
                               href={finalUrl}
