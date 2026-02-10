@@ -195,19 +195,21 @@ class CompleteRegistration
             ]);
         }
 
-        /* ================= SEND EMAIL (CORRECT WAY FOR YOUR SYSTEM) ================= */
+        /* ================= SEND EMAIL (STABLE WORKING VERSION) ================= */
 
         try {
             error_log("ENERG DEBUG - Sending welcome email to: " . $existing->email);
 
+            $mailer = new Mailer();   // create instance properly
             $mailer->sendWelcomeEmailByAddress(
                 $existing->email,
-                $existing->first_name ?? 'Member',
-                ucfirst(str_replace('-', ' ', $existing->community))
+                $existing->first_name ?? 'Member'
             );
         } catch (\Exception $e) {
             error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
         }
+
+
 
         return [
             'success' => true,
