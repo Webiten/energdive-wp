@@ -69,17 +69,15 @@ export default function App() {
 
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+ const params = new URLSearchParams(window.location.search);
+ const token = params.get("token");
 
-    console.log("MAGIC TOKEN:", token);
-
-    if (token) {
-      localStorage.setItem("access_token", token);
-      window.history.replaceState({}, "", "/");
-      window.location.reload();
-    }
-  }, []);
+ if(token){
+   localStorage.setItem("access_token",token);
+   window.history.replaceState({},'',"/dashboard");
+   window.location.reload();
+ }
+},[]);
 
   // 🔄 Listen to token changes (logout / expiry)
   useEffect(() => {

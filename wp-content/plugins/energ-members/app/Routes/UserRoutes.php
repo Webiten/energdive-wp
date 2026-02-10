@@ -67,64 +67,51 @@ use Energ\Auth\Jwt;
 add_action('rest_api_init', function () {
 
     register_rest_route('energ/v1', '/magic-login', [
-        'methods'  => 'GET',
-        'callback' => 'energ_magic_login',
-        'permission_callback' => '__return_true'
+        'methods' => 'GET',
+        'callback' => function () {
+
+            global $wpdb;
+
+            $token = sanitize_text_field($_GET['token'] ?? '');
+
+            if (!$token) wp_die('Invalid');
+
+            $table = $wpdb->prefix . 'energ_members';
+
+            $member = $wpdb->get_row(
+                $wpdb->prepare("SELECT * FROM $table WHERE zoho_token=%s", $token)
+            );
+
+            if (!$member) wp_die('Expired');
+
+            // create/get WP user
+            if (!email_exists($member->email)) {
+                $uid = wp_insert_user([
+                    'user_login' => $member->email,
+                    'user_email' => $member->email,
+                    'user_pass' => wp_generate_password()
+                ]);
+            } else {
+                $uid = get_user_by('email', $member->email)->ID;
+            }
+
+            // ISSUE JWT
+            $jwt = Jwt::issue([
+                'sub' => $member->email
+            ]);
+
+            // invalidate token
+            $wpdb->update(
+                $table,
+                ['zoho_token' => null, 'status' => 'active'],
+                ['id' => $member->id]
+            );
+
+            // REDIRECT TO DASHBOARD WITH JWT
+            wp_redirect(
+                "https://stage.energdive.com/dashboard/?token=" . $jwt['token']
+            );
+            exit;
+        }
     ]);
 });
-
-function energ_magic_login()
-{
-
-    global $wpdb;
-
-    $token = sanitize_text_field($_GET['token'] ?? '');
-    if (!$token) wp_die('Invalid link');
-
-    $table = $wpdb->prefix . 'energ_members';
-
-    $member = $wpdb->get_row(
-        $wpdb->prepare("SELECT * FROM $table WHERE zoho_token=%s", $token)
-    );
-
-    if (!$member) wp_die('Invalid or expired link');
-
-    // Create / get WP user
-    if (!email_exists($member->email)) {
-        $uid = wp_insert_user([
-            'user_login' => $member->email,
-            'user_email' => $member->email,
-            'user_pass'  => wp_generate_password(),
-            'role'       => 'subscriber'
-        ]);
-    } else {
-        $uid = get_user_by('email', $member->email)->ID;
-    }
-
-    // Optional WP login
-    wp_clear_auth_cookie();
-    wp_set_current_user($uid);
-    wp_set_auth_cookie($uid, true);
-
-    // 🔐 ISSUE JWT (IMPORTANT: must contain `sub`)
-    $jwt = Jwt::issue([
-        'sub' => $member->email
-    ]);
-
-    // One-time Zoho token
-    $wpdb->update(
-        $table,
-        ['zoho_token' => null, 'status' => 'active'],
-        ['id' => $member->id]
-    );
-
-    // Redirect to React dashboard
-    $jwt = \Energ\Auth\Jwt::issue([
-        'sub' => $member->email
-    ]);
-
-    wp_redirect(
-        "https://stage.energdive.com/dashboard/?token=" . urlencode($jwt['token'])
-    );
-    exit;
-}
