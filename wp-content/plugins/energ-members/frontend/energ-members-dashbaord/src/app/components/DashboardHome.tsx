@@ -170,11 +170,11 @@ export function DashboardHome() {
                         {item.category || "General"}
                       </Badge>
 
-                      {item.views ? (
+                      {/* {item.views ? (
                         <span>{item.views} views</span>
                       ) : (
                         <span>Trending</span>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 ))}

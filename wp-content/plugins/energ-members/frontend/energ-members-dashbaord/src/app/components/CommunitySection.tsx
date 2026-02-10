@@ -5,13 +5,6 @@ import { TrendingUp, Users, Award, Clock, Play } from "lucide-react";
 import { useVideos } from "../hooks/useVideos";
 import { useAuthors } from "../hooks/useAuthors";   // ✅ NEW
 
-// const trendingTopics = [
-//   { topic: "Green Hydrogen", discussions: 45, growth: "+23%" },
-//   { topic: "Grid Modernization", discussions: 38, growth: "+18%" },
-//   { topic: "Carbon Markets", discussions: 34, growth: "+31%" },
-//   { topic: "Energy Storage", discussions: 29, growth: "+15%" },
-// ];
-
 export function CommunitySection() {
 
   const { data: videos = [], loading: videoLoading } = useVideos(12);
@@ -46,18 +39,20 @@ export function CommunitySection() {
               <CardContent>
                 {videoLoading && <p>Loading videos...</p>}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {videos.map((v: any) => (
-                    <a
-                      key={v.id}
-                      href={v.video_url.startsWith("http")
-                        ? v.video_url
-                        : `https://stage.energdive.com${v.video_url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                {/* ✅ CHANGE #1: 3 columns instead of 2 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                  {videos.map((v: any) => {
+                    // ✅ Ensure absolute URL (safe fix)
+                    const finalUrl = v.video_url?.startsWith("http")
+                      ? v.video_url
+                      : `https://stage.energdive.com${v.video_url || ""}`;
+
+                    return (
+                      <Card
+                        key={v.id}
+                        className="hover:shadow-md transition-shadow cursor-pointer"
+                      >
                         <CardContent className="pt-4 space-y-3">
 
                           {v.thumbnail && (
@@ -67,9 +62,17 @@ export function CommunitySection() {
                             />
                           )}
 
-                          <h3 className="font-semibold text-gray-900 hover:text-emerald-600">
-                            {v.title}
-                          </h3>
+                          {/* ✅ CHANGE #2: TITLE LINKS TO ORIGINAL PAGE */}
+                          <a
+                            href={finalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-gray-900 hover:text-emerald-600"
+                          >
+                            <h3 className="font-semibold text-base leading-snug">
+                              {v.title}
+                            </h3>
+                          </a>
 
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <Badge variant="outline">Video</Badge>
@@ -81,16 +84,24 @@ export function CommunitySection() {
                             )}
                           </div>
 
-                          <span className="text-emerald-600 text-sm font-medium">
-                            Watch on original site →
-                          </span>
+                          {/* CTA still works */}
+                          {v.video_url && (
+                            <a
+                              href={finalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-600 text-sm font-medium"
+                            >
+                              Watch on original site →
+                            </a>
+                          )}
 
                         </CardContent>
                       </Card>
-                    </a>
-                  ))}
-                </div>
+                    );
+                  })}
 
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -98,7 +109,7 @@ export function CommunitySection() {
           {/* RIGHT SIDEBAR */}
           <div className="space-y-6">
 
-            {/* ✅ AUTHORS INSTEAD OF TOP CONTRIBUTORS */}
+            {/* AUTHORS */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -137,30 +148,7 @@ export function CommunitySection() {
               </CardContent>
             </Card>
 
-            {/* Trending Topics (same as before) */}
-            {/* <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-600" />
-                  Trending Topics
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {trendingTopics.map((t, i) => (
-                  <div key={i} className="pb-3 border-b last:border-b-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-sm">{t.topic}</h4>
-                      <Badge variant="secondary">{t.growth}</Badge>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {t.discussions} discussions
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card> */}
-
-            {/* Guidelines (same) */}
+            {/* Guidelines */}
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100">
               <CardContent className="pt-6">
                 <h4 className="font-semibold mb-2 flex items-center gap-2">
