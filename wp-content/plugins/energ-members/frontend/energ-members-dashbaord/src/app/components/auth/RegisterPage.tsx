@@ -574,9 +574,9 @@ export function RegisterPage({ email, onRegistrationComplete }: RegisterPageProp
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    countryCode: "+1",
+    countryCode: "+91",
     mobile: "",
-    country: "",
+    country: "india",
     state: "",
     jobTitle: "",
     organization: "",
