@@ -46,6 +46,41 @@ export default function App() {
     );
   });
 
+  // ZOHO
+  useEffect(() => {
+    console.log("FULL URL:", window.location.href);
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    console.log("MAGIC TOKEN FROM URL:", token);
+
+    if (token) {
+      localStorage.setItem("access_token", token);
+      console.log("TOKEN SAVED");
+
+      // clean URL + reload
+      window.history.replaceState({}, "", "/");
+      window.location.reload();
+    }
+  }, []);
+
+  // const [appState, setAppState] = useState<AppState>("login");
+
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    console.log("MAGIC TOKEN:", token);
+
+    if (token) {
+      localStorage.setItem("access_token", token);
+      window.history.replaceState({}, "", "/");
+      window.location.reload();
+    }
+  }, []);
+
   // 🔄 Listen to token changes (logout / expiry)
   useEffect(() => {
     const syncAuthState = () => {

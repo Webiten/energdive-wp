@@ -19,9 +19,9 @@ class UserRoutes {
 
         global $wpdb;
 
-        $name  = sanitize_text_field($request->get_param('name'));
-        $email = sanitize_email($request->get_param('email'));
-        $token = sanitize_text_field($request->get_param('token'));
+        $name   = sanitize_text_field($request->get_param('name'));
+        $email  = sanitize_email($request->get_param('email'));
+        $token  = sanitize_text_field($request->get_param('token'));
         $secret = sanitize_text_field($request->get_param('secret'));
 
         if ($secret !== "ZOHO_ENERGDIVE_SECRET") {
@@ -35,22 +35,22 @@ class UserRoutes {
         );
 
         if ($exists) {
-            return ['status'=>'exists'];
+            return ['status' => 'exists'];
         }
 
         $parts = explode(' ', $name, 2);
 
-        $wpdb->insert($table,[
-            'email'=>$email,
-            'first_name'=>$parts[0],
-            'last_name'=>$parts[1] ?? '',
-            'signup_mode'=>'zoho',
-            'zoho_token'=>$token,
-            'status'=>'pending',
-            'created_at'=>current_time('mysql')
+        $wpdb->insert($table, [
+            'email'       => $email,
+            'first_name'  => $parts[0],
+            'last_name'   => $parts[1] ?? '',
+            'signup_mode' => 'zoho',
+            'zoho_token'  => $token,
+            'status'      => 'pending',
+            'created_at'  => current_time('mysql')
         ]);
 
-        return ['status'=>'success'];
+        return ['status' => 'success'];
     }
 }
 
@@ -58,52 +58,65 @@ add_action('rest_api_init', function () {
     UserRoutes::register();
 });
 
+use Energ\Auth\Jwt;
 
-add_shortcode('activate_zoho_user', function () {
+add_action('rest_api_init', function () {
+
+    register_rest_route('energ/v1', '/magic-login', [
+        'methods'  => 'GET',
+        'callback' => 'energ_magic_login',
+        'permission_callback' => '__return_true'
+    ]);
+
+});
+
+function energ_magic_login() {
 
     global $wpdb;
 
-    if (!isset($_GET['token'])) return "Invalid link";
+    $token = sanitize_text_field($_GET['token'] ?? '');
+    if (!$token) wp_die('Invalid link');
 
-    $token = sanitize_text_field($_GET['token']);
-    $table = $wpdb->prefix."energ_members";
+    $table = $wpdb->prefix . 'energ_members';
 
     $member = $wpdb->get_row(
-        $wpdb->prepare("SELECT * FROM $table WHERE zoho_token=%s",$token)
+        $wpdb->prepare("SELECT * FROM $table WHERE zoho_token=%s", $token)
     );
 
-    if(!$member) return "Invalid or expired link";
+    if (!$member) wp_die('Invalid or expired link');
 
-    // mark active
-    $wpdb->update($table,['status'=>'active'],['id'=>$member->id]);
-
-    // create wp user
-    if(!email_exists($member->email)){
-
+    // Create / get WP user
+    if (!email_exists($member->email)) {
         $uid = wp_insert_user([
-            'user_login'=>$member->email,
-            'user_email'=>$member->email,
-            'user_pass'=>wp_generate_password(),
-            'display_name'=>$member->first_name,
-            'role'=>'subscriber'
+            'user_login' => $member->email,
+            'user_email' => $member->email,
+            'user_pass'  => wp_generate_password(),
+            'role'       => 'subscriber'
         ]);
-
     } else {
-        $u = get_user_by('email',$member->email);
-        $uid = $u->ID;
+        $uid = get_user_by('email', $member->email)->ID;
     }
 
-    // LOGIN PROPER WAY
+    // Optional WP login
     wp_clear_auth_cookie();
     wp_set_current_user($uid);
-    wp_set_auth_cookie($uid,true);
-    do_action('wp_login',$member->email,get_user_by('ID',$uid));
+    wp_set_auth_cookie($uid, true);
 
-    update_user_meta($uid,'first_name',$member->first_name);
+    // 🔐 ISSUE JWT (IMPORTANT: must contain `sub`)
+    $jwt = Jwt::issue([
+        'sub' => $member->email
+    ]);
 
-    // one time token
-    $wpdb->update($table,['zoho_token'=>null],['id'=>$member->id]);
+    // One-time Zoho token
+    $wpdb->update(
+        $table,
+        ['zoho_token' => null, 'status' => 'active'],
+        ['id' => $member->id]
+    );
 
-    wp_safe_redirect(home_url());
+    // Redirect to React dashboard
+    wp_redirect(
+        "https://dashboard.energdive.com/dashboard?token=" . $jwt['token']
+    );
     exit;
-});
+}
