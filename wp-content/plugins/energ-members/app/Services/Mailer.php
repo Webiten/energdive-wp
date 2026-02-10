@@ -21,15 +21,9 @@ class Mailer
         return true;
     }
 
-    public function sendWelcomeEmail($user_id)
+    public function sendWelcomeEmailByAddress($email, $name = 'Member')
     {
-        if (!$user_id) return;
-
-        $user = get_userdata($user_id);
-        if (!$user) return;
-
-        $email = $user->user_email;
-        $name  = $user->display_name ?: $user->user_login;
+        if (empty($email)) return;
 
         $subject = "Welcome to ENERGClub 🎉";
 
@@ -38,12 +32,14 @@ Hi {$name},
 
 You are now officially a member of ENERGClub!
 
-Your account has been successfully activated, and you can now access:
+Your account has been successfully activated.
+
+You can now access:
 - Exclusive reports  
 - Industry insights  
-- Community discussions  
+- Community features  
 
-Visit your dashboard here:
+Visit your dashboard:
 https://energdive.com/dashboard/
 
 Best regards,  

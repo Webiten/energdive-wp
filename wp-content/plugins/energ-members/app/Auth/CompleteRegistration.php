@@ -40,7 +40,6 @@ class CompleteRegistration
             }
         }
 
-        // normalize privacy boolean
         $privacyAccepted = filter_var($params['privacy_accepted'], FILTER_VALIDATE_BOOLEAN);
         if ($privacyAccepted !== true) {
             return new WP_Error('privacy_required', 'Privacy policy must be accepted', ['status' => 400]);
@@ -50,11 +49,9 @@ class CompleteRegistration
 
         $state = isset($params['state']) ? sanitize_text_field($params['state']) : '';
 
-        // Industry / sub-industry
-        $industryVal = $params['industry'];
-        $industryVal = is_array($industryVal)
-            ? implode(', ', array_map('sanitize_text_field', $industryVal))
-            : sanitize_text_field((string) $industryVal);
+        $industryVal = is_array($params['industry'])
+            ? implode(', ', array_map('sanitize_text_field', $params['industry']))
+            : sanitize_text_field((string) $params['industry']);
 
         $subIndustryVal = $params['sub_industry'] ?? '';
         $subIndustryVal = is_array($subIndustryVal)
@@ -87,8 +84,6 @@ class CompleteRegistration
             $subCommunities = [sanitize_text_field($params['sub_community'])];
         }
 
-        /* ================= VALIDATION ================= */
-
         foreach ($subCommunities as $sub) {
             $valid = false;
             foreach ($communities as $community) {
@@ -98,22 +93,15 @@ class CompleteRegistration
                 }
             }
             if (!$valid) {
-                return new WP_Error(
-                    'invalid_community',
-                    'Invalid community or sub-community',
-                    ['status' => 400]
-                );
+                return new WP_Error('invalid_community', 'Invalid community or sub-community', ['status' => 400]);
             }
         }
 
-        /* ================= DATABASE UPDATE - FIXED ================= */
+        /* ================= FIND MEMBER RECORD ================= */
 
         $table = $wpdb->prefix . 'energ_members';
-
-        // FIX: Better lookup logic
         $existing = null;
 
-        // First try to find by JWT user
         if (is_numeric($user)) {
             $existing = $wpdb->get_row($wpdb->prepare(
                 "SELECT * FROM {$table} WHERE user_id = %d LIMIT 1",
@@ -131,7 +119,6 @@ class CompleteRegistration
             ));
         }
 
-        // Fallback: try params email/phone if JWT lookup failed
         if (!$existing && !empty($params['email'])) {
             $existing = $wpdb->get_row($wpdb->prepare(
                 "SELECT * FROM {$table} WHERE email = %s LIMIT 1",
@@ -150,29 +137,30 @@ class CompleteRegistration
             return new WP_Error('member_not_found', 'Member record not found. Please contact support.', ['status' => 404]);
         }
 
-        // Now update using the found record's ID
+        /* ================= UPDATE MEMBER ================= */
+
         $where = ['id' => (int) $existing->id];
 
         $data = [
-            'first_name'           => sanitize_text_field($params['first_name']),
-            'last_name'            => sanitize_text_field($params['last_name']),
-            'job_title'            => sanitize_text_field($params['job_title']),
-            'organization'         => sanitize_text_field($params['organization']),
-            'country'              => sanitize_text_field($params['country']),
-            'state'                => $state,
+            'first_name'   => sanitize_text_field($params['first_name']),
+            'last_name'    => sanitize_text_field($params['last_name']),
+            'job_title'    => sanitize_text_field($params['job_title']),
+            'organization' => sanitize_text_field($params['organization']),
+            'country'      => sanitize_text_field($params['country']),
+            'state'        => $state,
+
+            // DUPLICATE PHONE SAFE FIX
             'phone' => !empty($params['phone']) && $params['phone'] !== $existing->phone
                 ? sanitize_text_field($params['phone'])
                 : $existing->phone,
 
-            // legacy support (keep primary values)
-            'community'            => sanitize_text_field($communities[0]),
-            'sub_community'        => sanitize_text_field($subCommunities[0] ?? ''),
+            'community'     => sanitize_text_field($communities[0]),
+            'sub_community' => sanitize_text_field($subCommunities[0] ?? ''),
 
-            'industry'             => $industryVal,
-            'sub_industry'         => $subIndustryVal,
-            'status'               => 'active',
+            'industry'     => $industryVal,
+            'sub_industry' => $subIndustryVal,
+            'status'       => 'active',
 
-            // source of truth
             'communities_json'     => wp_json_encode($communities),
             'sub_communities_json' => wp_json_encode($subCommunities),
         ];
@@ -186,20 +174,7 @@ class CompleteRegistration
             return new WP_Error('db_error', 'Could not complete registration', ['status' => 500]);
         }
 
-        /* ============ SEND WELCOME EMAIL AFTER SUCCESS ============ */
-
-        try {
-            $mailer = new Mailer();
-            $mailer->sendWelcomeEmail(
-                $wp_user->ID ?? $existing->user_id ?? null
-            );
-        } catch (\Exception $e) {
-            error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
-        }
-        error_log("ENERG DEBUG - Welcome email trigger reached for user: " . ($existing->user_id ?? 'NO USER ID'));
-
-
-        /* ================= SYNC WITH WORDPRESS USER (HEADER FIX) ================= */
+        /* ================= SYNC WORDPRESS USER FIRST ================= */
 
         $wp_user = null;
 
@@ -216,8 +191,22 @@ class CompleteRegistration
             wp_update_user([
                 'ID' => $wp_user->ID,
                 'display_name' =>
-                sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
+                    sanitize_text_field($params['first_name'] . ' ' . $params['last_name']),
             ]);
+        }
+
+        /* ================= SEND EMAIL (CORRECT WAY FOR YOUR SYSTEM) ================= */
+
+        try {
+            error_log("ENERG DEBUG - Sending welcome email to: " . $existing->email);
+
+            $mailer = new Mailer();
+            $mailer->sendWelcomeEmailByAddress(
+                $existing->email,
+                $existing->first_name ?? 'Member'
+            );
+        } catch (\Exception $e) {
+            error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
         }
 
         return [
