@@ -1,12 +1,15 @@
 <?php
+
 namespace Energ\Routes;
 
 use WP_REST_Request;
 use WP_Error;
 
-class UserRoutes {
+class UserRoutes
+{
 
-    public static function register() {
+    public static function register()
+    {
 
         register_rest_route('energ/v1', '/zoho-create-user', [
             'methods'  => 'POST',
@@ -15,7 +18,8 @@ class UserRoutes {
         ]);
     }
 
-    public static function createFromZoho(WP_REST_Request $request) {
+    public static function createFromZoho(WP_REST_Request $request)
+    {
 
         global $wpdb;
 
@@ -67,10 +71,10 @@ add_action('rest_api_init', function () {
         'callback' => 'energ_magic_login',
         'permission_callback' => '__return_true'
     ]);
-
 });
 
-function energ_magic_login() {
+function energ_magic_login()
+{
 
     global $wpdb;
 
@@ -115,8 +119,12 @@ function energ_magic_login() {
     );
 
     // Redirect to React dashboard
+    $jwt = \Energ\Auth\Jwt::issue([
+        'sub' => $member->email
+    ]);
+
     wp_redirect(
-        "https://dashboard.energdive.com/dashboard?token=" . $jwt['token']
+        "https://stage.energdive.com/dashboard/?token=" . urlencode($jwt['token'])
     );
     exit;
 }
