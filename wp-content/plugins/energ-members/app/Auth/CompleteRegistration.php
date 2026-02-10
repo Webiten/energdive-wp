@@ -192,6 +192,7 @@ class CompleteRegistration
         } catch (\Exception $e) {
             error_log("ENERG DEBUG - Welcome Email Failed: " . $e->getMessage());
         }
+        error_log("ENERG DEBUG - Welcome email trigger reached for user: " . ($existing->user_id ?? 'NO USER ID'));
 
 
         /* ================= SYNC WITH WORDPRESS USER (HEADER FIX) ================= */
