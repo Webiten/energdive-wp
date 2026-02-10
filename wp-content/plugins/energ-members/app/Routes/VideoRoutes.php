@@ -28,7 +28,7 @@ class VideoRoutes
             $items[] = [
                 'id'      => $post->ID,
                 'title'   => get_the_title($post->ID),
-                'date'    => get_the_date('', $post->ID),
+                // 'date'    => get_the_date('', $post->ID),
                 'thumbnail' => get_the_post_thumbnail_url($post->ID, 'medium'),
                 'video_url' => get_post_meta($post->ID, 'video_url', true), // 👈 custom field
             ];
